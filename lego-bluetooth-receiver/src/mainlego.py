@@ -91,4 +91,3 @@ async def main():
 if __name__ == "__main__":
     with suppress(asyncio.CancelledError):
         asyncio.run(main())
-

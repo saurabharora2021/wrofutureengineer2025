@@ -3,6 +3,7 @@ from pybricks.parameters import Port
 from pybricks.tools import wait
 from pybricks.hubs import PrimeHub
 from pybricks.parameters import Color
+from pybricksdev.usb import PybricksHubUSB
 
 # Standard MicroPython modules
 from usys import stdin, stdout
@@ -11,40 +12,36 @@ from uselect import poll
 hub = PrimeHub();
 hub.light.on(Color.GREEN)
 
+# This is useful for USB communication.
+usb = USB()
+# This is the USB port for communication.
+usb.start()
+usb.set_baudrate(115200)
+usb.set_timeout(1)
+usb.set_buffer_size(64)
+usb._connect()
+data = usb._read_usb()
+
+
 # Optional: Register stdin for polling. This allows
 # you to wait for incoming data without blocking.
 keyboard = poll()
 keyboard.register(stdin)
 
+
 while True:
+    # Read a command from USB
+    command = stdin.read(3)
 
-    # Let the remote program know we are ready for a command.
-    stdout.buffer.write(b"rdy")
-
-    # Optional: Check available input.
-    while not keyboard.poll(0):
-        # Optional: Do something here.
-        wait(10)
-
-    # Read three bytes.
-    cmd = stdin.buffer.read(3)
-
-    # Decide what to do based on the command.
-    if cmd == b"fwd":
-        
-        pitch, roll = hub.imu.tilt()
-        hub.display.text("F")
-        wait(2000)
-        stdout.buffer.write(str(pitch))
-        stdout.buffer.write(str(roll))
-    elif cmd == b"rev":
-        hub.display.char("R")
-        wait(2000)
-        stdout.buffer.write(b"rev")
-    elif cmd == b"bye":
-        hub.display.char("B")
-        wait(2000)
-        stdout.buffer.write(b"bye")
+    if command == "fwd":
+        hub.light.on("green")
+        print("Moving forward")
+    elif command == "rev":
+        hub.light.on("red")
+        print("Moving backward")
+    elif command == "bye":
+        hub.light.on("off")
+        print("Stopping")
         break
 
-
+    wait(100)

@@ -1,0 +1,95 @@
+from drivebase.DriveBase import DriveBase
+import serial
+import time
+
+
+# Replace with the correct port for your LEGO Spike Prime hub
+# On Windows, it might look like "COM3", "COM4", etc.
+# On macOS/Linux, it might look like "/dev/tty.usbmodemXXXX" or "/dev/ttyACM0"
+USB_PORT = "COM3"
+BAUD_RATE = 115200  # Default baud rate for LEGO Spike Prime
+
+class SpikeDriveBase(DriveBase):
+
+    """ Constant for the Serial Message Start"""
+    MESSAGE_START = 0x02
+    """ Constant for the Serial Message End"""
+    MESSAGE_END = 0x03
+
+    def __init__(self):
+        """Initialize the drive base with two motors."""
+        self.usbserial = serial.Serial(USB_PORT, BAUD_RATE, timeout=5)
+        self.usbserial.flushInput()  # Clear the input buffer
+        self.usbserial.flushOutput()
+        self.usbserial.reset_input_buffer()
+        self.usbserial.reset_output_buffer()
+        self.start()
+
+    def start(self):
+        """Start the drive base."""
+        self.messagesend("start\n")
+        self.receiveacknowledgment();
+
+    def runfront(self, speed):
+        """ Send command on serial to run the drive base forward at the specified speed."""
+        self.messagesend(f"runfront {speed}\n");
+        self.receiveacknowledgment();
+        
+    def stop(self):
+        """Stop the drive base."""
+        self.messagesend("stop\n")
+        self.receiveacknowledgment();
+
+    def turnright(self, angle,speed=50):
+        """Turn the drive base to the right by the specified angle."""
+        self.turn(angle,speed)
+        self.receiveacknowledgment();
+    
+    def turn(self,angle,speed=50):
+        """Turn the drive base to the right by the specified angle."""
+        self.messagesend(f"turn {angle} speed={speed}\n")
+        self.receiveacknowledgment(); 
+        
+
+    def turnleft(self, angle,speed=50):
+        """Turn the drive base to the left by the specified angle."""
+        self.turn((-1)*angle,speed)
+        self.receiveacknowledgment();
+        
+    def messagesend(self, message):
+        """Send a message to the hub."""
+        # Construct the message with start and end bytes
+        full_message = bytes([self.MESSAGE_START]) + message.encode() + bytes([self.MESSAGE_END])
+        self.usbserial.write(full_message)
+
+    def messagereceive(self,timeout=5)->str:
+        """Receive a message from the hub."""
+        # Read until we find the start byte for specified timeout
+        start_time = time.time()
+        while True:
+            byte = self.usbserial.read(1)
+            if byte == bytes([self.MESSAGE_START]):
+                break
+            if time.time() - start_time > timeout:
+                raise TimeoutError("Timeout waiting for start byte.")
+
+        # Read until we find the end byte
+        message = bytearray()
+        while True:
+            byte = self.usbserial.read(1)
+            if byte == bytes([self.MESSAGE_END]):
+                break
+            if time.time() - start_time > timeout:
+                raise TimeoutError("Timeout waiting for end byte.")
+            message.append(byte[0])
+
+        return message.decode("utf-8").strip();
+    
+
+    def receiveacknowledgment(self):
+        msg = self.messagereceive()
+        if msg == "ack":
+            print("Acknowledgment received.")
+        else:
+            print(f"Unexpected message: {msg}")
+            raise ValueError(f"Unexpected message: {msg}")

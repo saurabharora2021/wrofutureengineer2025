@@ -1,13 +1,9 @@
-from buildhat import Motor
-from buildhat.drivebase import DriveBase
+from spikeserial import SpikeDriveBase
+from base import DriveBase
 
 def main():
-    # Create motor instances for left and right motors
-    left_motor = Motor('A')
-    right_motor = Motor('B')
-    
     # Create an instance of BuildHatDriveBase
-    drive_base = DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=114)
+    drive_base:DriveBase = SpikeDriveBase()
     
     # Example usage: Move forward for 500mm
     drive_base.straight(500)

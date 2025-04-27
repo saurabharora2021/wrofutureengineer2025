@@ -1,4 +1,4 @@
-from drivebase.DriveBase import DriveBase
+from base.DriveBase import DriveBase
 from buildhat import Motor
 
 class BuildHatDriveBase(DriveBase):

@@ -20,3 +20,8 @@ class DriveBase(ABC):
     def turnleft(self, angle):
         """Turn the drive base to the left by the specified angle."""
         pass
+
+    @abstractmethod
+    def batterylevel(self):
+        """Get the battery level of the drive base."""
+        pass

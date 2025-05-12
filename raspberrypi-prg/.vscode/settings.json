@@ -1,0 +1,8 @@
+{
+"json.schemas": [
+    
+],
+"files.exclude": {
+    "**/extraoldcode": true
+}
+}

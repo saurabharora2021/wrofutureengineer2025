@@ -1,4 +1,4 @@
-from drivebase.DriveBase import DriveBase
+from base.DriveBase import DriveBase
 import serial
 import time
 
@@ -15,6 +15,9 @@ class SpikeDriveBase(DriveBase):
     MESSAGE_START = 0x02
     """ Constant for the Serial Message End"""
     MESSAGE_END = 0x03
+
+    ACK_MESSAGE = "ack"
+
 
     def __init__(self):
         """Initialize the drive base with two motors."""
@@ -88,13 +91,13 @@ class SpikeDriveBase(DriveBase):
 
     def __receiveacknowledgment(self):
         msg = self.__messagereceive()
-        if msg == "ack":
+        if msg == self.ACK_MESSAGE:
             print("Acknowledgment received.")
         else:
             print(f"Unexpected message: {msg}")
             raise ValueError(f"Unexpected message: {msg}")
         
-    def batterylevel(self):
+    def batterylevel(self)->int:
         """Get the battery level of the drive base."""
         self.__messagesend("batterylevel\n")
         message = self.__messagereceive()

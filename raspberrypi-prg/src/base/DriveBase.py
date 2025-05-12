@@ -22,6 +22,6 @@ class DriveBase(ABC):
         pass
 
     @abstractmethod
-    def batterylevel(self):
+    def batterylevel(self)->int:
         """Get the battery level of the drive base."""
         pass

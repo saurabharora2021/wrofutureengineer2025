@@ -26,3 +26,9 @@ class BuildHatDriveBase(DriveBase):
 
         self.front_motor.run_for_degrees((-1)*angle, 50)  # Adjust speed as needed
 
+    def batterylevel(self)->int:
+        """Get the battery level of the drive base."""
+        # Assuming the Build Hat has a method to get battery level
+        return 100;
+    
+

@@ -7,7 +7,7 @@ class SpikeExtendedCapability(ExtendedCapability):
 
     def getFrontDistance(self)-> int:
         # Implement the method to get the front distance using the drive base
-        return self.drive_base.messagesend("FrontDistance\n")
+        self.drive_base.messagesend("FrontDistance\n")
         message = self.drive_base.messagereceive()
         return int(message)
 

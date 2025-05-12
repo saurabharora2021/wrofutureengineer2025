@@ -6,7 +6,7 @@ import time
 # Replace with the correct port for your LEGO Spike Prime hub
 # On Windows, it might look like "COM3", "COM4", etc.
 # On macOS/Linux, it might look like "/dev/tty.usbmodemXXXX" or "/dev/ttyACM0"
-USB_PORT = "COM3"
+USB_PORT = "/dev/ttyACM0"
 BAUD_RATE = 115200  # Default baud rate for LEGO Spike Prime
 
 class SpikeDriveBase(DriveBase):

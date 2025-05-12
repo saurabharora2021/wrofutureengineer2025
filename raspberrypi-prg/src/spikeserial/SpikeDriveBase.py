@@ -30,42 +30,42 @@ class SpikeDriveBase(DriveBase):
 
     def start(self):
         """Start the drive base."""
-        self.__messagesend("start\n")
-        self.__receiveacknowledgment();
+        self.messagesend("start\n")
+        self.receiveacknowledgment();
 
     def runfront(self, speed):
         """ Send command on serial to run the drive base forward at the specified speed."""
-        self.__messagesend(f"runfront {speed}\n");
-        self.__receiveacknowledgment();
+        self.messagesend(f"runfront {speed}\n");
+        self.receiveacknowledgment();
         
     def stop(self):
         """Stop the drive base."""
-        self.__messagesend("stop\n")
-        self.__receiveacknowledgment();
+        self.messagesend("stop\n")
+        self.receiveacknowledgment();
 
     def turnright(self, angle,speed=50):
         """Turn the drive base to the right by the specified angle."""
         self.__turn(angle,speed)
-        self.__receiveacknowledgment();
+        self.receiveacknowledgment();
     
     def __turn(self,angle,speed=50):
         """Turn the drive base to the right by the specified angle."""
-        self.__messagesend(f"turn {angle} speed={speed}\n")
-        self.__receiveacknowledgment(); 
+        self.messagesend(f"turn {angle} speed={speed}\n")
+        self.receiveacknowledgment(); 
         
 
     def turnleft(self, angle,speed=50):
         """Turn the drive base to the left by the specified angle."""
         self.__turn((-1)*angle,speed)
-        self.__receiveacknowledgment();
+        self.receiveacknowledgment();
         
-    def __messagesend(self, message):
+    def messagesend(self, message):
         """Send a message to the hub."""
         # Construct the message with start and end bytes
         full_message = bytes([self.MESSAGE_START]) + message.encode() + bytes([self.MESSAGE_END])
         self.usbserial.write(full_message)
 
-    def __messagereceive(self,timeout=5)->str:
+    def messagereceive(self,timeout=5)->str:
         """Receive a message from the hub."""
         # Read until we find the start byte for specified timeout
         start_time = time.time()
@@ -89,8 +89,8 @@ class SpikeDriveBase(DriveBase):
         return message.decode("utf-8").strip();
     
 
-    def __receiveacknowledgment(self):
-        msg = self.__messagereceive()
+    def receiveacknowledgment(self):
+        msg = self.messagereceive()
         if msg == self.ACK_MESSAGE:
             print("Acknowledgment received.")
         else:
@@ -99,6 +99,6 @@ class SpikeDriveBase(DriveBase):
         
     def batterylevel(self)->int:
         """Get the battery level of the drive base."""
-        self.__messagesend("batterylevel\n")
-        message = self.__messagereceive()
+        self.messagesend("batterylevel\n")
+        message = self.messagereceive()
         return int(message)

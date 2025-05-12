@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class DriveBase(ABC):
     @abstractmethod
     def runfront(self, speed):
@@ -22,6 +23,6 @@ class DriveBase(ABC):
         pass
 
     @abstractmethod
-    def batterylevel(self)->int:
+    def batterylevel(self) -> int:
         """Get the battery level of the drive base."""
         pass

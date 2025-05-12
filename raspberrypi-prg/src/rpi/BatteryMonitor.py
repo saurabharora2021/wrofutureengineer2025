@@ -4,6 +4,7 @@ import logging
 from rpi.OutputInterface import OutputInterface
 from base.ShutdownInterface import ShutdownInterface
 
+
 class BatteryMonitor(ShutdownInterface):
 
     logger = logging.getLogger(__name__)
@@ -18,14 +19,13 @@ class BatteryMonitor(ShutdownInterface):
         self.output_interface = output_interface
         self.shutdown = False
 
-
     def monitor_battery(self, threshold: int = 50):
         """
         Monitor the battery level and control LEDs based on the level.
         :param threshold: Battery percentage below which the low battery LED is turned on.
         :param interval: Time interval (in seconds) between battery checks.
         """
-        
+
         # Get the battery level from the hub
         battery_level = self.drive_base.batterylevel()
         self.logger.info(f"Battery Level: {battery_level}%")
@@ -36,19 +36,18 @@ class BatteryMonitor(ShutdownInterface):
         else:
             self.output_interface.set_low_battery_led(False)
 
-        #TODO: add logic for RP UPS
+        # TODO: add logic for RP UPS
 
-    
-
-    def runMonitoring(self, interval: int = 5,threshold: int = 50):
+    def runMonitoring(self, interval: int = 5, threshold: int = 50):
         """
         Run the battery monitoring in a loop.
         :param interval: Time interval (in seconds) between battery checks.
         """
         try:
-            self.thread = threading.Thread(target=self.monitor_battery, args=(threshold,))
+            self.thread = threading.Thread(
+                target=self.monitor_battery, args=(threshold,))
             self.thread.start()
-            
+
         except Exception as e:
             self.logger.error(f"Error occurred: {e}")
         finally:
@@ -61,4 +60,3 @@ class BatteryMonitor(ShutdownInterface):
                 self.thread.stop()
             except Exception as e:
                 self.logger.error(f"Error occurred: {e}")
-            

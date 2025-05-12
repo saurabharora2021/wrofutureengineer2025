@@ -9,10 +9,9 @@ from base.ShutdownInterface import ShutdownInterface
 
 class OutputInterface(ShutdownInterface):
 
-    #Define GPIO pin numbers for the LEDs
+    # Define GPIO pin numbers for the LEDs
     LED_PIN_LOW_BATTERY = 18  # GPIO pin number for the LED
     LED_PIN_LOW_BATTERY_SPARK = 17  # GPIO pin number for the LED
-
 
     def __init__(self):
         """
@@ -20,14 +19,16 @@ class OutputInterface(ShutdownInterface):
         :param pin: GPIO pin number where the LED is connected.
         """
         GPIO.setmode(GPIO.BCM)  # Use BCM pin numbering
-        GPIO.setup(OutputInterface.LED_PIN_LOW_BATTERY, GPIO.OUT)  # Set the pin as an output
-        GPIO.setup(OutputInterface.LED_PIN_LOW_BATTERY_SPARK, GPIO.OUT)  # Set the pin as an output
-        
-    def __turn_on(self,pin: int):
+        GPIO.setup(OutputInterface.LED_PIN_LOW_BATTERY,
+                   GPIO.OUT)  # Set the pin as an output
+        GPIO.setup(OutputInterface.LED_PIN_LOW_BATTERY_SPARK,
+                   GPIO.OUT)  # Set the pin as an output
+
+    def __turn_on(self, pin: int):
         """Turn the LED on."""
         GPIO.output(pin, GPIO.HIGH)
 
-    def __turn_off(self,pin: int):
+    def __turn_off(self, pin: int):
         """Turn the LED off."""
         GPIO.output(pin, GPIO.LOW)
 
@@ -40,7 +41,6 @@ class OutputInterface(ShutdownInterface):
             self.__turn_on(OutputInterface.LED_PIN_LOW_BATTERY)
         else:
             self.__turn_off(OutputInterface.LED_PIN_LOW_BATTERY)
-        
 
     def set_low_battery_spark_led(self, state: bool):
         """

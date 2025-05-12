@@ -1,10 +1,11 @@
 from base.ShutdownInterface import ShutdownInterface
 import logging
 
+
 class ShutdownInterfaceManager:
 
     logger = logging.getLogger(__name__)
-    
+
     def __init__(self):
         """
         Initialize the ShutdownInterfaceManager with an empty list of interfaces.
@@ -30,4 +31,3 @@ class ShutdownInterfaceManager:
                 interface.shutdown()
             except Exception as e:
                 self.logger.error(f"Error shutting down {interface}: {e}")
-

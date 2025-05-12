@@ -1,9 +1,6 @@
 {
-    "json.schemas": [],
-    "files.exclude": {
-        "**/extraoldcode": true
-    },
     "editor.indentSize": 4,
+    "editor.tabSize": 4,
     "editor.formatOnSave": true,
     "editor.insertSpaces": true,
     "editor.detectIndentation": true

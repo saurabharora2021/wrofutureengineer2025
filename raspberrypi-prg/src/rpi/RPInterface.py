@@ -1,5 +1,6 @@
 from base.ShutdownInterface import ShutdownInterface
 
+
 class RPInterface(ShutdownInterface):
     """
     This class is used to interface with the Raspberry Pi GPIO pins.
@@ -10,8 +11,6 @@ class RPInterface(ShutdownInterface):
         Initialize the RPInterface class.
         """
         pass
-
-    
 
     def shutdown(self):
         pass

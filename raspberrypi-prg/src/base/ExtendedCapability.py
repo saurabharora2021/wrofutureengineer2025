@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class ExtendedCapability(ABC):
     @abstractmethod
     def getFrontDistance(self):

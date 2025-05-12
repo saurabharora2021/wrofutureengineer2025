@@ -9,6 +9,7 @@ import time
 USB_PORT = "/dev/ttyACM0"
 BAUD_RATE = 115200  # Default baud rate for LEGO Spike Prime
 
+
 class SpikeDriveBase(DriveBase):
 
     """ Constant for the Serial Message Start"""
@@ -17,7 +18,6 @@ class SpikeDriveBase(DriveBase):
     MESSAGE_END = 0x03
 
     ACK_MESSAGE = "ack"
-
 
     def __init__(self):
         """Initialize the drive base with two motors."""
@@ -31,41 +31,41 @@ class SpikeDriveBase(DriveBase):
     def start(self):
         """Start the drive base."""
         self.messagesend("start\n")
-        self.receiveacknowledgment();
+        self.receiveacknowledgment()
 
     def runfront(self, speed):
         """ Send command on serial to run the drive base forward at the specified speed."""
-        self.messagesend(f"runfront {speed}\n");
-        self.receiveacknowledgment();
-        
+        self.messagesend(f"runfront {speed}\n")
+        self.receiveacknowledgment()
+
     def stop(self):
         """Stop the drive base."""
         self.messagesend("stop\n")
-        self.receiveacknowledgment();
+        self.receiveacknowledgment()
 
-    def turnright(self, angle,speed=50):
+    def turnright(self, angle, speed=50):
         """Turn the drive base to the right by the specified angle."""
-        self.__turn(angle,speed)
-        self.receiveacknowledgment();
-    
-    def __turn(self,angle,speed=50):
+        self.__turn(angle, speed)
+        self.receiveacknowledgment()
+
+    def __turn(self, angle, speed=50):
         """Turn the drive base to the right by the specified angle."""
         self.messagesend(f"turn {angle} speed={speed}\n")
-        self.receiveacknowledgment(); 
-        
+        self.receiveacknowledgment()
 
-    def turnleft(self, angle,speed=50):
+    def turnleft(self, angle, speed=50):
         """Turn the drive base to the left by the specified angle."""
-        self.__turn((-1)*angle,speed)
-        self.receiveacknowledgment();
-        
+        self.__turn((-1) * angle, speed)
+        self.receiveacknowledgment()
+
     def messagesend(self, message):
         """Send a message to the hub."""
         # Construct the message with start and end bytes
-        full_message = bytes([self.MESSAGE_START]) + message.encode() + bytes([self.MESSAGE_END])
+        full_message = bytes([self.MESSAGE_START]) + \
+            message.encode() + bytes([self.MESSAGE_END])
         self.usbserial.write(full_message)
 
-    def messagereceive(self,timeout=5)->str:
+    def messagereceive(self, timeout=5) -> str:
         """Receive a message from the hub."""
         # Read until we find the start byte for specified timeout
         start_time = time.time()
@@ -86,8 +86,7 @@ class SpikeDriveBase(DriveBase):
                 raise TimeoutError("Timeout waiting for end byte.")
             message.append(byte[0])
 
-        return message.decode("utf-8").strip();
-    
+        return message.decode("utf-8").strip()
 
     def receiveacknowledgment(self):
         msg = self.messagereceive()
@@ -96,8 +95,8 @@ class SpikeDriveBase(DriveBase):
         else:
             print(f"Unexpected message: {msg}")
             raise ValueError(f"Unexpected message: {msg}")
-        
-    def batterylevel(self)->int:
+
+    def batterylevel(self) -> int:
         """Get the battery level of the drive base."""
         self.messagesend("batterylevel\n")
         message = self.messagereceive()

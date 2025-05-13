@@ -14,7 +14,16 @@ if backend is None:
     print("No libusb backend found!")
 else:
     print("libusb backend is available.")
-    
+
+devices = usb.core.find(find_all=True)
+
+# Print Vendor and Product IDs for each device
+if devices:
+    for dev in devices:
+        print(f"Vendor ID: 0x{dev.idVendor:04X}, Product ID: 0x{dev.idProduct:04X}")
+else:
+    print("No USB devices found.")
+
 
 def is_pybricks_usb(dev):
                 return (
@@ -27,7 +36,6 @@ def is_pybricks_usb(dev):
                             MINDSTORMS_INVENTOR_USB_PID,
                         ]
                     )
-                    and dev.product.endswith("Pybricks")
                 )
 
 #Find the USB device

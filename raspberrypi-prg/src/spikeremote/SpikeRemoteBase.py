@@ -10,6 +10,20 @@ class SpikeRemoteBase(DriveBase,ShutdownInterface):
 
     logger = logging.getLogger(__name__)
 
+    """LEGO Spike Color Codes"""
+    BLACK = 0
+    MAGENTA = 1
+    PURPLE = 2
+    BLUE = 3
+    AZURE = 4
+    TURQUOISE = 5
+    GREEN = 6
+    YELLOW = 7
+    ORANGE = 8
+    RED = 9
+    WHITE = 10
+    UNKNOWN = -1
+
     """
     Base class for Spike Remote.
     """
@@ -21,9 +35,12 @@ class SpikeRemoteBase(DriveBase,ShutdownInterface):
         # Initialize the Spike Remote connection
         self.hub = spremote.Hub('/dev/ttyACM0')
         self.beep(400,1000,100)
-        time.sleep(1)
         self.hub.list_devices()
-        self.write_text("Remote")
+        self.lmatrix = spremote.LightMatrix(self.hub)
+        power = spremote.Button(self.hub, 'POWER')
+        power.set_color(self.PURPLE)
+        time.sleep(2)
+        power.set_color(self.GREEN)
         self.logger.debug("Spike Remote Hub initialized.")
 
         """ None intialized variables """
@@ -31,7 +48,7 @@ class SpikeRemoteBase(DriveBase,ShutdownInterface):
         self.back_motor = None
         self.bottom_color_sensor = None
         self.front_distance_sensor = None
-        
+
 
         if (not debug):
             # Initialize the motors and sensors

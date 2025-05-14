@@ -99,8 +99,8 @@ class SpikeRemoteBase(DriveBase,ShutdownInterface):
 
     def beep(self, frequency=440, duration=500,volume=100):
         """Make a beep sound."""
-        ret = self.hub.cmd(f'hub.speaker.beep({frequency}, {duration},{volume})')
-        self.logger.debug(f'hub.speaker.beep in LightMatrix.beep returned {ret}')  
+        ret = self.hub.cmd(f'hub.sound.beep({frequency}, {duration},{volume})')
+        self.logger.debug(f'hub.sound.beep in LightMatrix.beep returned {ret}')  
     
     def shutdown(self):
         """Shutdown the Spike Remote."""

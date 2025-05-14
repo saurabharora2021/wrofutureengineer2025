@@ -14,13 +14,12 @@ class SpikeRemoteBase(DriveBase,ShutdownInterface):
     Base class for Spike Remote.
     """
 
-    def __init__(self, front_motor_port, back_motor_port,bottom_color_sensor_port, front_distance_sensor_port):
+    def __init__(self, front_motor_port:int, back_motor_port:int,bottom_color_sensor_port:int, front_distance_sensor_port:int):
         """
         Initialize the Spike Remote with two motors and two color sensors.
         """
         # Initialize the Spike Remote connection
         self.hub = spremote.Hub('/dev/ttyACM0')
-        self.hub.connect()
         self.beep()
         self.hub.list_devices()
         self.write_text("Remote")

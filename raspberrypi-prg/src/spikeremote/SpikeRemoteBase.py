@@ -14,13 +14,13 @@ class SpikeRemoteBase(DriveBase,ShutdownInterface):
     Base class for Spike Remote.
     """
 
-    def __init__(self, front_motor_port:int, back_motor_port:int,bottom_color_sensor_port:int, front_distance_sensor_port:int):
+    def __init__(self, front_motor_port, back_motor_port,bottom_color_sensor_port, front_distance_sensor_port):
         """
         Initialize the Spike Remote with two motors and two color sensors.
         """
         # Initialize the Spike Remote connection
         self.hub = spremote.Hub('/dev/ttyACM0')
-        self.beep()
+        self.beep(400,1000,100)
         self.hub.list_devices()
         self.write_text("Remote")
 
@@ -73,9 +73,9 @@ class SpikeRemoteBase(DriveBase,ShutdownInterface):
         ret = self.hub.cmd(f'hub.light_matrix.write("{text}")')
         self.logger.debug(f'hub.light_matrix.write in LightMatrix.write_text returned {ret}')
 
-    def beep(self, frequency=440, duration=500):
+    def beep(self, frequency=440, duration=500,volume=100):
         """Make a beep sound."""
-        ret = self.hub.cmd(f'hub.speaker.beep({frequency}, {duration})')
+        ret = self.hub.cmd(f'hub.speaker.beep({frequency}, {duration},{volume})')
         self.logger.debug(f'hub.speaker.beep in LightMatrix.beep returned {ret}')  
     
     def shutdown(self):

@@ -1,4 +1,4 @@
-from spikeserial.SpikeDriveBase import SpikeDriveBase
+from spikeremote.SpikeRemoteBase import SpikeRemoteBase
 from base import DriveBase
 from rpi import LoggerSetup
 from rpi import OutputInterface
@@ -11,12 +11,14 @@ def main():
     # Initialize all the components
     shutdownManager = ShutdownInterfaceManager()
 
-    # Create an instance of BuildHatDriveBase
-    drive_base: DriveBase = SpikeDriveBase()
-
     logger: LoggerSetup = LoggerSetup()
     shutdownManager.add_interface(logger)
     logger.setup_logging()
+
+    # Create an instance of SpikeRemoteBase
+    drive_base: DriveBase = SpikeRemoteBase()
+    shutdownManager.add_interface(drive_base)
+
 
     # outputInterface: OutputInterface = OutputInterface()
     # shutdownManager.add_interface(outputInterface)
@@ -31,7 +33,9 @@ def main():
 
     # Example usage: Turn 90 degrees
     # drive_base.turn(90)
-    drive_base.message("Hello")
+    battery = drive_base.batterylevel()
+    print(f"Battery level: {battery}%")
+
 
     # Finally, shutdown all interfaces
     shutdownManager.shutdown_all()

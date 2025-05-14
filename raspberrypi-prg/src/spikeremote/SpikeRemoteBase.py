@@ -2,8 +2,14 @@ import spremote
 from base.DriveBase import DriveBase
 import serial
 import time
+import logging
+from base.ShutdownInterface import ShutdownInterface
 
-class SpikeRemoteBase(DriveBase):
+
+class SpikeRemoteBase(DriveBase,ShutdownInterface):
+
+    logger = logging.getLogger(__name__)
+
     """
     Base class for Spike Remote.
     """
@@ -15,6 +21,9 @@ class SpikeRemoteBase(DriveBase):
         # Initialize the Spike Remote connection
         self.hub = spremote.Hub('/dev/ttyACM0')
         self.hub.connect()
+        self.beep()
+        self.hub.list_devices()
+        self.write_text("Remote")
 
         self.front_motor = spremote.Motor(self.hub, front_motor_port)
         self.back_motor = spremote.Motor(self.hub, back_motor_port)
@@ -60,4 +69,19 @@ class SpikeRemoteBase(DriveBase):
         """Get the color from the bottom color sensor."""
         return self.bottom_color_sensor.get_color()
     
+    def write_text(self, text):
+        """Write text to the light matrix."""
+        ret = self.hub.cmd(f'hub.light_matrix.write("{text}")')
+        self.logger.debug(f'hub.light_matrix.write in LightMatrix.write_text returned {ret}')
+
+    def beep(self, frequency=440, duration=500):
+        """Make a beep sound."""
+        ret = self.hub.cmd(f'hub.speaker.beep({frequency}, {duration})')
+        self.logger.debug(f'hub.speaker.beep in LightMatrix.beep returned {ret}')  
     
+    def shutdown(self):
+        """Shutdown the Spike Remote."""
+        self.front_motor.stop()
+        self.back_motor.stop()
+        self.hub.disconnect()
+        self.logger.info("Spike Remote shutdown complete.")

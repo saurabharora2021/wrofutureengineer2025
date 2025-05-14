@@ -1,8 +1,7 @@
 from spikeremote.SpikeRemoteBase import SpikeRemoteBase
-from base import DriveBase
-from rpi import LoggerSetup
-from rpi import OutputInterface
-from rpi import BatteryMonitor
+from rpi.LoggerSetup import LoggerSetup 
+from rpi.OutputInterface import OutputInterface
+from rpi.BatteryMonitor import BatteryMonitor
 from rpi.ShutdownInterfaceManager import ShutdownInterfaceManager
 
 
@@ -11,12 +10,12 @@ def main():
     # Initialize all the components
     shutdownManager = ShutdownInterfaceManager()
 
-    logger: LoggerSetup = LoggerSetup()
+    logger = LoggerSetup()
     shutdownManager.add_interface(logger)
-    logger.setup_logging()
+    logger.setup()
 
     # Create an instance of SpikeRemoteBase
-    drive_base: DriveBase = SpikeRemoteBase()
+    drive_base: SpikeRemoteBase = SpikeRemoteBase('A', 'B', 'C', 'D')
     shutdownManager.add_interface(drive_base)
 
 

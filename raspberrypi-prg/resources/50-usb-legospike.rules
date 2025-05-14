@@ -1,7 +1,5 @@
 #Rules file for udev to be copied in /etc/udev/rules.d/
 
-
-
 # SPIKE Prime hub in firmware update mode
 SUBSYSTEM=="usb", ATTRS{idVendor}=="0694", ATTRS{idProduct}=="0008", SYMLINK+="spike-prime-dfu-%k", MODE="0666"
 

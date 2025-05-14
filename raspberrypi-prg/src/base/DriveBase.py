@@ -22,11 +22,6 @@ class DriveBase(ABC):
         """Turn the drive base to the left by the specified angle."""
         pass
 
-    @abstractmethod
-    def batterylevel(self) -> int:
-        """Get the battery level of the drive base."""
-        pass
-
     def get_front_distance(self):
         """Get the distance from the front distance sensor."""
         pass

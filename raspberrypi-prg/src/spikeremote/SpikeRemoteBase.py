@@ -14,32 +14,43 @@ class SpikeRemoteBase(DriveBase,ShutdownInterface):
     Base class for Spike Remote.
     """
 
-    def __init__(self, front_motor_port, back_motor_port,bottom_color_sensor_port, front_distance_sensor_port):
+    def __init__(self, front_motor_port, back_motor_port,bottom_color_sensor_port, front_distance_sensor_port,debug=False):
         """
         Initialize the Spike Remote with two motors and two color sensors.
         """
         # Initialize the Spike Remote connection
         self.hub = spremote.Hub('/dev/ttyACM0')
         self.beep(400,1000,100)
+        time.sleep(1)
         self.hub.list_devices()
         self.write_text("Remote")
+        self.logger.debug("Spike Remote Hub initialized.")
 
-        self.front_motor = spremote.Motor(self.hub, front_motor_port)
-        self.back_motor = spremote.Motor(self.hub, back_motor_port)
-        self.bottom_color_sensor = spremote.ColorSensor(self.hub, bottom_color_sensor_port)
-        self.front_distance_sensor = spremote.DistanceSensor(self.hub, front_distance_sensor_port)
-    
-        # Initialize the motors
-        self.front_motor.set_power(0)
-        self.back_motor.set_power(0)
-        self.front_motor.set_speed(0)
-        self.back_motor.set_speed(0)
-        self.front_motor.set_position(0)
-        self.back_motor.set_position(0)
-        self.front_motor.set_mode('position')
-        self.back_motor.set_mode('position')
-        self.front_motor.set_stop_action('brake')
-        self.back_motor.set_stop_action('brake')
+        """ None intialized variables """
+        self.front_motor = None
+        self.back_motor = None
+        self.bottom_color_sensor = None
+        self.front_distance_sensor = None
+        
+
+        if (not debug):
+            # Initialize the motors and sensors
+            self.front_motor = spremote.Motor(self.hub, front_motor_port)
+            self.back_motor = spremote.Motor(self.hub, back_motor_port)
+            self.bottom_color_sensor = spremote.ColorSensor(self.hub, bottom_color_sensor_port)
+            self.front_distance_sensor = spremote.DistanceSensor(self.hub, front_distance_sensor_port)
+        
+            # Initialize the motors
+            self.front_motor.set_power(0)
+            self.back_motor.set_power(0)
+            self.front_motor.set_speed(0)
+            self.back_motor.set_speed(0)
+            self.front_motor.set_position(0)
+            self.back_motor.set_position(0)
+            self.front_motor.set_mode('position')
+            self.back_motor.set_mode('position')
+            self.front_motor.set_stop_action('brake')
+            self.back_motor.set_stop_action('brake')
 
 
     def runfront(self, speedpercent):
@@ -55,10 +66,6 @@ class SpikeRemoteBase(DriveBase,ShutdownInterface):
 
     def turnleft(self, angle):
         self.front_motor.run_degrees(-angle, 50)
-
-    def batterylevel(self) -> int:
-        """Get the battery level of the drive base."""
-        return self.hub.battery_level()
     
     def get_front_distance(self):
         """Get the distance from the front distance sensor."""

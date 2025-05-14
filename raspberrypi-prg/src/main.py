@@ -15,7 +15,7 @@ def main():
     logger.setup()
 
     # Create an instance of SpikeRemoteBase
-    drive_base: SpikeRemoteBase = SpikeRemoteBase('A', 'B', 'C', 'D')
+    drive_base: SpikeRemoteBase = SpikeRemoteBase('A', 'B', 'C', 'D',True)
     shutdownManager.add_interface(drive_base)
 
 
@@ -32,9 +32,11 @@ def main():
 
     # Example usage: Turn 90 degrees
     # drive_base.turn(90)
-    battery = drive_base.batterylevel()
-    print(f"Battery level: {battery}%")
+    # battery = drive_base.batterylevel()
+    # print(f"Battery level: {battery}%")
 
+    drive_base.write_text("Hello, World!")
+    drive_base.beep(300, 1000, 100)
 
     # Finally, shutdown all interfaces
     shutdownManager.shutdown_all()

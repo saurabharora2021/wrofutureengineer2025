@@ -21,7 +21,3 @@ class DriveBase(ABC):
     def turnleft(self, angle):
         """Turn the drive base to the left by the specified angle."""
         pass
-
-    def get_front_distance(self):
-        """Get the distance from the front distance sensor."""
-        pass

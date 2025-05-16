@@ -1,28 +1,15 @@
 import spremote
 from base.DriveBase import DriveBase
+from base.ExtendedCapability import ExtendedCapability
 import serial
 import time
 import logging
 from base.ShutdownInterface import ShutdownInterface
 
 
-class SpikeRemoteBase(DriveBase,ShutdownInterface):
+class SpikeRemoteBase(DriveBase,ShutdownInterface,ExtendedCapability):
 
     logger = logging.getLogger(__name__)
-
-    """LEGO Spike Color Codes"""
-    BLACK = 0
-    MAGENTA = 1
-    PURPLE = 2
-    BLUE = 3
-    AZURE = 4
-    TURQUOISE = 5
-    GREEN = 6
-    YELLOW = 7
-    ORANGE = 8
-    RED = 9
-    WHITE = 10
-    UNKNOWN = -1
 
     """
     Base class for Spike Remote.
@@ -37,10 +24,10 @@ class SpikeRemoteBase(DriveBase,ShutdownInterface):
         self.beep(400,1000,100)
         self.hub.list_devices()
         self.lmatrix = spremote.LightMatrix(self.hub)
-        power = spremote.Button(self.hub, 'POWER')
-        power.set_color(self.PURPLE)
+        self.power = spremote.Button(self.hub, 'POWER')
+        self.setPowerColor(ExtendedCapability.PURPLE)
         time.sleep(2)
-        power.set_color(self.GREEN)
+        self.setPowerColor(ExtendedCapability.GREEN)
         self.logger.debug("Spike Remote Hub initialized.")
 
         """ None intialized variables """
@@ -84,13 +71,6 @@ class SpikeRemoteBase(DriveBase,ShutdownInterface):
     def turnleft(self, angle):
         self.front_motor.run_degrees(-angle, 50)
     
-    def get_front_distance(self):
-        """Get the distance from the front distance sensor."""
-        return self.front_distance_sensor.get_distance()
-    
-    def get_bottom_color(self):
-        """Get the color from the bottom color sensor."""
-        return self.bottom_color_sensor.get_color()
     
     def write_text(self, text):
         """Write text to the light matrix."""
@@ -108,3 +88,16 @@ class SpikeRemoteBase(DriveBase,ShutdownInterface):
         self.back_motor.stop()
         self.hub.disconnect()
         self.logger.info("Spike Remote shutdown complete.")
+
+    def getFrontDistance(self):
+        """Get the distance from the front distance sensor."""
+        return self.front_distance_sensor.get_distance()
+
+    def getBottomColor(self):
+        """Get the color from the bottom color sensor."""
+        return self.bottom_color_sensor.get_color()
+    
+    def setPowerColor(self, color):
+        """Set the power color of the hub."""
+        self.power.set_color(color)
+        self.logger.debug(f'Set power color to {color}')

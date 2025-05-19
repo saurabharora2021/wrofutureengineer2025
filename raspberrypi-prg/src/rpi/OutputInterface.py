@@ -3,6 +3,9 @@ try:
 except:
     import Mock.GPIO as GPIO
 
+from gpiozero import Buzzer
+
+
 import time
 from base.ShutdownInterface import ShutdownInterface
 
@@ -23,6 +26,8 @@ class OutputInterface(ShutdownInterface):
                    GPIO.OUT)  # Set the pin as an output
         GPIO.setup(OutputInterface.LED_PIN_LOW_BATTERY_SPARK,
                    GPIO.OUT)  # Set the pin as an output
+        
+        self.buzzer = Buzzer(20)
 
     def __turn_on(self, pin: int):
         """Turn the LED on."""
@@ -60,6 +65,13 @@ class OutputInterface(ShutdownInterface):
         self.__turn_on()
         time.sleep(duration)
         self.__turn_off()
+
+    def buzzer_on(self):
+        """Turn on the buzzer."""
+        self.buzzer.on()
+        time.sleep(0.5)
+        self.buzzer.off()
+        
 
     def shutdown(self):
         """Clean up the GPIO settings."""

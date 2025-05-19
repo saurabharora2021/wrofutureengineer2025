@@ -19,8 +19,8 @@ def main():
     shutdownManager.add_interface(drive_base)
 
 
-    # outputInterface: OutputInterface = OutputInterface()
-    # shutdownManager.add_interface(outputInterface)
+    outputInterface: OutputInterface = OutputInterface()
+    shutdownManager.add_interface(outputInterface)
 
     # Create an instance of BatteryMonitor
     # battery_monitor: BatteryMonitor = BatteryMonitor(drive_base, outputInterface)
@@ -35,8 +35,11 @@ def main():
     # battery = drive_base.batterylevel()
     # print(f"Battery level: {battery}%")
 
-    drive_base.write_text("Hello, World!")
-    drive_base.beep(300, 1000, 100)
+    #drive_base.write_text("Hello, World!")
+    #drive_base.beep(300, 1000, 100)
+
+    outputInterface.buzzer_on()
+    
 
     # Finally, shutdown all interfaces
     shutdownManager.shutdown_all()

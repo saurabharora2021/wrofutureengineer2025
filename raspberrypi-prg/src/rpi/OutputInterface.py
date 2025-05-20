@@ -30,7 +30,7 @@ class OutputInterface(ShutdownInterface):
                    GPIO.OUT)  # Set the pin as an output
         
         self.buzzer = Buzzer(20)
-        self.led1 = RGBLED(red=9, green=10, blue=11)
+        self.led1 = RGBLED(red=26, green=19, blue=16)
 
     def __turn_on(self, pin: int):
         """Turn the LED on."""

@@ -15,8 +15,8 @@ def main():
     logger.setup()
 
     # Create an instance of SpikeRemoteBase
-    drive_base: SpikeRemoteBase = SpikeRemoteBase('A', 'B', 'C', 'D',True)
-    shutdownManager.add_interface(drive_base)
+    #drive_base: SpikeRemoteBase = SpikeRemoteBase('A', 'B', 'C', 'D',True)
+    #shutdownManager.add_interface(drive_base)
 
 
     outputInterface: OutputInterface = OutputInterface()

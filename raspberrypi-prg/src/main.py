@@ -39,7 +39,7 @@ def main():
     #drive_base.beep(300, 1000, 100)
 
     outputInterface.buzzer_on()
-    
+    outputInterface.LED1_on()
 
     # Finally, shutdown all interfaces
     shutdownManager.shutdown_all()

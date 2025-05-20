@@ -4,6 +4,8 @@ except:
     import Mock.GPIO as GPIO
 
 from gpiozero import Buzzer
+from gpiozero import RGBLED
+
 
 
 import time
@@ -28,6 +30,7 @@ class OutputInterface(ShutdownInterface):
                    GPIO.OUT)  # Set the pin as an output
         
         self.buzzer = Buzzer(20)
+        self.led1 = RGBLED(red=9, green=10, blue=11)
 
     def __turn_on(self, pin: int):
         """Turn the LED on."""
@@ -71,6 +74,20 @@ class OutputInterface(ShutdownInterface):
         self.buzzer.on()
         time.sleep(0.5)
         self.buzzer.off()
+        
+    def LED1_on(self):
+        """Turn on the LED1."""
+        self.led1.color = (0, 1, 0)  # green
+        time.sleep(0.5)
+        self.led1.color = (1, 0, 0)  # red
+        time.sleep(0.5)
+        self.led1.color = (0, 0, 1)  # blue
+        time.sleep(0.5)
+        self.led1.color = (0, 0, 0)  # off
+        
+
+    def LED2_on(self):
+        """Turn on the LED2."""
         
 
     def shutdown(self):

@@ -59,7 +59,9 @@ class SpikeRemoteBase(DriveBase,ShutdownInterface,ExtendedCapability):
 
     def runfront(self, speedpercent):
         """ Back Motor is used to run the drive base forward """
-        return self.back_motor.start(speedpercent)
+        self.logger.debug(f"Running front motor at {speedpercent}% speed.")
+        #Currently the pully system is inverted, so we need to invert the speed
+        return self.back_motor.start((-1)*speedpercent)
     
     def stop(self):
         self.back_motor.stop()

@@ -40,13 +40,10 @@ def main():
     outputInterface.buzzer_on()
     outputInterface.LED1_on()
 
-    time.sleep(2)
-
-    drive_base.write_text("Hello")
-    drive_base.beep(300, 1000, 100)
+    sleep(2)
 
     drive_base.runfront(50)
-    sleep(2)
+    sleep(5)
     drive_base.stop()
 
     # Finally, shutdown all interfaces

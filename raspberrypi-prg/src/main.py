@@ -36,8 +36,6 @@ def main():
     # battery = drive_base.batterylevel()
     # print(f"Battery level: {battery}%")
 
-    drive_base.write_text("Hello")
-    drive_base.beep(300, 1000, 100)
 
     outputInterface.buzzer_on()
     outputInterface.LED1_on()

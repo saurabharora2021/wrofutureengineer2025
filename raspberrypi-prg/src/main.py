@@ -42,7 +42,7 @@ def main():
 
     sleep(2)
 
-    drive_base.runfront(50)
+    drive_base.runfront(100)
     sleep(5)
     drive_base.stop()
 

@@ -37,12 +37,12 @@ def main():
     # print(f"Battery level: {battery}%")
 
 
-    outputInterface.buzzer_on()
-    outputInterface.LED1_on()
+    #outputInterface.buzzer_on()
+    #outputInterface.LED1_on()
 
-    sleep(2)
+    #sleep(2)
 
-    drive_base.runfront(100)
+    drive_base.runfront(200)
     sleep(5)
     drive_base.stop()
 

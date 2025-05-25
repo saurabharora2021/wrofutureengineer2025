@@ -4,6 +4,8 @@ from rpi.OutputInterface import OutputInterface
 from rpi.BatteryMonitor import BatteryMonitor
 from rpi.ShutdownInterfaceManager import ShutdownInterfaceManager
 from time import sleep
+import logging
+
 
 
 def main():
@@ -11,9 +13,10 @@ def main():
     # Initialize all the components
     shutdownManager = ShutdownInterfaceManager()
 
-    logger = LoggerSetup()
-    shutdownManager.add_interface(logger)
-    logger.setup()
+    loggersetup = LoggerSetup()
+    shutdownManager.add_interface(loggersetup)
+    loggersetup.setup()
+    logger = logging.getLogger(__name__)
     logger.log("Starting Spike Remote Base application")
     logger.log("Initializing Output Interface")
 

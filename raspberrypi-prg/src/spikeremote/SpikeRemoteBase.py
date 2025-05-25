@@ -44,17 +44,17 @@ class SpikeRemoteBase(DriveBase,ShutdownInterface,ExtendedCapability):
             self.bottom_color_sensor = spremote.ColorSensor(self.hub, bottom_color_sensor_port)
             self.front_distance_sensor = spremote.DistanceSensor(self.hub, front_distance_sensor_port)
         
-            # Initialize the motors
-            self.front_motor.set_power(0)
-            self.back_motor.set_power(0)
-            self.front_motor.set_speed(0)
-            self.back_motor.set_speed(0)
-            self.front_motor.set_position(0)
-            self.back_motor.set_position(0)
-            self.front_motor.set_mode('position')
-            self.back_motor.set_mode('position')
-            self.front_motor.set_stop_action('brake')
-            self.back_motor.set_stop_action('brake')
+            # # Initialize the motors
+            # self.front_motor.set_power(0)
+            # self.back_motor.set_power(0)
+            # self.front_motor.set_speed(0)
+            # self.back_motor.set_speed(0)
+            # self.front_motor.set_position(0)
+            # self.back_motor.set_position(0)
+            # self.front_motor.set_mode('position')
+            # self.back_motor.set_mode('position')
+            # self.front_motor.set_stop_action('brake')
+            # self.back_motor.set_stop_action('brake')
 
 
     def runfront(self, speedpercent):

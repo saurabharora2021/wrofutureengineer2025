@@ -17,8 +17,9 @@ def main():
     shutdownManager.add_interface(loggersetup)
     loggersetup.setup()
     logger = logging.getLogger(__name__)
-    logger.log("Starting Spike Remote Base application")
-    logger.log("Initializing Output Interface")
+
+    logger.info("Starting Spike Remote Base application")
+    logger.info("Initializing Output Interface")
 
     outputInterface: OutputInterface = OutputInterface()
     shutdownManager.add_interface(outputInterface)
@@ -37,15 +38,15 @@ def main():
 
 
     except:
-        logger.log("Error Running Program")
+        logger.error("Error Running Program")
         outputInterface.LED1_red()
         outputInterface.buzzer_on()
-        logger.log("Shutting down due to error")
+        logger.error("Shutting down due to error")
         raise   
     finally:
             # Finally, shutdown all interfaces
         shutdownManager.shutdown_all()
-        logger.log("Shutting down all interfaces")
+        logger.info("Shutting down all interfaces")
 
 
 

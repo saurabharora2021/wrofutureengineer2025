@@ -3,6 +3,7 @@ from rpi.LoggerSetup import LoggerSetup
 from rpi.OutputInterface import OutputInterface
 from rpi.BatteryMonitor import BatteryMonitor
 from rpi.ShutdownInterfaceManager import ShutdownInterfaceManager
+from time import sleep,time
 
 
 def main():
@@ -15,8 +16,8 @@ def main():
     logger.setup()
 
     # Create an instance of SpikeRemoteBase
-    #drive_base: SpikeRemoteBase = SpikeRemoteBase('A', 'B', 'C', 'D',True)
-    #shutdownManager.add_interface(drive_base)
+    drive_base: SpikeRemoteBase = SpikeRemoteBase(front_motor_port='F', back_motor_port='E', bottom_color_sensor_port='C', front_distance_sensor_port='C',debug=False)
+    shutdownManager.add_interface(drive_base)
 
 
     outputInterface: OutputInterface = OutputInterface()
@@ -35,11 +36,20 @@ def main():
     # battery = drive_base.batterylevel()
     # print(f"Battery level: {battery}%")
 
-    #drive_base.write_text("Hello, World!")
-    #drive_base.beep(300, 1000, 100)
+    drive_base.write_text("Hello")
+    drive_base.beep(300, 1000, 100)
 
     outputInterface.buzzer_on()
     outputInterface.LED1_on()
+
+    time.sleep(2)
+
+    drive_base.write_text("Hello")
+    drive_base.beep(300, 1000, 100)
+
+    drive_base.runfront(50)
+    sleep(2)
+    drive_base.stop()
 
     # Finally, shutdown all interfaces
     shutdownManager.shutdown_all()

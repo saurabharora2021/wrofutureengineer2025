@@ -33,7 +33,7 @@ def main():
         shutdownManager.add_interface(drive_base)
 
         drive_base.runfront(100)
-        sleep(5)
+        sleep(10)
         drive_base.stop()
 
 

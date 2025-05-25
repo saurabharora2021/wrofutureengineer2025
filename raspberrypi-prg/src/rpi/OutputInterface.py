@@ -37,8 +37,8 @@ class OutputInterface(ShutdownInterface):
         time.sleep(0.5)
         self.led1.color = (0, 0, 0)  # off
 
-        shutdown_btn = Button(self.SHUTDOWN_BUTTON_PIN, hold_time=2)
-        shutdown_btn.when_held = self.poweroffbuttonaction
+        #shutdown_btn = Button(self.SHUTDOWN_BUTTON_PIN, hold_time=2)
+        #shutdown_btn.when_held = self.poweroffbuttonaction
 
     def poweroffbuttonaction():
         check_call(['sudo', 'poweroff'])

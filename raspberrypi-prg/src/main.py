@@ -3,7 +3,7 @@ from rpi.LoggerSetup import LoggerSetup
 from rpi.OutputInterface import OutputInterface
 from rpi.BatteryMonitor import BatteryMonitor
 from rpi.ShutdownInterfaceManager import ShutdownInterfaceManager
-from time import sleep,time
+from time import sleep
 
 
 def main():
@@ -14,40 +14,36 @@ def main():
     logger = LoggerSetup()
     shutdownManager.add_interface(logger)
     logger.setup()
-
-    # Create an instance of SpikeRemoteBase
-    drive_base: SpikeRemoteBase = SpikeRemoteBase(front_motor_port='F', back_motor_port='E', bottom_color_sensor_port='C', front_distance_sensor_port='C',debug=False)
-    shutdownManager.add_interface(drive_base)
-
+    logger.log("Starting Spike Remote Base application")
+    logger.log("Initializing Output Interface")
 
     outputInterface: OutputInterface = OutputInterface()
     shutdownManager.add_interface(outputInterface)
 
-    # Create an instance of BatteryMonitor
-    # battery_monitor: BatteryMonitor = BatteryMonitor(drive_base, outputInterface)
-    # shutdownManager.add_interface(battery_monitor)
-    # battery_monitor.runMonitoring()
+    outputInterface.LED1_green()
 
-    # Example usage: Move forward for 500mm
-    # drive_base.straight(500)
+    try:
 
-    # Example usage: Turn 90 degrees
-    # drive_base.turn(90)
-    # battery = drive_base.batterylevel()
-    # print(f"Battery level: {battery}%")
+        # Create an instance of SpikeRemoteBase
+        drive_base: SpikeRemoteBase = SpikeRemoteBase(front_motor_port='F', back_motor_port='E', bottom_color_sensor_port='C', front_distance_sensor_port='C',debug=False)
+        shutdownManager.add_interface(drive_base)
+
+        drive_base.runfront(100)
+        sleep(5)
+        drive_base.stop()
 
 
-    #outputInterface.buzzer_on()
-    #outputInterface.LED1_on()
+    except:
+        logger.log("Error Running Program")
+        outputInterface.LED1_red()
+        outputInterface.buzzer_on()
+        logger.log("Shutting down due to error")
+        raise   
+    finally:
+            # Finally, shutdown all interfaces
+        shutdownManager.shutdown_all()
+        logger.log("Shutting down all interfaces")
 
-    #sleep(2)
-
-    drive_base.runfront(200)
-    sleep(5)
-    drive_base.stop()
-
-    # Finally, shutdown all interfaces
-    shutdownManager.shutdown_all()
 
 
 if __name__ == "__main__":

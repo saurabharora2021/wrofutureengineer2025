@@ -40,7 +40,7 @@ class SpikeRemoteBase(DriveBase,ShutdownInterface,ExtendedCapability):
         if (not debug):
             # Initialize the motors and sensors
             self.front_motor = spremote.Motor(self.hub, front_motor_port,speed=100)
-            self.back_motor = spremote.Motor(self.hub, back_motor_port)
+            self.back_motor = spremote.Motor(self.hub, back_motor_port,speed=100)
             self.bottom_color_sensor = spremote.ColorSensor(self.hub, bottom_color_sensor_port)
             self.front_distance_sensor = spremote.DistanceSensor(self.hub, front_distance_sensor_port)
         

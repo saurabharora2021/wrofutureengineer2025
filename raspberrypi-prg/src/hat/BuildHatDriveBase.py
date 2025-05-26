@@ -44,6 +44,5 @@ class BuildHatDriveBase(DriveBase, ShutdownInterface):
     
     def getFrontDistance(self):
         """Get the distance to the front obstacle."""
-        front_distance_sensor = DistanceSensor(self.front_distance_sensor_port)
-        return front_distance_sensor.get_distance_cm()
+        return self.front_distance_sensor.get_distance()
         

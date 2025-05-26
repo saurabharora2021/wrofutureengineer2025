@@ -4,8 +4,8 @@ from rpi.OutputInterface import OutputInterface
 from rpi.BatteryMonitor import BatteryMonitor
 from rpi.ShutdownInterfaceManager import ShutdownInterfaceManager
 from time import sleep
-from base import DriveBase
-from hat import BuildHatDriveBase
+from base.DriveBase import DriveBase
+from hat.BuildHatDriveBase import BuildHatDriveBase
 import logging
 
 

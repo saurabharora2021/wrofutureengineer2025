@@ -8,7 +8,7 @@ class BuildHatDriveBase(DriveBase, ShutdownInterface):
         """Initialize the drive base with two motors."""
         self.front_motor = Motor(front_motor_port)
         self.back_motor = Motor(back_motor_port)
-        self.bottom_color_sensor_port = bottom_color_sensor_port
+        self.bottom_color_sensor = ColorSensor(bottom_color_sensor_port)
         self.front_distance_sensor_port = front_distance_sensor_port
 
     def runfront(self, speed):
@@ -35,3 +35,8 @@ class BuildHatDriveBase(DriveBase, ShutdownInterface):
         self.front_motor.reset()
         self.back_motor.reset()
         print("Drive base shutdown complete.")
+
+    def getBottomColor(self):
+        """Get the color detected by the bottom sensor."""
+        return self.bottom_color_sensor.get_color()
+        

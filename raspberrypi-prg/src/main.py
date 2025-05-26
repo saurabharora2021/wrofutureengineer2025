@@ -41,6 +41,8 @@ def main():
 
         color = drive_base.getBottomColor()
         print(f"Bottom Color Detected: {color}")
+        distance = drive_base.getFrontDistance()
+        print(f"Front Distance Detected: {distance} cm")
 
 
     except:

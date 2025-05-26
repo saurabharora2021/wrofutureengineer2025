@@ -9,7 +9,9 @@ class BuildHatDriveBase(DriveBase, ShutdownInterface):
         self.front_motor = Motor(front_motor_port)
         self.back_motor = Motor(back_motor_port)
         self.bottom_color_sensor = ColorSensor(bottom_color_sensor_port)
-        self.front_distance_sensor_port = front_distance_sensor_port
+        self.bottom_color_sensor.on()
+        self.front_distance_sensor = DistanceSensor(front_distance_sensor_port)
+        self.front_distance_sensor.on()
 
     def runfront(self, speed):
         """Run the drive base forward at the specified speed."""
@@ -39,4 +41,9 @@ class BuildHatDriveBase(DriveBase, ShutdownInterface):
     def getBottomColor(self):
         """Get the color detected by the bottom sensor."""
         return self.bottom_color_sensor.get_color()
+    
+    def getFrontDistance(self):
+        """Get the distance to the front obstacle."""
+        front_distance_sensor = DistanceSensor(self.front_distance_sensor_port)
+        return front_distance_sensor.get_distance_cm()
         

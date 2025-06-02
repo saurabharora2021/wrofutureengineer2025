@@ -1,4 +1,3 @@
-from spikeremote.SpikeRemoteBase import SpikeRemoteBase
 from rpi.LoggerSetup import LoggerSetup 
 from rpi.OutputInterface import OutputInterface
 from rpi.BatteryMonitor import BatteryMonitor

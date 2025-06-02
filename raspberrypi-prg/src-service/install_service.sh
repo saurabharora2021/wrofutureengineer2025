@@ -23,9 +23,9 @@ After=network.target
 
 [Service]
 Type=simple
-User=saurabh
-WorkingDirectory=/home/pi/myproject
-ExecStart=/home/pi/myproject/venv/bin/python /home/pi/myproject/main.py
+User=piwro
+WorkingDirectory=/home/piwro/spikeprime-pybricks2025/raspberrypi-prg/src
+ExecStart=/home/piwro/spikeprime-pybricks2025/raspberrypi-prg/.venv/bin/python /home/piwro/spikeprime-pybricks2025/raspberrypi-prg/src/main.py
 Restart=on-failure
 
 [Install]

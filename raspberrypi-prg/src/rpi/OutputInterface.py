@@ -1,6 +1,4 @@
-from gpiozero import Buzzer
-from gpiozero import RGBLED
-from gpiozero import Button
+from gpiozero import Buzzer,RGBLED, DistanceSensor,Button
 from subprocess import check_call
 from signal import pause
 
@@ -23,6 +21,10 @@ class OutputInterface(ShutdownInterface):
     LED2_GREEN_PIN = 6
 
     BUTTON_PIN = 21
+
+    DISTANCE1_SENSOR_TRIG_PIN = 7
+    DISTANCE1_SENSOR_ECHO_PIN = 8
+
 
     def __init__(self):
         """
@@ -54,8 +56,8 @@ class OutputInterface(ShutdownInterface):
         # Set up the shutdown button
         self.action_button = Button(self.BUTTON_PIN, hold_time=2)
 
-        #shutdown_btn = Button(self.SHUTDOWN_BUTTON_PIN, hold_time=2)
-        #shutdown_btn.when_held = self.poweroffbuttonaction
+        self.distancesensor1 = DistanceSensor(trigger=self.DISTANCE1_SENSOR_TRIG_PIN, echo=self.DISTANCE1_SENSOR_ECHO_PIN)
+
 
     def poweroffbuttonaction():
         check_call(['sudo', 'poweroff'])
@@ -116,7 +118,9 @@ class OutputInterface(ShutdownInterface):
         print("Action button pressed!")
 
 
-        
+    def get_distance_right(self):
+        """Get the distance from the distance sensor."""
+        return self.distancesensor1.distance * 100 # Convert to cm    
 
     def shutdown(self):
         self.buzzer.off()

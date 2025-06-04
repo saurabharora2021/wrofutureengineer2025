@@ -45,6 +45,8 @@ def main():
         outputInterface.LED2_green() 
 
         # Run the program
+        print(f"Right Distance Detected: {outputInterface.get_distance_right()} cm")
+
 
         # drive_base.runfront(100)
         sleep(10)

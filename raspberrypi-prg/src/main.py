@@ -49,7 +49,7 @@ def main():
 
 
         # drive_base.runfront(100)
-        sleep(10)
+        sleep(4)
         # drive_base.stop()
 
         color = drive_base.getBottomColor()
@@ -57,6 +57,8 @@ def main():
         distance = drive_base.getFrontDistance()
         print(f"Front Distance Detected: {distance} cm")
 
+        outputInterface.LED1_off()
+        outputInterface.LED2_off()
 
     except:
         logger.error("Error Running Program")

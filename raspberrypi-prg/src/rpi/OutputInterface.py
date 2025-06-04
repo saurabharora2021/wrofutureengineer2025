@@ -22,8 +22,8 @@ class OutputInterface(ShutdownInterface):
 
     BUTTON_PIN = 21
 
-    DISTANCE1_SENSOR_TRIG_PIN = 7
-    DISTANCE1_SENSOR_ECHO_PIN = 8
+    DISTANCE1_SENSOR_TRIG_PIN = 27
+    DISTANCE1_SENSOR_ECHO_PIN = 17
 
 
     def __init__(self):

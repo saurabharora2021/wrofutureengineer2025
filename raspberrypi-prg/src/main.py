@@ -31,17 +31,31 @@ def main():
 
         # Create an instance of SpikeRemoteBase
         #drive_base: SpikeRemoteBase = SpikeRemoteBase(front_motor_port='F', back_motor_port='E', bottom_color_sensor_port='C', front_distance_sensor_port='C',debug=False)
-        drive_base: BuildHatDriveBase = BuildHatDriveBase(front_motor_port='B', back_motor_port='A', bottom_color_sensor_port='C', front_distance_sensor_port='D')
+        drive_base: BuildHatDriveBase = BuildHatDriveBase(front_motor_port='D', back_motor_port='A', bottom_color_sensor_port='C', front_distance_sensor_port='B')
         shutdownManager.add_interface(drive_base)
+
+        logger.info("Drive Base Initialized")
+        outputInterface.LED1_green()
+        outputInterface.buzzer_beep()
+        outputInterface.LED2_red()
+
+        outputInterface.wait_for_action()
+        logger.info("Action button pressed, starting drive base operations")
+
+        outputInterface.buzzer_beep()
+        outputInterface.LED2_off()
+        outputInterface.LED2_green() 
+
+        # Run the program
 
         # drive_base.runfront(100)
         # sleep(10)
         # drive_base.stop()
 
-        color = drive_base.getBottomColor()
-        print(f"Bottom Color Detected: {color}")
-        distance = drive_base.getFrontDistance()
-        print(f"Front Distance Detected: {distance} cm")
+        #color = drive_base.getBottomColor()
+        #print(f"Bottom Color Detected: {color}")
+        #distance = drive_base.getFrontDistance()
+        #print(f"Front Distance Detected: {distance} cm")
 
 
     except:

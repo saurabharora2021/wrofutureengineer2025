@@ -25,8 +25,6 @@ def main():
     outputInterface: OutputInterface = OutputInterface()
     shutdownManager.add_interface(outputInterface)
 
-    outputInterface.LED1_green()
-
     try:
 
         # Create an instance of SpikeRemoteBase
@@ -49,19 +47,19 @@ def main():
         # Run the program
 
         # drive_base.runfront(100)
-        # sleep(10)
+        sleep(10)
         # drive_base.stop()
 
-        #color = drive_base.getBottomColor()
-        #print(f"Bottom Color Detected: {color}")
-        #distance = drive_base.getFrontDistance()
-        #print(f"Front Distance Detected: {distance} cm")
+        color = drive_base.getBottomColor()
+        print(f"Bottom Color Detected: {color}")
+        distance = drive_base.getFrontDistance()
+        print(f"Front Distance Detected: {distance} cm")
 
 
     except:
         logger.error("Error Running Program")
         outputInterface.LED1_red()
-        outputInterface.buzzer_on()
+        outputInterface.buzzer_beep()
         logger.error("Shutting down due to error")
         raise   
     finally:

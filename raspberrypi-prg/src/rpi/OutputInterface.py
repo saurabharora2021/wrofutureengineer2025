@@ -14,9 +14,9 @@ class OutputInterface(ShutdownInterface):
     # RGB LED on GPIO pins 26 (red), 19 (green), 16 (blue)
     LED1_RED_PIN = 26
     LED1_GREEN_PIN = 19
-    LED1_BLUE_PIN = 16
+    LED1_BLUE_PIN = 13
 
-    LED2_RED_PIN = 13
+    LED2_RED_PIN = 5
     LED2_BLUE_PIN = 12
     LED2_GREEN_PIN = 6
 
@@ -25,6 +25,8 @@ class OutputInterface(ShutdownInterface):
     DISTANCE1_SENSOR_TRIG_PIN = 22
     DISTANCE1_SENSOR_ECHO_PIN = 27
 
+    DISTANCE2_SENSOR_TRIG_PIN = 23
+    DISTANCE2_SENSOR_ECHO_PIN = 24
 
     def __init__(self):
         """
@@ -57,11 +59,8 @@ class OutputInterface(ShutdownInterface):
         self.action_button = Button(self.BUTTON_PIN, hold_time=2)
 
         self.distancesensor1 = DistanceSensor(echo=self.DISTANCE1_SENSOR_ECHO_PIN,trigger=self.DISTANCE1_SENSOR_TRIG_PIN)
-
-
-    def poweroffbuttonaction():
-        check_call(['sudo', 'poweroff'])
-
+        self.distancesensor2 = DistanceSensor(echo=self.DISTANCE2_SENSOR_ECHO_PIN,trigger=self.DISTANCE2_SENSOR_TRIG_PIN)
+    
 
     def buzzer_beep(self):
         """Turn on the buzzer."""
@@ -121,6 +120,10 @@ class OutputInterface(ShutdownInterface):
     def get_distance_right(self):
         """Get the distance from the distance sensor."""
         return self.distancesensor1.distance * 100 # Convert to cm    
+    
+    def get_distance_left(self):
+        """Get the distance from the distance sensor."""
+        return self.distancesensor2.distance * 100 # Convert to cm    
 
     def shutdown(self):
         self.buzzer.off()

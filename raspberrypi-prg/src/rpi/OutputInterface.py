@@ -56,7 +56,7 @@ class OutputInterface(ShutdownInterface):
         # Set up the shutdown button
         self.action_button = Button(self.BUTTON_PIN, hold_time=2)
 
-        self.distancesensor1 = DistanceSensor(trigger=self.DISTANCE1_SENSOR_TRIG_PIN, echo=self.DISTANCE1_SENSOR_ECHO_PIN)
+        self.distancesensor1 = DistanceSensor(echo=self.DISTANCE1_SENSOR_ECHO_PIN,trigger=self.DISTANCE1_SENSOR_TRIG_PIN)
 
 
     def poweroffbuttonaction():

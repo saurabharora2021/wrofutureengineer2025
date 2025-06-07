@@ -68,6 +68,7 @@ def main():
         raise   
     finally:
             # Finally, shutdown all interfaces
+        print("Shutting down all interfaces")
         shutdownManager.shutdown_all()
         logger.info("Shutting down all interfaces")
 

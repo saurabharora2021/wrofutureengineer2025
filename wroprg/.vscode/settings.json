@@ -1,7 +1,7 @@
 {
     "json.schemas": [],
     "files.exclude": {
-        "**/extraoldcode": true
+        "**/extraoldcode": false
     },
     "editor.indentSize": 4,
     "editor.formatOnSave": true,

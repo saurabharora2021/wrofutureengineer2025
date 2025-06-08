@@ -41,6 +41,10 @@ class BuildHatDriveBase(ShutdownInterface):
         """Get the color detected by the bottom sensor."""
         return self.bottom_color_sensor.get_color()
     
+    def getBottomColorRGBI(self):
+        """Get the RGB values detected by the bottom sensor."""
+        return self.bottom_color_sensor.get_color_rgbi()
+    
     def getFrontDistance(self):
         """Get the distance to the front obstacle."""
         return self.front_distance_sensor.get_distance()

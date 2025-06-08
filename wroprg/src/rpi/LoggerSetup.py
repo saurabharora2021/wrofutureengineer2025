@@ -7,18 +7,20 @@ class LoggerSetup(ShutdownInterface):
     # Get the logger instance
     logger = logging.getLogger(__name__)
 
-    def setup(self):
-        # Configure the logger
+    def setup(self, log_file="application.log"):
+        # Remove all handlers associated with the root logger object (to avoid duplicate logs)
+        for handler in logging.root.handlers[:]:
+            logging.root.removeHandler(handler)
+        # Configure the logger to write to a file
         logging.basicConfig(
-            # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
             level=logging.DEBUG,
-            # Define the log message format
             format="%(asctime)s - %(levelname)s - %(message)s",
-            filename="application.log",  # Log messages to a file
-            filemode="a"  # Append to the log file (use 'w' to overwrite)
+            filename=log_file,  # Log messages to a file
+            filemode="a"        # Append to the log file (use 'w' to overwrite)
         )
 
     def shutdown(self):
-        # Flush the log file
-        for handler in self.logger.handlers:
+        # Flush and close all handlers
+        for handler in logging.getLogger().handlers:
             handler.flush()
+            handler.close()

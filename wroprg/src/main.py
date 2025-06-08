@@ -3,7 +3,6 @@ from rpi.OutputInterface import OutputInterface
 from rpi.BatteryMonitor import BatteryMonitor
 from rpi.ShutdownInterfaceManager import ShutdownInterfaceManager
 from time import sleep
-from base.DriveBase import DriveBase
 from hat.BuildHatDriveBase import BuildHatDriveBase
 import logging
 
@@ -27,8 +26,7 @@ def main():
 
     try:
 
-        # Create an instance of SpikeRemoteBase
-        #drive_base: SpikeRemoteBase = SpikeRemoteBase(front_motor_port='F', back_motor_port='E', bottom_color_sensor_port='C', front_distance_sensor_port='C',debug=False)
+        # Create an instance of BuildHatDriveBase
         drive_base: BuildHatDriveBase = BuildHatDriveBase(front_motor_port='D', back_motor_port='A', bottom_color_sensor_port='C', front_distance_sensor_port='B')
         shutdownManager.add_interface(drive_base)
 

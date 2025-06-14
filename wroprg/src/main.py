@@ -44,8 +44,8 @@ def main():
         # Run the program
         counter = 0
         while counter < 10:
-            print(f"Right Distance Detected: {outputInterface.get_distance_right()} cm")
-            print(f"Left Distance Detected: {outputInterface.get_distance_left()} cm")
+            print(f"Right Distance Detected: {outputInterface.getRightDistance()} cm")
+            print(f"Left Distance Detected: {outputInterface.getLeftDistance()} cm")
             sleep(1)
             counter += 1
         

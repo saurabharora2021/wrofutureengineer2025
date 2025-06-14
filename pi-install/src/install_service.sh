@@ -13,6 +13,7 @@ if [ ! -d "$VENV_DIR" ]; then
 fi
 
 # Install requirements
+sudo apt-get install -y i2c-tools python3-pip python3-venv pthon3-smbus
 sudo -u piwro "$VENV_DIR/bin/pip" install -r "$PROJECT_DIR/requirements.txt"
 
 # Create systemd service file

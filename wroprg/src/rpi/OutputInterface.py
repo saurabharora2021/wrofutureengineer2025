@@ -5,7 +5,6 @@ from signal import pause
 import time
 from base.ShutdownInterface import ShutdownInterface
 
-
 class OutputInterface(ShutdownInterface):
 
     """ Pin Definitions:"""
@@ -16,17 +15,13 @@ class OutputInterface(ShutdownInterface):
     LED1_GREEN_PIN = 19
     LED1_BLUE_PIN = 13
 
-    LED2_RED_PIN = 5
-    LED2_BLUE_PIN = 12
-    LED2_GREEN_PIN = 6
-
     BUTTON_PIN = 21
 
-    DISTANCE1_SENSOR_TRIG_PIN = 22
-    DISTANCE1_SENSOR_ECHO_PIN = 27
+    RIGHT_SENSOR_TRIG_PIN = 22
+    RIGHT_SENSOR_ECHO_PIN = 27
 
-    DISTANCE2_SENSOR_TRIG_PIN = 23
-    DISTANCE2_SENSOR_ECHO_PIN = 24
+    LEFT_SENSOR_TRIG_PIN = 23
+    LEFT_SENSOR_ECHO_PIN = 24
 
     def __init__(self):
         """
@@ -45,21 +40,11 @@ class OutputInterface(ShutdownInterface):
         time.sleep(0.5)
         self.led1.color = (0, 0, 0)  # off
 
-        self.led2 = RGBLED(red=self.LED2_RED_PIN, green=self.LED2_GREEN_PIN, blue=self.LED2_BLUE_PIN)
-        """Turn on the LED2 Test."""
-        self.led2.color = (0, 1, 0)  # green
-        time.sleep(0.5)
-        self.led2.color = (1, 0, 0)
-        time.sleep(0.5)
-        self.led2.color = (0, 0, 1)
-        time.sleep(0.5)
-        self.led2.color = (0, 0, 0)  # off
-
         # Set up the shutdown button
         self.action_button = Button(self.BUTTON_PIN, hold_time=2)
 
-        self.distancesensor1 = DistanceSensor(echo=self.DISTANCE1_SENSOR_ECHO_PIN,trigger=self.DISTANCE1_SENSOR_TRIG_PIN)
-        self.distancesensor2 = DistanceSensor(echo=self.DISTANCE2_SENSOR_ECHO_PIN,trigger=self.DISTANCE2_SENSOR_TRIG_PIN)
+        self.rightdistancesensor = DistanceSensor(echo=self.RIGHT_SENSOR_ECHO_PIN,trigger=self.RIGHT_SENSOR_TRIG_PIN)
+        self.leftdistancesensor = DistanceSensor(echo=self.LEFT_SENSOR_ECHO_PIN,trigger=self.LEFT_SENSOR_TRIG_PIN)
     
 
     def buzzer_beep(self):
@@ -89,25 +74,6 @@ class OutputInterface(ShutdownInterface):
         """Turn off the LED1."""
         self.led1.color = (0, 0, 0) # off
 
-    def LED2_green(self):
-        """Turn on the LED2 green."""
-        self.led2.color = (0, 1, 0)
-
-    def LED2_red(self):
-        """Turn on the LED2 red."""
-        self.led2.color = (1, 0, 0)
-
-    def LED2_blue(self):
-        """Turn on the LED2 blue."""
-        self.led2.color = (0, 0, 1)
-
-    def LED2_off(self):
-        """Turn off the LED2."""
-        self.led2.color = (0, 0, 0)
-
-    def LED2_white(self):
-        """Turn on the LED2 white."""
-        self.led2.color = (1, 1, 1)
     
 
     def wait_for_action(self):
@@ -117,16 +83,20 @@ class OutputInterface(ShutdownInterface):
         print("Action button pressed!")
 
 
-    def get_distance_right(self):
+    def getRightDistance(self):
         """Get the distance from the distance sensor."""
-        return self.distancesensor1.distance * 100 # Convert to cm    
+        return self.rightdistancesensor.distance * 100 # Convert to cm    
     
-    def get_distance_left(self):
+    def getLeftDistance(self):
         """Get the distance from the distance sensor."""
-        return self.distancesensor2.distance * 100 # Convert to cm    
+        return self.leftdistancesensor.distance * 100 # Convert to cm    
 
     def shutdown(self):
         self.buzzer.off()
         self.led1.color = (0, 0, 0)
         self.led1.close()
         self.buzzer.close()
+        self.rightdistancesensor.close()
+        self.leftdistancesensor.close()
+        self.action_button.close()
+        

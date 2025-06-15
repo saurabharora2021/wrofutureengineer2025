@@ -17,10 +17,6 @@ def main():
     print(f"Log file: {args.logfile}")
     print(f"Debug mode: {args.debug}")  # Optional: print debug status
 
-    if args.debug:
-        loggersetup.setup(log_file=args.logfile, log_level=logging.DEBUG)  # Set log level to DEBUG if debug mode is enabled
-    else:
-        loggersetup.setup(log_file=args.logfile, log_level=logging.INFO)
 
     # Initialize all the components
     shutdownManager = ShutdownInterfaceManager()
@@ -29,11 +25,17 @@ def main():
     shutdownManager.add_interface(loggersetup)
     logger = logging.getLogger(__name__)
 
-    logger.info("Starting Spike Remote Base application")
-    logger.info("Initializing Output Interface")
+    print("Starting Spike Remote Base application")
+    print("Initializing Output Interface")
 
     outputInterface: RpiInterface = RpiInterface()
     shutdownManager.add_interface(outputInterface)
+
+    if args.debug:
+        loggersetup.setup(log_file=args.logfile, log_level=logging.DEBUG)  # Set log level to DEBUG if debug mode is enabled
+    else:
+        loggersetup.setup(log_file=args.logfile, log_level=logging.INFO)
+
 
     try:
 

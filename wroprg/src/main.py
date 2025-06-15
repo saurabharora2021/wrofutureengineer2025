@@ -32,14 +32,11 @@ def main():
         logger.info("Drive Base Initialized")
         outputInterface.LED1_green()
         outputInterface.buzzer_beep()
-        outputInterface.LED2_red()
 
         outputInterface.wait_for_action()
         logger.info("Action button pressed, starting drive base operations")
 
         outputInterface.buzzer_beep()
-        outputInterface.LED2_off()
-        outputInterface.LED2_green() 
 
         outputInterface.display_message("Successfully connected to Spike Remote Base")
         # Run the program
@@ -61,10 +58,9 @@ def main():
         print(f"Front Distance Detected: {distance} cm")
 
         outputInterface.LED1_off()
-        outputInterface.LED2_off()
 
     except Exception as e:
-        outputInterface.display_message(f"Exception: {e.getMessage()}")
+        outputInterface.display_message(f"Exception: {e}")
         logger.error("Error Running Program")
         outputInterface.LED1_red()
         outputInterface.buzzer_beep()

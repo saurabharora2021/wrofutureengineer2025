@@ -4,6 +4,7 @@ from signal import pause
 import board
 import digitalio
 from PIL import Image, ImageDraw, ImageFont
+import adafruit_ssd1306
 
 
 import time
@@ -70,7 +71,7 @@ class OutputInterface(ShutdownInterface):
         self.oled.show()
 
         self.image = Image.new("1", (self.oled.width, self.oled.height))
-        self.draw = ImageDraw.Draw(image)
+        self.draw = ImageDraw.Draw(self.image)
 
     
         self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
@@ -142,4 +143,4 @@ class OutputInterface(ShutdownInterface):
         self.draw.text((0, self.oledcounter*13), message, font=self.font, fill=255)
         self.oled.show()
     
-    
+

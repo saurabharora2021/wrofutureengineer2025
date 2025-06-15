@@ -84,11 +84,8 @@ class RpiInterface(ShutdownInterface):
         # Set up the shutdown button
         self.action_button = Button(self.BUTTON_PIN, hold_time=1)
 
-        self.rightdistancesensor = DistanceSensor(echo=self.RIGHT_SENSOR_ECHO_PIN,trigger=self.RIGHT_SENSOR_TRIG_PIN)
-        self.leftdistancesensor = DistanceSensor(echo=self.LEFT_SENSOR_ECHO_PIN,trigger=self.LEFT_SENSOR_TRIG_PIN)
-
-        #lets check if Raspberry Pi is not throttling
-        self.check_throttling()
+        self.rightdistancesensor = DistanceSensor(echo=self.RIGHT_SENSOR_ECHO_PIN,trigger=self.RIGHT_SENSOR_TRIG_PIN,partial=True)
+        self.leftdistancesensor = DistanceSensor(echo=self.LEFT_SENSOR_ECHO_PIN,trigger=self.LEFT_SENSOR_TRIG_PIN,partial=True)
 
         self.logger.info("RpiInterface initialized successfully.")
     
@@ -102,10 +99,9 @@ class RpiInterface(ShutdownInterface):
                 throttled_hex = result.stdout.strip().split('=')[-1]
                 throttled = int(throttled_hex, 16)
                 if throttled != 0:
-                    self.logger.warning(f"Raspberry Pi is throttled! get_throttled={throttled_hex}")
-                    self.buzzer_beep(timer=2)
+                    self.logger.error(f"Pi is throttled! get_throttled={throttled_hex}")
                 else:
-                    self.logger.warning("Raspberry Pi is not throttled.")
+                    self.logger.warning("Pi is not throttled.")
             else:
                 self.logger.error("Failed to run vcgencmd get_throttled")
         except Exception as e:
@@ -114,9 +110,7 @@ class RpiInterface(ShutdownInterface):
 
     def buzzer_beep(self,timer=0.5):
         """Turn on the buzzer."""
-        self.buzzer.on()
-        time.sleep(timer)
-        self.buzzer.off()
+        self.buzzer.blink(on_time=timer, off_time=timer, n=1)  # Blink 1 time.
         
     def LED1_green(self):
         """Turn on the LED1 green."""

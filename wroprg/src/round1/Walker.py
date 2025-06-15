@@ -1,5 +1,5 @@
 from rpi.LoggerSetup import LoggerSetup 
-from rpi.OutputInterface import OutputInterface
+from rpi.RpiInterface import RpiInterface
 from rpi.ShutdownInterfaceManager import ShutdownInterfaceManager
 from time import sleep
 from hat.BuildHatDriveBase import BuildHatDriveBase
@@ -13,14 +13,26 @@ class Walker:
     DEFAULT_SPEED=100
     ANTI_CLOCKWISE_DIRECTION=2
     MINFRONTDISTANCE=20
+    WALLFRONTDISTANCE=15
+    WALLSIDEDISTANCE=5
     UNKNOWN_DIRECTION=-1
+    TURNRIGHT_ANGLE=10
+    TURNLEFT_ANGLE=10
+    WALLFRONTENDDISTANCE=10
+    
     drivebase:BuildHatDriveBase
-    direction=UNKNOWN_DIRECTION
+    outputInterface: RpiInterface
+    direction=UNKNOWN_DIRECTION    
+    corner=False
 
     
     def equidistance_walk(self):
         pass
 
+    def wallFollow(self):
+        """Follow the wall based on the current direction."""
+        pass
+    
     #based on color.py from buildhat
     def mat_color(self, r, g, b):
         """Return the color name from RGB
@@ -63,12 +75,51 @@ class Walker:
             
             if color == "blue":
                 self.direction = self.ANTI_CLOCKWISE_DIRECTION
+                self.corner= True
             elif color == "orange":
                 self.direction = self.CLOCKWISE_DIRECTION
+                self.corner = True
             
             print(f"Direction set to: {self.direction} based on color: {color}")
+        elif self.direction == self.CLOCKWISE_DIRECTION:
+            if self.corner==True:
+                #turn right
+                self.drivebase.turnright(self.TURNRIGHT_ANGLE)
+                self.drivebase.runfront(self.DEFAULT_SPEED)
+                #either front less than 15
+                #or side distance less than 5
+                #only applicable if close to wall
+                while self.drivebase.getFrontDistance() > self.WALLFRONTDISTANCE or self.outputInterface.getRightDistance() > self.WALLSIDEDISTANCE:
+                    sleep(0.1)
+                self.drivebase.turnright(-1*self.TURNRIGHT_ANGLE)
+                self.corner = False
+            else:
+                while self.drivebase.getFrontDistance() > self.WALLFRONTENDDISTANCE :
+                    self.wallFollow()
+                    sleep(0.1)
+                self.corner = True
+
+        elif self.direction == self.ANTI_CLOCKWISE_DIRECTION:
+            if self.corner==True:
+                #turn left
+                self.drivebase.turnleft(self.TURNLEFT_ANGLE)
+                self.drivebase.runfront(self.DEFAULT_SPEED)
+                #either front less than 15
+                #or side distance less than 5
+                #only applicable if close to wall
+                while self.drivebase.getFrontDistance() > self.WALLFRONTDISTANCE or self.outputInterface.getLeftDistance() > self.WALLSIDEDISTANCE:
+                    sleep(0.1)
+                self.drivebase.turnleft(-1*self.TURNLEFT_ANGLE)
+                self.corner = False
+            else:
+                while self.drivebase.getFrontDistance() > self.WALLFRONTENDDISTANCE :
+                    self.wallFollow()
+                    sleep(0.1)
+                self.corner = True
+
 
 
             
+
 
 

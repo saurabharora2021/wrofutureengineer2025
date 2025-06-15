@@ -28,40 +28,47 @@ def main():
     print("Starting Spike Remote Base application")
     print("Initializing Output Interface")
 
-    outputInterface: RpiInterface = RpiInterface()
-    shutdownManager.add_interface(outputInterface)
+    piInterface: RpiInterface = RpiInterface()
+    shutdownManager.add_interface(piInterface)
 
     if args.debug:
-        loggersetup.setup(inf=outputInterface, log_file=args.logfile, log_level=logging.DEBUG)  # Set log level to DEBUG if debug mode is enabled
+        loggersetup.setup(inf=piInterface, log_file=args.logfile, log_level=logging.DEBUG)  # Set log level to DEBUG if debug mode is enabled
     else:
-        loggersetup.setup(inf=outputInterface,log_file=args.logfile, log_level=logging.INFO)
+        loggersetup.setup(inf=piInterface,log_file=args.logfile, log_level=logging.INFO)
 
 
     try:
+
+        
+        # Lets check if Raspberry Pi is not throttling
+        # We need to check if the Raspberry Pi is throttling, which can happen due to overheating or power issues.
+        # This needs to be done after the logger is set up, so we can log the results.
+        logger.info("Checking Raspberry Pi throttling status")        
+        piInterface.check_throttling()
 
         # Create an instance of BuildHatDriveBase
         drive_base: BuildHatDriveBase = BuildHatDriveBase(front_motor_port='D', back_motor_port='A', bottom_color_sensor_port='C', front_distance_sensor_port='B')
         shutdownManager.add_interface(drive_base)
 
         logger.info("Drive Base Initialized")
-        outputInterface.LED1_green()
-        outputInterface.buzzer_beep()
+        piInterface.LED1_green()
+        piInterface.buzzer_beep()
 
         logger.warning("Test Successful")
         logger.warning("Waiting for button")
-        outputInterface.force_flush_messages()
-        outputInterface.wait_for_action()
+        piInterface.force_flush_messages()
+        piInterface.wait_for_action()
 
         logger.warning("Button Pressed")
-        outputInterface.buzzer_beep()
+        piInterface.buzzer_beep()
 
 
         # Run the program
         counter = 0
         while counter < 10:
-            logger.warning(f"Right : {outputInterface.getRightDistance()} cm")            
-            logger.warning(f"Left : {outputInterface.getLeftDistance()} cm")
-            outputInterface.force_flush_messages()
+            logger.warning(f"Right : {piInterface.getRightDistance()} cm")            
+            logger.warning(f"Left : {piInterface.getLeftDistance()} cm")
+            piInterface.force_flush_messages()
             sleep(1)
             counter += 1
         
@@ -74,15 +81,15 @@ def main():
         logger.warning(f"Bottom C={color}")
         distance = drive_base.getFrontDistance()
         logger.warning(f"Front : {distance} cm")
-        outputInterface.force_flush_messages()
+        piInterface.force_flush_messages()
 
-        outputInterface.LED1_off()
+        piInterface.LED1_off()
 
     except Exception as e:
         logger.error("Error Running Program")
         logger.error(f"Exception: {e}")        
-        outputInterface.LED1_red()
-        outputInterface.buzzer_beep()        
+        piInterface.LED1_red()
+        piInterface.buzzer_beep()        
         raise   
     finally:
             # Finally, shutdown all interfaces

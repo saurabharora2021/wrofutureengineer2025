@@ -29,7 +29,7 @@ class BuildHatDriveBase(ShutdownInterface):
         self.bottom_color_sensor.on()
         self.front_distance_sensor = DistanceSensor(front_distance_sensor_port)
         self.front_distance_sensor.on()
-        self.logger.warning("BuildHat success")
+        self.logger.info("BuildHat success")
 
     def runfront(self, speed):
         """Run the drive base forward at the specified speed."""

@@ -38,6 +38,8 @@ class LoggerSetup(ShutdownInterface):
             def emit(self, record):
                 msg = self.format(record)
                 self.rpi_interface.display_message(msg)
+                if (record.levelno >= logging.ERROR):
+                    self.rpi_interface.buzzer_beep()  # Beep on error messages
         
         # Add the custom handler to the logger
         rpi_handler = RpiInterfaceHandler(inf)

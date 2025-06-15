@@ -80,10 +80,10 @@ class OutputInterface(ShutdownInterface):
         self.display_message("Initializing Pi...")
     
 
-    def buzzer_beep(self):
+    def buzzer_beep(self,timer=0.5):
         """Turn on the buzzer."""
         self.buzzer.on()
-        time.sleep(0.5)
+        time.sleep(timer)
         self.buzzer.off()
         
     def LED1_green(self):
@@ -151,11 +151,12 @@ class OutputInterface(ShutdownInterface):
     
     def flush_pending_messages(self):          
             now = time.time()
-            image = Image.new("1", (self.oled.width, self.oled.height))
-            draw = ImageDraw.Draw(image)
+            self.image = Image.new("1", (self.oled.width, self.oled.height))
+            self.draw = ImageDraw.Draw(self.image)
+            self.draw.rectangle((0, 0, self.SCREEN_WIDTH, self.SCREEN_HEIGHT), outline=0, fill=0)
             for i, msg in enumerate(self.messages):
-                draw.text((0, i*13), msg, font=self.font, fill=255)
-            self.oled.image(image)
+                self.draw.text((0, i*13), msg, font=self.font, fill=255)
+            self.oled.image(self.image)
             self.oled.show()
             self._last_oled_update = now
 

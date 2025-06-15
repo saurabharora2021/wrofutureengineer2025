@@ -1,20 +1,32 @@
 from rpi.LoggerSetup import LoggerSetup 
-from rpi.OutputInterface import OutputInterface
+from rpi.RpiInterface import OutputInterface
 from rpi.ShutdownInterfaceManager import ShutdownInterfaceManager
 from time import sleep
 from hat.BuildHatDriveBase import BuildHatDriveBase
 import logging
-
+import argparse
 
 
 def main():
+
+    parser = argparse.ArgumentParser(description="Wro lego - raspberry Application")
+    parser.add_argument('--logfile', type=str, default='application.log', help='Path to log file')
+    parser.add_argument('--debug', action='store_true', help='Enable debug mode')  # <-- Added debug argument
+    args = parser.parse_args()
+
+    print(f"Log file: {args.logfile}")
+    print(f"Debug mode: {args.debug}")  # Optional: print debug status
+
+    if args.debug:
+        loggersetup.setup(log_file=args.logfile, log_level=logging.DEBUG)  # Set log level to DEBUG if debug mode is enabled
+    else:
+        loggersetup.setup(log_file=args.logfile, log_level=logging.INFO)
 
     # Initialize all the components
     shutdownManager = ShutdownInterfaceManager()
 
     loggersetup = LoggerSetup()
     shutdownManager.add_interface(loggersetup)
-    loggersetup.setup()
     logger = logging.getLogger(__name__)
 
     logger.info("Starting Spike Remote Base application")
@@ -34,6 +46,8 @@ def main():
         outputInterface.buzzer_beep()
 
         outputInterface.display_message("Test Successful")
+        outputInterface.display_message("Waiting for button")
+        logger.warning("logger message Waiting")
         outputInterface.force_flush_messages()
         outputInterface.wait_for_action()
         logger.info("Action button pressed, starting drive base operations")

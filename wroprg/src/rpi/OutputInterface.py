@@ -70,7 +70,8 @@ class OutputInterface(ShutdownInterface):
         # Clear display.
         self.oled.fill(0)
         self.oled.show()
-
+    
+        self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
         self.display_message("Initializing Pi...")
     
 

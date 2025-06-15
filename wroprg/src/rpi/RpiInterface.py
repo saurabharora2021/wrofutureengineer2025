@@ -12,7 +12,7 @@ import logging
 import time
 from base.ShutdownInterface import ShutdownInterface
 
-class OutputInterface(ShutdownInterface):
+class RpiInterface(ShutdownInterface):
 
     logger = logging.getLogger(__name__)
 

@@ -1,5 +1,5 @@
 from rpi.LoggerSetup import LoggerSetup 
-from rpi.RpiInterface import OutputInterface
+from rpi.RpiInterface import RpiInterface
 from rpi.ShutdownInterfaceManager import ShutdownInterfaceManager
 from time import sleep
 from hat.BuildHatDriveBase import BuildHatDriveBase
@@ -32,7 +32,7 @@ def main():
     logger.info("Starting Spike Remote Base application")
     logger.info("Initializing Output Interface")
 
-    outputInterface: OutputInterface = OutputInterface()
+    outputInterface: RpiInterface = RpiInterface()
     shutdownManager.add_interface(outputInterface)
 
     try:

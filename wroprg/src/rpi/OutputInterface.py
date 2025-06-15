@@ -29,7 +29,8 @@ class OutputInterface(ShutdownInterface):
     LEFT_SENSOR_ECHO_PIN = 24
 
     oledcounter:int= 0
-    
+    #array to store the messages to be displayed on the OLED screen
+    messages = []
 
     def __init__(self):
         """
@@ -70,14 +71,7 @@ class OutputInterface(ShutdownInterface):
         self.oled.fill(0)
         self.oled.show()
 
-        self.image = Image.new("1", (self.oled.width, self.oled.height))
-        self.draw = ImageDraw.Draw(self.image)
-
-    
-        self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
-        self.draw.text((0, self.oledcounter*13), "Pi initialized!", font=self.font, fill=255)
-
-        self.oled.show()
+        self.display_message("Initializing Pi...")
     
 
     def buzzer_beep(self):
@@ -139,8 +133,19 @@ class OutputInterface(ShutdownInterface):
         if self.oledcounter > 4:
             self.oledcounter = 0
             self.oled.fill(0)
+        
+        image = Image.new("1", (self.oled.width, self.oled.height))
+        draw = ImageDraw.Draw(image)
 
-        self.draw.text((0, self.oledcounter*13), message, font=self.font, fill=255)
+
+        self.messages.append(message)
+        # Clear the previous message
+        self.messages = self.messages[-5:]  # Keep only the last 5 messages
+
+        for i, msg in enumerate(self.messages):
+            draw.text((0, i*13), msg, font=self.font, fill=255)
+    
+        self.oled.image(image)
         self.oled.show()
     
 

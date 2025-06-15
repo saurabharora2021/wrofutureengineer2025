@@ -32,7 +32,6 @@ class OutputInterface(ShutdownInterface):
     LEFT_SENSOR_TRIG_PIN = 23
     LEFT_SENSOR_ECHO_PIN = 24
 
-    oledcounter:int= 0
     #array to store the messages to be displayed on the OLED screen
     messages = []
 
@@ -76,6 +75,8 @@ class OutputInterface(ShutdownInterface):
         self.oled.show()
     
         self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
+        self._last_oled_update = 0
+        self._oled_update_interval = 0.1  # seconds
         self.display_message("Initializing Pi...")
     
 
@@ -130,27 +131,40 @@ class OutputInterface(ShutdownInterface):
         self.buzzer.close()
         self.rightdistancesensor.close()
         self.leftdistancesensor.close()
-        self.action_button.close()
+    def display_message(self, message,forceflush=False):
+        """
+        Display a message on the OLED screen.
 
-    def display_message(self, message):
-        """Display a message on the OLED screen."""
-        self.oledcounter += 1
-        if self.oledcounter > 4:
-            self.oledcounter = 0
-        
-        image = Image.new("1", (self.oled.width, self.oled.height))
-        draw = ImageDraw.Draw(image)
-
-
+        Only the last 5 messages are shown on the display.
+        """
+        now = time.time()
         self.messages.append(message)
-        # Clear the previous message
         self.messages = self.messages[-5:]  # Keep only the last 5 messages
+        
+        self.pendingmessage = True
 
-        for i, msg in enumerate(self.messages):
-            draw.text((0, i*13), msg, font=self.font, fill=255)
+        # Only update the OLED if enough time has passed since the last update
+        if forceflush or (now - getattr(self, "_last_oled_update", 0) >= getattr(self, "_oled_update_interval", 0.1)):
+            self.flush_pending_messages()
+            self.pendingmessage = False
+
     
-        self.oled.image(image)
-        self.oled.show()
+    def flush_pending_messages(self):          
+            now = time.time()
+            image = Image.new("1", (self.oled.width, self.oled.height))
+            draw = ImageDraw.Draw(image)
+            for i, msg in enumerate(self.messages):
+                draw.text((0, i*13), msg, font=self.font, fill=255)
+            self.oled.image(image)
+            self.oled.show()
+            self._last_oled_update = now
+
+    def force_flush_messages(self):
+        """Force the OLED to update immediately."""
+        if (self.pendingmessage):
+            self.flush_pending_messages()
+            self.pendingmessage = False
+
 
     def logAndDisplay(self,message):
         """Log and display a message."""

@@ -34,6 +34,7 @@ def main():
         outputInterface.buzzer_beep()
 
         outputInterface.display_message("Test Successful")
+        outputInterface.force_flush_messages()
         outputInterface.wait_for_action()
         logger.info("Action button pressed, starting drive base operations")
 
@@ -46,6 +47,7 @@ def main():
         while counter < 10:
             outputInterface.logAndDisplay(f"Right : {outputInterface.getRightDistance()} cm")            
             outputInterface.logAndDisplay(f"Left : {outputInterface.getLeftDistance()} cm")
+            outputInterface.force_flush_messages()
             sleep(1)
             counter += 1
         
@@ -58,11 +60,12 @@ def main():
         outputInterface.logAndDisplay(f"Bottom C={color}")
         distance = drive_base.getFrontDistance()
         outputInterface.logAndDisplay(f"Front : {distance} cm")
+        outputInterface.force_flush_messages()
 
         outputInterface.LED1_off()
 
     except Exception as e:
-        outputInterface.display_message(f"Exception: {e}")
+        outputInterface.display_message(f"Exception: {e}",forceflush=True)
         logger.error("Error Running Program")
         outputInterface.LED1_red()
         outputInterface.buzzer_beep()
@@ -71,7 +74,7 @@ def main():
     finally:
             # Finally, shutdown all interfaces
         print("Shutting down all interfaces")
-        outputInterface.display_message("Shutting down")
+        outputInterface.display_message("Shutting down",forceflush=True)
         shutdownManager.shutdown_all()
         logger.info("Shutting down all interfaces")
 

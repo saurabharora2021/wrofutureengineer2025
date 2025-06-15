@@ -80,7 +80,7 @@ def main():
 
     except Exception as e:
         logger.error("Error Running Program")
-        logger.error(f"Exception: {e}",forceflush=True)        
+        logger.error(f"Exception: {e}")        
         outputInterface.LED1_red()
         outputInterface.buzzer_beep()        
         raise   

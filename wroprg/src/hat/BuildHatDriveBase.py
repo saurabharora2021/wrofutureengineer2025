@@ -1,4 +1,4 @@
-from buildhat import Motor,ColorSensor, DistanceSensor
+from buildhat import Motor,ColorSensor, DistanceSensor,Hat
 from base.ShutdownInterface import ShutdownInterface
 import logging
 
@@ -7,6 +7,19 @@ class BuildHatDriveBase(ShutdownInterface):
     logger = logging.getLogger(__name__)
 
     def __init__(self, front_motor_port, back_motor_port,bottom_color_sensor_port, front_distance_sensor_port):
+
+        self.logger.warning("BuildHat start..")
+
+        #Build Hat has a history of issues to fail first initialization on reboot. So we ensure that
+        # we initialize and handle one failure before proceeding.
+        try:
+            Hat()  # Attempt to initialize the Build Hat
+        except Exception as e:
+            self.logger.error("First Buildhat Failed retry.")
+            
+        hat = Hat()  # Initialize the Build Hat
+        self.logger.info(hat.get())  # Enumerate connected devices
+
         """Initialize the drive base with two motors."""
         self.front_motor = Motor(front_motor_port)
         self.back_motor = Motor(back_motor_port)
@@ -14,6 +27,7 @@ class BuildHatDriveBase(ShutdownInterface):
         self.bottom_color_sensor.on()
         self.front_distance_sensor = DistanceSensor(front_distance_sensor_port)
         self.front_distance_sensor.on()
+        self.logger.warning("BuildHat success")
 
     def runfront(self, speed):
         """Run the drive base forward at the specified speed."""
@@ -36,8 +50,8 @@ class BuildHatDriveBase(ShutdownInterface):
         
     def shutdown(self):
         """Shutdown the drive base."""
-        self.front_motor.reset()
-        self.back_motor.reset()
+        self.front_motor.stop()
+        self.back_motor.stop()
         self.logger.info("Drive base shutdown complete.")
 
     def getBottomColor(self):

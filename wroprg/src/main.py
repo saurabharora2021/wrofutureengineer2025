@@ -32,9 +32,9 @@ def main():
     shutdownManager.add_interface(outputInterface)
 
     if args.debug:
-        loggersetup.setup(log_file=args.logfile, log_level=logging.DEBUG)  # Set log level to DEBUG if debug mode is enabled
+        loggersetup.setup(inf=outputInterface, log_file=args.logfile, log_level=logging.DEBUG)  # Set log level to DEBUG if debug mode is enabled
     else:
-        loggersetup.setup(log_file=args.logfile, log_level=logging.INFO)
+        loggersetup.setup(inf=outputInterface,log_file=args.logfile, log_level=logging.INFO)
 
 
     try:

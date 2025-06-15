@@ -32,6 +32,12 @@ class RpiInterface(ShutdownInterface):
     LEFT_SENSOR_TRIG_PIN = 23
     LEFT_SENSOR_ECHO_PIN = 24
 
+    # OLED display settings
+    # These are the dimensions of the SSD1306 OLED display
+    SCREEN_WIDTH = 128
+    SCREEN_HEIGHT = 64
+
+
     #array to store the messages to be displayed on the OLED screen
     messages = []
 
@@ -66,9 +72,7 @@ class RpiInterface(ShutdownInterface):
         # i2c = board.STEMMA_I2C()  # For using the built-in STEMMA QT connector on a microcontroller
 
         # Create the SSD1306 OLED class.
-        # The first two parameters are the pixel width and pixel height.
-        # Change these to the right size for your display!
-        self.oled = adafruit_ssd1306.SSD1306_I2C(128, 64, i2c)
+        self.oled = adafruit_ssd1306.SSD1306_I2C(self.SCREEN_WIDTH, self.SCREEN_HEIGHT, i2c)
 
         # Clear display.
         self.oled.fill(0)
@@ -77,6 +81,9 @@ class RpiInterface(ShutdownInterface):
         self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
         self._last_oled_update = 0
         self._oled_update_interval = 0.1  # seconds
+        self.image = Image.new("1", (self.oled.width, self.oled.height))
+        self.draw = ImageDraw.Draw(self.image)
+
         self.display_message("Initializing Pi...")
     
 
@@ -151,8 +158,6 @@ class RpiInterface(ShutdownInterface):
     
     def flush_pending_messages(self):          
             now = time.time()
-            self.image = Image.new("1", (self.oled.width, self.oled.height))
-            self.draw = ImageDraw.Draw(self.image)
             self.draw.rectangle((0, 0, self.SCREEN_WIDTH, self.SCREEN_HEIGHT), outline=0, fill=0)
             for i, msg in enumerate(self.messages):
                 self.draw.text((0, i*13), msg, font=self.font, fill=255)

@@ -42,8 +42,8 @@ def main():
         # Run the program
         counter = 0
         while counter < 10:
-            logAndDisplay(f"Right : {outputInterface.getRightDistance()} cm")            
-            logAndDisplay(f"Left : {outputInterface.getLeftDistance()} cm")
+            outputInterface.logAndDisplay(f"Right : {outputInterface.getRightDistance()} cm")            
+            outputInterface.logAndDisplay(f"Left : {outputInterface.getLeftDistance()} cm")
             sleep(1)
             counter += 1
         
@@ -53,9 +53,9 @@ def main():
         # drive_base.stop()
 
         color = drive_base.getBottomColor()
-        logAndDisplay(f"Bottom C={color}")
+        outputInterface.logAndDisplay(f"Bottom C={color}")
         distance = drive_base.getFrontDistance()
-        logAndDisplay(f"Front : {distance} cm")
+        outputInterface.logAndDisplay(f"Front : {distance} cm")
 
         outputInterface.LED1_off()
 
@@ -72,12 +72,6 @@ def main():
         outputInterface.display_message("Shutting down")
         shutdownManager.shutdown_all()
         logger.info("Shutting down all interfaces")
-
-    def logAndDisplay(message):
-        """Log and display a message."""
-        logger.info(message)
-        outputInterface.display_message(message)
-        print(message)
 
 if __name__ == "__main__":
     main()

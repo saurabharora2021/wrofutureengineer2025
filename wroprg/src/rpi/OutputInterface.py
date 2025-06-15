@@ -5,12 +5,16 @@ import board
 import digitalio
 from PIL import Image, ImageDraw, ImageFont
 import adafruit_ssd1306
+import logging
+
 
 
 import time
 from base.ShutdownInterface import ShutdownInterface
 
 class OutputInterface(ShutdownInterface):
+
+    logger = logging.getLogger(__name__)
 
     """ Pin Definitions:"""
     # Buzzer on GPIO pin 20
@@ -148,5 +152,11 @@ class OutputInterface(ShutdownInterface):
     
         self.oled.image(image)
         self.oled.show()
+
+    def logAndDisplay(self,message):
+        """Log and display a message."""
+        self.logger.info(message)
+        self.display_message(message)
+        print(message)
     
 

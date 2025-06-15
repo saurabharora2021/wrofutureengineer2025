@@ -137,7 +137,6 @@ class OutputInterface(ShutdownInterface):
         self.oledcounter += 1
         if self.oledcounter > 4:
             self.oledcounter = 0
-            self.oled.fill(0)
         
         image = Image.new("1", (self.oled.width, self.oled.height))
         draw = ImageDraw.Draw(image)

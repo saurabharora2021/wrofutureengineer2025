@@ -33,12 +33,14 @@ def main():
         outputInterface.LED1_green()
         outputInterface.buzzer_beep()
 
+        outputInterface.display_message("Test Successful")
         outputInterface.wait_for_action()
         logger.info("Action button pressed, starting drive base operations")
 
+        outputInterface.display_message("Button Pressed")
         outputInterface.buzzer_beep()
 
-        outputInterface.display_message("Test Successful")
+
         # Run the program
         counter = 0
         while counter < 10:

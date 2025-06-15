@@ -1,6 +1,10 @@
 from gpiozero import Buzzer,RGBLED, DistanceSensor,Button
 from subprocess import check_call
 from signal import pause
+import board
+import digitalio
+from PIL import Image, ImageDraw, ImageFont
+
 
 import time
 from base.ShutdownInterface import ShutdownInterface
@@ -22,6 +26,9 @@ class OutputInterface(ShutdownInterface):
 
     LEFT_SENSOR_TRIG_PIN = 23
     LEFT_SENSOR_ECHO_PIN = 24
+
+    oledcounter:int= 0
+    
 
     def __init__(self):
         """
@@ -45,6 +52,31 @@ class OutputInterface(ShutdownInterface):
 
         self.rightdistancesensor = DistanceSensor(echo=self.RIGHT_SENSOR_ECHO_PIN,trigger=self.RIGHT_SENSOR_TRIG_PIN)
         self.leftdistancesensor = DistanceSensor(echo=self.LEFT_SENSOR_ECHO_PIN,trigger=self.LEFT_SENSOR_TRIG_PIN)
+
+        # Setting some variables for our reset pin etc.
+        RESET_PIN = digitalio.DigitalInOut(board.D4)
+
+        # Very important... This lets py-gaugette 'know' what pins to use in order to reset the display
+        i2c = board.I2C()  # uses board.SCL and board.SDA
+        # i2c = board.STEMMA_I2C()  # For using the built-in STEMMA QT connector on a microcontroller
+
+        # Create the SSD1306 OLED class.
+        # The first two parameters are the pixel width and pixel height.
+        # Change these to the right size for your display!
+        self.oled = adafruit_ssd1306.SSD1306_I2C(128, 64, i2c)
+
+        # Clear display.
+        self.oled.fill(0)
+        self.oled.show()
+
+        self.image = Image.new("1", (self.oled.width, self.oled.height))
+        self.draw = ImageDraw.Draw(image)
+
+    
+        self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
+        self.draw.text((0, self.oledcounter*13), "Pi initialized!", font=self.font, fill=255)
+
+        self.oled.show()
     
 
     def buzzer_beep(self):
@@ -99,4 +131,15 @@ class OutputInterface(ShutdownInterface):
         self.rightdistancesensor.close()
         self.leftdistancesensor.close()
         self.action_button.close()
-        
+
+    def display_message(self, message):
+        """Display a message on the OLED screen."""
+        self.oledcounter += 1
+        if self.oledcounter > 4:
+            self.oledcounter = 0
+            self.oled.fill(0)
+
+        self.draw.text((0, self.oledcounter*13), message, font=self.font, fill=255)
+        self.oled.show()
+    
+    

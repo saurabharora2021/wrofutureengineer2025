@@ -41,6 +41,7 @@ def main():
         outputInterface.LED2_off()
         outputInterface.LED2_green() 
 
+        outputInterface.display_message("Successfully connected to Spike Remote Base")
         # Run the program
         counter = 0
         while counter < 10:
@@ -62,7 +63,8 @@ def main():
         outputInterface.LED1_off()
         outputInterface.LED2_off()
 
-    except:
+    except Exception as e:
+        outputInterface.display_message(f"Exception: {e.getMessage()}")
         logger.error("Error Running Program")
         outputInterface.LED1_red()
         outputInterface.buzzer_beep()
@@ -71,6 +73,7 @@ def main():
     finally:
             # Finally, shutdown all interfaces
         print("Shutting down all interfaces")
+        outputInterface.display_message("Shutting down all interfaces")
         shutdownManager.shutdown_all()
         logger.info("Shutting down all interfaces")
 

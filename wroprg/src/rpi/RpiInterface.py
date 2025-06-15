@@ -24,6 +24,8 @@ class RpiInterface(ShutdownInterface):
     LED1_GREEN_PIN = 19
     LED1_BLUE_PIN = 13
 
+    LED_TEST_DELAY = 0.25  # seconds
+
     BUTTON_PIN = 21
 
     RIGHT_SENSOR_TRIG_PIN = 22
@@ -48,30 +50,11 @@ class RpiInterface(ShutdownInterface):
         Sets up the GPIO pins for the LEDs and initializes the buzzer and RGB LED.
         """
         super().__init__()
-        self.buzzer = Buzzer(self.BUZZER_PIN)
-        self.led1 = RGBLED(red=self.LED1_RED_PIN, green=self.LED1_GREEN_PIN, blue=self.LED1_BLUE_PIN)
-        """Turn on the LED1 Test."""
-        self.led1.color = (0, 1, 0)  # green
-        time.sleep(0.5)
-        self.led1.color = (1, 0, 0)  # red
-        time.sleep(0.5)
-        self.led1.color = (0, 0, 1)  # blue
-        time.sleep(0.5)
-        self.led1.color = (0, 0, 0)  # off
 
-        # Set up the shutdown button
-        self.action_button = Button(self.BUTTON_PIN, hold_time=2)
-
-        self.rightdistancesensor = DistanceSensor(echo=self.RIGHT_SENSOR_ECHO_PIN,trigger=self.RIGHT_SENSOR_TRIG_PIN)
-        self.leftdistancesensor = DistanceSensor(echo=self.LEFT_SENSOR_ECHO_PIN,trigger=self.LEFT_SENSOR_TRIG_PIN)
-
-        # Setting some variables for our reset pin etc.
-        RESET_PIN = digitalio.DigitalInOut(board.D4)
-
-        # Very important... This lets py-gaugette 'know' what pins to use in order to reset the display
+        self.logger.info("Initializing RpiInterface...")
+        #Setup Screen First.
         i2c = board.I2C()  # uses board.SCL and board.SDA
-        # i2c = board.STEMMA_I2C()  # For using the built-in STEMMA QT connector on a microcontroller
-
+    
         # Create the SSD1306 OLED class.
         self.oled = adafruit_ssd1306.SSD1306_I2C(self.SCREEN_WIDTH, self.SCREEN_HEIGHT, i2c)
 
@@ -84,7 +67,25 @@ class RpiInterface(ShutdownInterface):
         self.image = Image.new("1", (self.oled.width, self.oled.height))
         self.draw = ImageDraw.Draw(self.image)
 
-        self.display_message("Initializing Pi...")
+        #Logger is not setup yet, so we use print for initialization messages
+        self.display_message("Initializing Pi Interface...")
+
+        self.buzzer = Buzzer(self.BUZZER_PIN)
+        self.led1 = RGBLED(red=self.LED1_RED_PIN, green=self.LED1_GREEN_PIN, blue=self.LED1_BLUE_PIN)
+        """Turn on the LED1 Test."""
+        self.led1.color = (0, 1, 0)  # green
+        time.sleep(self.LED_TEST_DELAY)
+        self.led1.color = (1, 0, 0)  # red
+        time.sleep(self.LED_TEST_DELAY)
+        self.led1.color = (0, 0, 1)  # blue
+        time.sleep(self.LED_TEST_DELAY)
+        self.led1.color = (0, 0, 0)  # off
+
+        # Set up the shutdown button
+        self.action_button = Button(self.BUTTON_PIN, hold_time=1)
+
+        self.rightdistancesensor = DistanceSensor(echo=self.RIGHT_SENSOR_ECHO_PIN,trigger=self.RIGHT_SENSOR_TRIG_PIN)
+        self.leftdistancesensor = DistanceSensor(echo=self.LEFT_SENSOR_ECHO_PIN,trigger=self.LEFT_SENSOR_TRIG_PIN)        
     
 
     def buzzer_beep(self,timer=0.5):
@@ -132,7 +133,7 @@ class RpiInterface(ShutdownInterface):
         return self.leftdistancesensor.distance * 100 # Convert to cm    
 
     def shutdown(self):
-        self.flush_pending_messages
+        self.flush_pending_messages()
         self.buzzer.off()
         self.led1.color = (0, 0, 0)
         self.led1.close()

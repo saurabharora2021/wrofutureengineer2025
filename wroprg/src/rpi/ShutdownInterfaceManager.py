@@ -26,7 +26,7 @@ class ShutdownInterfaceManager:
         """
 
         self.logger.info("Shutting down all interfaces...")
-        for interface in self.interfaces:
+        for interface in reversed(self.interfaces):
             try:
                 interface.shutdown()
             except Exception as e:

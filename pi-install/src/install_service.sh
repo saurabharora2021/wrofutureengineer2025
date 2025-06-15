@@ -16,34 +16,16 @@ fi
 # Install requirements
 sudo apt-get install -y i2c-tools python3-pip python3-venv python3-smbus pigpio
 
-sudo systemctl stop pigpiod 2>/dev/null || true
-sudo systemctl disable pigpiod 2>/dev/null || true
+sudo systemctl enable pigpiod 2>/dev/null || true
 
 sudo -u piwro "$VENV_DIR/bin/pip" install -r "$PROJECT_DIR/requirements.txt"
-
-# Create custom pigpiod systemd service file
-sudo tee "$PIGPIOD_SERVICE_FILE" > /dev/null <<EOL
-[Unit]
-Description=Custom pigpiod daemon
-After=network.target
-
-[Service]
-ExecStart=/usr/bin/pigpiod -l
-ExecStop=/bin/kill -SIGTERM \$MAINPID
-Type=simple
-User=root
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
-EOL
 
 # Create main app systemd service file, require pigpiod
 sudo tee "$SERVICE_FILE" > /dev/null <<EOL
 [Unit]
 Description=My Python App Service
-After=network.target pigpiod_custom.service
-Requires=pigpiod_custom.service
+After=network.target pigpiod.service
+Requires=pigpiod.service
 StartLimitIntervalSec=60
 StartLimitBurst=3
 
@@ -61,8 +43,6 @@ EOL
 
 # Reload systemd, enable and start services
 sudo systemctl daemon-reload
-sudo systemctl enable pigpiod_custom
-sudo systemctl restart pigpiod_custom
 sudo systemctl enable "$SERVICE_NAME"
 sudo systemctl restart "$SERVICE_NAME"
 

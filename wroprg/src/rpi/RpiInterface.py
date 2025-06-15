@@ -36,10 +36,11 @@ class RpiInterface(ShutdownInterface):
     # These are the dimensions of the SSD1306 OLED display
     SCREEN_WIDTH = 128
     SCREEN_HEIGHT = 64
-
-
     #array to store the messages to be displayed on the OLED screen
     messages = []
+
+    SCREEN_UPDATE_INTERVAL = 0.5  # seconds
+
 
     def __init__(self):
         """
@@ -80,7 +81,6 @@ class RpiInterface(ShutdownInterface):
     
         self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
         self._last_oled_update = 0
-        self._oled_update_interval = 0.1  # seconds
         self.image = Image.new("1", (self.oled.width, self.oled.height))
         self.draw = ImageDraw.Draw(self.image)
 
@@ -152,7 +152,7 @@ class RpiInterface(ShutdownInterface):
         self.pendingmessage = True
 
         # Only update the OLED if enough time has passed since the last update
-        if forceflush or (now - getattr(self, "_last_oled_update", 0) >= getattr(self, "_oled_update_interval", 0.1)):
+        if forceflush or (now - getattr(self, "_last_oled_update", 0) >= self.SCREEN_UPDATE_INTERVAL):
             self.flush_pending_messages()
             self.pendingmessage = False
 

@@ -118,9 +118,9 @@ class RpiInterface(ShutdownInterface):
 
     def wait_for_action(self):
         """Wait for the action button to be pressed."""
-        print("Waiting for action button press...")
+        self.logger.info("Waiting for action button press...")
         self.action_button.wait_for_press()
-        print("Action button pressed!")
+        self.logger.info("Action button pressed!")
 
 
     def getRightDistance(self):
@@ -132,6 +132,7 @@ class RpiInterface(ShutdownInterface):
         return self.leftdistancesensor.distance * 100 # Convert to cm    
 
     def shutdown(self):
+        self.flush_pending_messages
         self.buzzer.off()
         self.led1.color = (0, 0, 0)
         self.led1.close()
@@ -170,12 +171,3 @@ class RpiInterface(ShutdownInterface):
         if (self.pendingmessage):
             self.flush_pending_messages()
             self.pendingmessage = False
-
-
-    def logAndDisplay(self,message):
-        """Log and display a message."""
-        self.logger.info(message)
-        self.display_message(message)
-        print(message)
-    
-

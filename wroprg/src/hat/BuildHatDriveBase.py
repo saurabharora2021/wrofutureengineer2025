@@ -1,7 +1,10 @@
 from buildhat import Motor,ColorSensor, DistanceSensor
 from base.ShutdownInterface import ShutdownInterface
+import logging
 
 class BuildHatDriveBase(ShutdownInterface):
+
+    logger = logging.getLogger(__name__)
 
     def __init__(self, front_motor_port, back_motor_port,bottom_color_sensor_port, front_distance_sensor_port):
         """Initialize the drive base with two motors."""
@@ -35,7 +38,7 @@ class BuildHatDriveBase(ShutdownInterface):
         """Shutdown the drive base."""
         self.front_motor.reset()
         self.back_motor.reset()
-        print("Drive base shutdown complete.")
+        self.logger.info("Drive base shutdown complete.")
 
     def getBottomColor(self):
         """Get the color detected by the bottom sensor."""

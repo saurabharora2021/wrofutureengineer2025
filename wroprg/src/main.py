@@ -47,22 +47,20 @@ def main():
         outputInterface.LED1_green()
         outputInterface.buzzer_beep()
 
-        outputInterface.display_message("Test Successful")
-        outputInterface.display_message("Waiting for button")
-        logger.warning("logger message Waiting")
+        logger.warning("Test Successful")
+        logger.warning("Waiting for button")
         outputInterface.force_flush_messages()
         outputInterface.wait_for_action()
-        logger.info("Action button pressed, starting drive base operations")
 
-        outputInterface.display_message("Button Pressed")
+        logger.warning("Button Pressed")
         outputInterface.buzzer_beep()
 
 
         # Run the program
         counter = 0
         while counter < 10:
-            outputInterface.logAndDisplay(f"Right : {outputInterface.getRightDistance()} cm")            
-            outputInterface.logAndDisplay(f"Left : {outputInterface.getLeftDistance()} cm")
+            logger.warning(f"Right : {outputInterface.getRightDistance()} cm")            
+            logger.warning(f"Left : {outputInterface.getLeftDistance()} cm")
             outputInterface.force_flush_messages()
             sleep(1)
             counter += 1
@@ -73,26 +71,23 @@ def main():
         # drive_base.stop()
 
         color = drive_base.getBottomColor()
-        outputInterface.logAndDisplay(f"Bottom C={color}")
+        logger.warning(f"Bottom C={color}")
         distance = drive_base.getFrontDistance()
-        outputInterface.logAndDisplay(f"Front : {distance} cm")
+        logger.warning(f"Front : {distance} cm")
         outputInterface.force_flush_messages()
 
         outputInterface.LED1_off()
 
     except Exception as e:
-        outputInterface.display_message(f"Exception: {e}",forceflush=True)
         logger.error("Error Running Program")
+        logger.error(f"Exception: {e}",forceflush=True)        
         outputInterface.LED1_red()
-        outputInterface.buzzer_beep()
-        logger.error("Shutting down due to error")
+        outputInterface.buzzer_beep()        
         raise   
     finally:
             # Finally, shutdown all interfaces
-        print("Shutting down all interfaces")
-        outputInterface.display_message("Shutting down",forceflush=True)
+        logger.warning("Shutting down all interfaces")
         shutdownManager.shutdown_all()
-        logger.info("Shutting down all interfaces")
 
 if __name__ == "__main__":
     main()

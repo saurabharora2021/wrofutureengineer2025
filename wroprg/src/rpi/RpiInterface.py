@@ -1,11 +1,12 @@
-from gpiozero import Buzzer,RGBLED, DistanceSensor,Button
+from gpiozero import Buzzer,RGBLED, DistanceSensor,Button,Device
 import subprocess
 from signal import pause
 import board
-import digitalio
 from PIL import Image, ImageDraw, ImageFont
 import adafruit_ssd1306
 import logging
+#try to import pigpio
+from gpiozero.pins.pigpio import PiGPIOFactory
 
 
 
@@ -69,6 +70,14 @@ class RpiInterface(ShutdownInterface):
 
         #Logger is not setup yet, so we use print for initialization messages
         self.display_message("Initializing Pi Interface...")
+
+        try:
+            # Use pigpio factory if available
+            Device.pin_factory = PiGPIOFactory()
+        except :
+            # Fallback to default GPIO pin factory
+            Device.pin_factory = None
+            self.logger.warning("Pigpio failed.")
 
         self.buzzer = Buzzer(self.BUZZER_PIN)
         self.led1 = RGBLED(red=self.LED1_RED_PIN, green=self.LED1_GREEN_PIN, blue=self.LED1_BLUE_PIN)

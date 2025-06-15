@@ -6,6 +6,7 @@ PROJECT_DIR="/home/piwro/wrofutureengineer2025/wroprg"
 VENV_DIR="$PROJECT_DIR/.venv"
 PYTHON_SCRIPT="$PROJECT_DIR/src/main.py"
 SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"
+PIGPIOD_SERVICE_FILE="/etc/systemd/system/pigpiod_custom.service"
 
 # Create virtual environment if not exists
 if [ ! -d "$VENV_DIR" ]; then
@@ -13,14 +14,36 @@ if [ ! -d "$VENV_DIR" ]; then
 fi
 
 # Install requirements
-sudo apt-get install -y i2c-tools python3-pip python3-venv pthon3-smbus
+sudo apt-get install -y i2c-tools python3-pip python3-venv python3-smbus pigpio
+
+sudo systemctl stop pigpiod 2>/dev/null || true
+sudo systemctl disable pigpiod 2>/dev/null || true
+
 sudo -u piwro "$VENV_DIR/bin/pip" install -r "$PROJECT_DIR/requirements.txt"
 
-# Create systemd service file
+# Create custom pigpiod systemd service file
+sudo tee "$PIGPIOD_SERVICE_FILE" > /dev/null <<EOL
+[Unit]
+Description=Custom pigpiod daemon
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/pigpiod -l
+ExecStop=/bin/kill -SIGTERM \$MAINPID
+Type=simple
+User=root
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
+# Create main app systemd service file, require pigpiod
 sudo tee "$SERVICE_FILE" > /dev/null <<EOL
 [Unit]
 Description=My Python App Service
-After=network.target
+After=network.target pigpiod_custom.service
+Requires=pigpiod_custom.service
 StartLimitIntervalSec=60
 StartLimitBurst=3
 
@@ -36,9 +59,11 @@ RestartSec=5
 WantedBy=multi-user.target
 EOL
 
-# Reload systemd, enable and start service
+# Reload systemd, enable and start services
 sudo systemctl daemon-reload
+sudo systemctl enable pigpiod_custom
+sudo systemctl restart pigpiod_custom
 sudo systemctl enable "$SERVICE_NAME"
 sudo systemctl restart "$SERVICE_NAME"
 
-echo "Service $SERVICE_NAME installed and started."
+echo "Services $SERVICE_NAME and pigpiod_custom installed and started."

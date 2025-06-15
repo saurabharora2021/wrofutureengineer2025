@@ -1,5 +1,5 @@
 from gpiozero import Buzzer,RGBLED, DistanceSensor,Button
-from subprocess import check_call
+import subprocess
 from signal import pause
 import board
 import digitalio
@@ -85,8 +85,32 @@ class RpiInterface(ShutdownInterface):
         self.action_button = Button(self.BUTTON_PIN, hold_time=1)
 
         self.rightdistancesensor = DistanceSensor(echo=self.RIGHT_SENSOR_ECHO_PIN,trigger=self.RIGHT_SENSOR_TRIG_PIN)
-        self.leftdistancesensor = DistanceSensor(echo=self.LEFT_SENSOR_ECHO_PIN,trigger=self.LEFT_SENSOR_TRIG_PIN)        
+        self.leftdistancesensor = DistanceSensor(echo=self.LEFT_SENSOR_ECHO_PIN,trigger=self.LEFT_SENSOR_TRIG_PIN)
+
+        #lets check if Raspberry Pi is not throttling
+        self.check_throttling()
+
+        self.logger.info("RpiInterface initialized successfully.")
     
+    # Checks if the Raspberry Pi is throttled using vcgencmd
+    # This command returns a hex value indicating the throttling status
+    # If the value is not zero, it means the Raspberry Pi is throttled
+    def check_throttling(self):        
+        try:
+            result = subprocess.run(['vcgencmd', 'get_throttled'], capture_output=True, text=True)
+            if result.returncode == 0:
+                throttled_hex = result.stdout.strip().split('=')[-1]
+                throttled = int(throttled_hex, 16)
+                if throttled != 0:
+                    self.logger.warning(f"Raspberry Pi is throttled! get_throttled={throttled_hex}")
+                    self.buzzer_beep(timer=2)
+                else:
+                    self.logger.warning("Raspberry Pi is not throttled.")
+            else:
+                self.logger.error("Failed to run vcgencmd get_throttled")
+        except Exception as e:
+            logging.error(f"Error checking throttling: {e}")
+
 
     def buzzer_beep(self,timer=0.5):
         """Turn on the buzzer."""

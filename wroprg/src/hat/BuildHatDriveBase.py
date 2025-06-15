@@ -19,6 +19,8 @@ class BuildHatDriveBase(ShutdownInterface):
             
         hat = Hat()  # Initialize the Build Hat
         self.logger.info(hat.get())  # Enumerate connected devices
+        #Lets log the voltage to ensure the Build Hat is powered correctly.
+        self.logger.warning("BuildHat v: %s", hat.get_vin())
 
         """Initialize the drive base with two motors."""
         self.front_motor = Motor(front_motor_port)

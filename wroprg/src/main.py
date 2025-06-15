@@ -38,12 +38,12 @@ def main():
 
         outputInterface.buzzer_beep()
 
-        outputInterface.display_message("Successfully connected to Spike Remote Base")
+        outputInterface.display_message("Test Successful")
         # Run the program
         counter = 0
         while counter < 10:
-            print(f"Right Distance Detected: {outputInterface.getRightDistance()} cm")
-            print(f"Left Distance Detected: {outputInterface.getLeftDistance()} cm")
+            logAndDisplay(f"Right : {outputInterface.getRightDistance()} cm")            
+            logAndDisplay(f"Left : {outputInterface.getLeftDistance()} cm")
             sleep(1)
             counter += 1
         
@@ -53,9 +53,9 @@ def main():
         # drive_base.stop()
 
         color = drive_base.getBottomColor()
-        print(f"Bottom Color Detected: {color}")
+        logAndDisplay(f"Bottom C={color}")
         distance = drive_base.getFrontDistance()
-        print(f"Front Distance Detected: {distance} cm")
+        logAndDisplay(f"Front : {distance} cm")
 
         outputInterface.LED1_off()
 
@@ -69,11 +69,15 @@ def main():
     finally:
             # Finally, shutdown all interfaces
         print("Shutting down all interfaces")
-        outputInterface.display_message("Shutting down all interfaces")
+        outputInterface.display_message("Shutting down")
         shutdownManager.shutdown_all()
         logger.info("Shutting down all interfaces")
 
-
+    def logAndDisplay(message):
+        """Log and display a message."""
+        logger.info(message)
+        outputInterface.display_message(message)
+        print(message)
 
 if __name__ == "__main__":
     main()

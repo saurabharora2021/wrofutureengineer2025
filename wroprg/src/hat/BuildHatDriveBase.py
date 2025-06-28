@@ -77,7 +77,8 @@ class BuildHatDriveBase(ShutdownInterface):
 
     def runfront(self, speed):
         """Run the drive base forward at the specified speed."""
-        self.back_motor.start(speed)
+        " Due to the gear combination, we need to run the motor in negative direction to move forward."
+        self.back_motor.start(-1*speed)
 
     def stop(self):
         """Stop the drive base."""

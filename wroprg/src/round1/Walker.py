@@ -33,8 +33,32 @@ class Walker:
         self.outputInterface = outputInterface
 
     
-    def equidistance_walk(self):
-        pass
+    def walknearwall(self):
+        """This method is used to walk the nearer wall, without looking at the direction."""
+        left_distance = self.outputInterface.getLeftDistance()
+        right_distance = self.outputInterface.getRightDistance()
+        if left_distance < right_distance:
+            walk_function = self.outputInterface.getLeftDistance
+        else:
+            walk_function = self.outputInterface.getRightDistance
+        
+        self.wallFollowFunc(walk_function)
+        
+
+    def wallFollowFunc(self,distance_func):
+        """Follow the wall based on the current direction."""
+        dist = distance_func()
+        error = self.D_TARGET - dist
+        angle = self.clamp(self.KP * error, -1(self.MAX_ANGLE), self.MAX_ANGLE)
+
+        #TODO: used turnleft or turnright based on direction
+        # steering.set_angle(angle)
+        self.drivebase.runfront(self.DEFAULT_SPEED)
+
+        self.logger.warning(f"Distance: {dist:.2f}, angle: {angle:.2f}")
+        sleep(0.1) 
+
+
 
     def clamp(self,val, min_val, max_val):
         return max(min(val, max_val), min_val)  
@@ -93,7 +117,7 @@ class Walker:
             #Revisit if we need to run this loop or start checking color immediately.
             while self.drivebase.getFrontDistance() > self.MINFRONTDISTANCE or self.drivebase.getFrontDistance() < 0:
                 #can we think of equi wall follow or use gyro to walk straight?.
-                self.drivebase.runfront(self.DEFAULT_SPEED)
+                self.walknearwall()
                 self.logger.info("Front Distance:%s",self.drivebase.getFrontDistance())
                 sleep(0.1)
             

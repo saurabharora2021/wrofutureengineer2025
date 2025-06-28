@@ -1,3 +1,4 @@
+from round1.Walker import Walker
 from rpi.LoggerSetup import LoggerSetup 
 from rpi.RpiInterface import RpiInterface
 from rpi.ShutdownInterfaceManager import ShutdownInterfaceManager
@@ -57,7 +58,11 @@ def main():
         logger.warning("Test Successful")
         logger.warning("Waiting for button")
         piInterface.force_flush_messages()
-        # piInterface.wait_for_action()
+        piInterface.wait_for_action()
+
+        challenge1walker = Walker(drive_base, piInterface)
+
+        challenge1walker.start_walk(nooflaps=1)
 
         # logger.warning("Button Pressed")
         # piInterface.buzzer_beep()
@@ -76,7 +81,7 @@ def main():
         # drive_base.runfront(100)
         #sleep(4)
         # drive_base.stop()
-        drive_base.turnsteering(-20)
+
 
 
         color = drive_base.getBottomColor()

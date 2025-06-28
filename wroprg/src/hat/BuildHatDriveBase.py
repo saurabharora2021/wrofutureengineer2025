@@ -82,17 +82,6 @@ class BuildHatDriveBase(ShutdownInterface):
     def stop(self):
         """Stop the drive base."""
         self.back_motor.stop()
-
-    def turnright(self, angle):
-        """Turn the drive base to the right by the specified angle."""
-        # Example: Use a simple time-based approach for turning
-        self.front_motor.run_for_degrees(angle, 50)  # Adjust speed as needed
-
-    def turnleft(self, angle):
-        """Turn the drive base to the left by the specified angle."""
-
-        self.front_motor.run_for_degrees(
-            (-1)*angle, 50)  # Adjust speed as needed
         
     def shutdown(self):
         """Shutdown the drive base."""
@@ -105,7 +94,7 @@ class BuildHatDriveBase(ShutdownInterface):
         """Get the color detected by the bottom sensor."""
         return self.bottom_color_sensor.get_color()
     
-    def getBottomColorRGBI(self):
+    def getBottomColorRGBI(self)->list:
         """Get the RGB values detected by the bottom sensor."""
         return self.bottom_color_sensor.get_color_rgbi()
     

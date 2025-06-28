@@ -1,11 +1,10 @@
 from rpi.RpiInterface import RpiInterface
-from base.ShutdownInterface import ShutdownInterface
 from time import sleep
 from hat.BuildHatDriveBase import BuildHatDriveBase
 import logging
 import math
 
-class Walker(ShutdownInterface):
+class Walker:
 
     logger = logging.getLogger(__name__)
 
@@ -18,7 +17,7 @@ class Walker(ShutdownInterface):
     WALLSIDEDISTANCE=5
     UNKNOWN_DIRECTION=-1
     TURNRIGHT_ANGLE=10
-    TURNLEFT_ANGLE=10
+    TURNLEFT_ANGLE=-10
     WALLFRONTENDDISTANCE=10
     D_TARGET = 10  # Desired distance from the wall
     KP = 2.0  # Proportional gain for the controller
@@ -28,7 +27,6 @@ class Walker(ShutdownInterface):
     outputInterface: RpiInterface
     direction=UNKNOWN_DIRECTION    
     corner=False
-    cornerCounter=0
 
     def __init__(self, drivebase:BuildHatDriveBase, outputInterface:RpiInterface):
         self.drivebase = drivebase
@@ -83,87 +81,50 @@ class Walker(ShutdownInterface):
                 near = itm[0]
                 euc = cur
         return near
-    def start_walk(self,noofturns=4):
+    def start_walk(self,nooflaps:int=4):
         self.logger.info("Starting to walk...")
         self.logger.warning("Direction:%s", self.directiontostr(self.direction))
+
+        cornerCounter = 0
         # Implement the logic for starting a walk
         if self.direction == self.UNKNOWN_DIRECTION:
+            #Revisit if we need to run this loop or start checking color immediately.
             while self.drivebase.getFrontDistance() > self.MINFRONTDISTANCE or self.drivebase.getFrontDistance() == -1:
+                #can we think of equi wall follow or use gyro to walk straight?.
                 self.drivebase.runfront(self.DEFAULT_SPEED)
                 sleep(0.1)
-            r,g,b,_ = self.drivebase.getBottomColorRGBI()
+            
+            color = self.wait_for_color(["blue", "orange"])
 
-            color = self.mat_color(r, g, b)
-            while color != "blue" and color != "orange":
-                self.drivebase.runfront(self.DEFAULT_SPEED)
-                sleep(0.1)
-                r, g, b, _ = self.drivebase.getBottomColorRGBI()
-                color = self.mat_color(r, g, b)
             
             if color == "blue":
                 self.direction = self.ANTI_CLOCKWISE_DIRECTION
-                self.corner= True
-                self.cornerCounter+= 1
             elif color == "orange":
                 self.direction = self.CLOCKWISE_DIRECTION
-                self.corner = True
-                self.cornerCounter+= 1
+                
+            self.corner = True
+            cornerCounter= 1
             
             self.logger.warning("color: %s", color)
             self.logger.warning("Direction: %s", self.directiontostr(self.direction))
-        elif self.direction == self.CLOCKWISE_DIRECTION:
-            if self.corner==True:
-                #turn right
-                self.drivebase.turnright(self.TURNRIGHT_ANGLE)
-                self.drivebase.runfront(self.DEFAULT_SPEED)
-                #either front less than 15
-                #or side distance less than 5
-                #only applicable if close to wall
-                while self.drivebase.getFrontDistance() > self.WALLFRONTDISTANCE or self.outputInterface.getRightDistance() > self.WALLSIDEDISTANCE:
-                    sleep(0.1)
-                self.drivebase.turnright(-1*self.TURNRIGHT_ANGLE)
-                self.corner = False
-                if self.cornerCounter/4 >= noofturns:
+
+        totalcorners = nooflaps * 4  # Each turn is 90 degrees, so 4 turns make a full circle
+
+        # We will walk until we reach the end of the section or complete the required number of
+        while cornerCounter < totalcorners:
+            if self.corner:
+                if self.direction == self.CLOCKWISE_DIRECTION:
+                    self.handle_corner(self.TURNRIGHT_ANGLE, self.outputInterface.getRightDistance)
+                else:
+                    self.handle_corner(self.TURNLEFT_ANGLE, self.outputInterface.getLeftDistance)
+                cornerCounter += 1
+                if cornerCounter >= totalcorners:
                     self.logger.info("Reached the end of the walk.")
                     self.drivebase.back_motor.stop()
-                    #TODO: walk to middle of the section
                     return
             else:
-                while self.drivebase.getFrontDistance() > self.WALLFRONTENDDISTANCE :
-                    self.wallFollow()
-                    sleep(0.1)
-                self.corner = True
-                self.cornerCounter+= 1
-
-        elif self.direction == self.ANTI_CLOCKWISE_DIRECTION:
-            if self.corner==True:
-                #turn left
-                self.drivebase.turnleft(self.TURNLEFT_ANGLE)
-                self.drivebase.runfront(self.DEFAULT_SPEED)
-                #either front less than 15
-                #or side distance less than 5
-                #only applicable if close to wall
-                while self.drivebase.getFrontDistance() > self.WALLFRONTDISTANCE or self.outputInterface.getLeftDistance() > self.WALLSIDEDISTANCE:
-                    sleep(0.1)
-                self.drivebase.turnleft(-1*self.TURNLEFT_ANGLE)
-                self.corner = False
-                if self.cornerCounter/4 >= noofturns:
-                    self.logger.info("Reached the end of the walk.")
-                    self.drivebase.back_motor.stop()
-                    #TODO: walk to middle of the section
-                    return
-            else:
-                while self.drivebase.getFrontDistance() > self.WALLFRONTENDDISTANCE :
-                    self.wallFollow()
-                    sleep(0.1)
-                self.corner = True
-                self.cornerCounter+= 1
-
-    def shutdown(self):
-        """Method to perform shutdown operations."""
-        self.logger.info("Shutting down Walker...")
-        self.drivebase.stop()
-        self.logger.info("Walker shutdown complete.")
+                self.follow_wall_until(self.WALLFRONTENDDISTANCE)
+                     
 
     def directiontostr(self,direction):
         """Convert direction to string."""
@@ -173,6 +134,30 @@ class Walker(ShutdownInterface):
             return "Anti-clockwise"
         else:
             return "Unknown"
+        
+    def handle_corner(self, turn_angle, side_distance_func):
+        self.drivebase.turnsteering(turn_angle)
+        self.drivebase.runfront(self.DEFAULT_SPEED)
+        while self.drivebase.getFrontDistance() > self.WALLFRONTDISTANCE or side_distance_func() > self.WALLSIDEDISTANCE:
+            sleep(0.1)
+        self.drivebase.turnsteering(-turn_angle)
+        self.corner = False
+    
+    def follow_wall_until(self, distance):
+        while self.drivebase.getFrontDistance() > distance:
+            self.wallFollow()
+            sleep(0.1)
+        self.corner = True
+    
+    def wait_for_color(self, colors):
+        r, g, b, _ = self.drivebase.getBottomColorRGBI()
+        color = self.mat_color(r, g, b)
+        while color not in colors:
+            self.drivebase.runfront(self.DEFAULT_SPEED)
+            sleep(0.1)
+            r, g, b, _ = self.drivebase.getBottomColorRGBI()
+            color = self.mat_color(r, g, b)
+        return color
 
 
             

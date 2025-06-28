@@ -37,6 +37,7 @@ class Walker:
         """This method is used to walk the nearer wall, without looking at the direction."""
         left_distance = self.outputInterface.getLeftDistance()
         right_distance = self.outputInterface.getRightDistance()
+        self.logger.warning(f"Left Distance: {left_distance:.2f}, Right Distance: {right_distance:.2f}")
         if left_distance < right_distance:
             walk_function = self.outputInterface.getLeftDistance
         else:
@@ -49,10 +50,11 @@ class Walker:
         """Follow the wall based on the current direction."""
         dist = distance_func()
         error = self.D_TARGET - dist
-        angle = self.clamp(self.KP * error, -1(self.MAX_ANGLE), self.MAX_ANGLE)
+        angle = self.clamp(self.KP * error, -1*self.MAX_ANGLE, self.MAX_ANGLE)
 
         #TODO: used turnleft or turnright based on direction
         # steering.set_angle(angle)
+        self.drivebase.turnsteering(angle)
         self.drivebase.runfront(self.DEFAULT_SPEED)
 
         self.logger.warning(f"Distance: {dist:.2f}, angle: {angle:.2f}")
@@ -72,7 +74,7 @@ class Walker:
         elif self.direction == self.ANTI_CLOCKWISE_DIRECTION:
             dist = self.outputInterface.getRightDistance()
         error = self.D_TARGET - dist
-        angle = self.clamp(self.KP * error, -1(self.MAX_ANGLE), self.MAX_ANGLE)
+        angle = self.clamp(self.KP * error, -1*self.MAX_ANGLE, self.MAX_ANGLE)
 
         #TODO: used turnleft or turnright based on direction
         # steering.set_angle(angle)
@@ -121,6 +123,7 @@ class Walker:
                 self.logger.info("Front Distance:%s",self.drivebase.getFrontDistance())
                 sleep(0.1)
             
+            self.logger.info("Time to check color")
             color = self.wait_for_color(["blue", "orange"])
 
             

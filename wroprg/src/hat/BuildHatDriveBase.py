@@ -62,7 +62,20 @@ class BuildHatDriveBase(ShutdownInterface):
         and the gear ration is 1:2, so we need to multiply by 2."""
 
         expected_position = self.steering_in_degrees + -2*degrees;
-        self.front_motor.run_for_degrees(-2*degrees, speed=25,blocking=True)
+
+        expected_degrees = degrees;
+        if (abs(expected_position) > 40):
+            """If the expected position is greater than 40 degrees, we need to reset the front motor."""
+            self.logger.warning("Front Motor is at position %s, resetting it.", self.front_motor.get_position())
+            if (expected_position > 0):
+                expected_position = 40
+            else:
+                expected_position = -40
+            
+            expected_degrees = (expected_position - self.steering_in_degrees)/-2 
+
+
+        self.front_motor.run_for_degrees(-2*expected_degrees, speed=25,blocking=True)
         counter = 0
         while abs(self.front_motor.get_position() - expected_position) > 2 and counter < 3:
             """If the front motor is not at the expected position, reset it."""

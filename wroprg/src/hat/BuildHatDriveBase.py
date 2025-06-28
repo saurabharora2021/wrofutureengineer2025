@@ -101,5 +101,5 @@ class BuildHatDriveBase(ShutdownInterface):
     
     def getFrontDistance(self):
         """Get the distance to the front obstacle."""
-        return self.front_distance_sensor.get_distance()
+        return self.front_distance_sensor.get_distance()/10  # Convert from mm to cm
         

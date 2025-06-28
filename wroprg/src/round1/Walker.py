@@ -12,9 +12,9 @@ class Walker:
     CLOCKWISE_DIRECTION=1
     DEFAULT_SPEED=100
     ANTI_CLOCKWISE_DIRECTION=2
-    MINFRONTDISTANCE=20
-    WALLFRONTDISTANCE=15
-    WALLSIDEDISTANCE=5
+    MINFRONTDISTANCE=100
+    WALLFRONTDISTANCE=30
+    WALLSIDEDISTANCE=15
     UNKNOWN_DIRECTION=-1
     TURNRIGHT_ANGLE=10
     TURNLEFT_ANGLE=-10
@@ -88,10 +88,13 @@ class Walker:
         cornerCounter = 0
         # Implement the logic for starting a walk
         if self.direction == self.UNKNOWN_DIRECTION:
+            self.logger.info("Front Distance:%s",self.drivebase.getFrontDistance())
+
             #Revisit if we need to run this loop or start checking color immediately.
-            while self.drivebase.getFrontDistance() > self.MINFRONTDISTANCE or self.drivebase.getFrontDistance() == -1:
+            while self.drivebase.getFrontDistance() > self.MINFRONTDISTANCE or self.drivebase.getFrontDistance() < 0:
                 #can we think of equi wall follow or use gyro to walk straight?.
                 self.drivebase.runfront(self.DEFAULT_SPEED)
+                self.logger.info("Front Distance:%s",self.drivebase.getFrontDistance())
                 sleep(0.1)
             
             color = self.wait_for_color(["blue", "orange"])
@@ -105,8 +108,11 @@ class Walker:
             self.corner = True
             cornerCounter= 1
             
+            self.outputInterface.buzzer_beep()
             self.logger.warning("color: %s", color)
             self.logger.warning("Direction: %s", self.directiontostr(self.direction))
+            self.drivebase.stop()
+            return
 
         totalcorners = nooflaps * 4  # Each turn is 90 degrees, so 4 turns make a full circle
 

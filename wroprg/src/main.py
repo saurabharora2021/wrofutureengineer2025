@@ -57,25 +57,27 @@ def main():
         logger.warning("Test Successful")
         logger.warning("Waiting for button")
         piInterface.force_flush_messages()
-        piInterface.wait_for_action()
+        # piInterface.wait_for_action()
 
-        logger.warning("Button Pressed")
-        piInterface.buzzer_beep()
+        # logger.warning("Button Pressed")
+        # piInterface.buzzer_beep()
 
 
-        # Run the program
-        counter = 0
-        while counter < 10:
-            logger.warning(f"Right : {piInterface.getRightDistance()} cm")            
-            logger.warning(f"Left : {piInterface.getLeftDistance()} cm")
-            piInterface.force_flush_messages()
-            sleep(1)
-            counter += 1
+        # # Run the program
+        # counter = 0
+        # while counter < 10:
+        #     logger.warning(f"Right : {piInterface.getRightDistance()} cm")            
+        #     logger.warning(f"Left : {piInterface.getLeftDistance()} cm")
+        #     piInterface.force_flush_messages()
+        #     sleep(1)
+        #     counter += 1
         
 
         # drive_base.runfront(100)
-        sleep(4)
+        #sleep(4)
         # drive_base.stop()
+        drive_base.turnsteering(-20)
+
 
         color = drive_base.getBottomColor()
         logger.warning(f"Bottom C={color}")
@@ -94,6 +96,8 @@ def main():
     finally:
             # Finally, shutdown all interfaces
         logger.warning("Shutting down all interfaces")
+        piInterface.wait_for_action()
+
         shutdownManager.shutdown_all()
 
 if __name__ == "__main__":

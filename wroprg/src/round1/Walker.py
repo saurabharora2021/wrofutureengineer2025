@@ -61,7 +61,9 @@ class Walker:
         if (isleft is False):
             angle = -angle
 
-        self.drivebase.turnsteering(angle)
+        if (abs(angle) > 4):
+            self.drivebase.turnsteering(angle)
+
         self.drivebase.runfront(self.DEFAULT_SPEED/2)
 
         self.logger.warning(f"Distance: {dist:.2f}, angle: {angle:.2f}")
@@ -135,6 +137,7 @@ class Walker:
                 self.logger.info("Front Distance:%s",self.drivebase.getFrontDistance())
                 sleep(0.1)
             
+            self.drivebase.stop()
             self.logger.info("Time to check color")
             color = self.wait_for_color(["blue", "orange"])
 
@@ -197,6 +200,7 @@ class Walker:
     def wait_for_color(self, colors):
         r, g, b, _ = self.drivebase.getBottomColorRGBI()
         color = self.mat_color(r, g, b)
+        self.logger.info(f"Waiting for color: {colors}, current color: {color}")
         while color not in colors:
             self.drivebase.runfront(self.DEFAULT_SPEED)
             sleep(0.1)

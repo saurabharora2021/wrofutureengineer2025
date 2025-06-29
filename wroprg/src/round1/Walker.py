@@ -3,6 +3,8 @@ from time import sleep
 from hat.BuildHatDriveBase import BuildHatDriveBase
 import logging
 import math
+from typing import Tuple
+
 
 class Walker:
 
@@ -32,34 +34,35 @@ class Walker:
         self.drivebase = drivebase
         self.outputInterface = outputInterface
 
-    
-    def walknearwall(self):
-        """This method is used to walk the nearer wall, without looking at the direction."""
+    def wallunknowndirectioninit(self)-> Tuple[float, callable, bool]:
+        """This method is used to initialize the walker when the direction is unknown."""
+        self.logger.info("Initializing walker with unknown direction.")
         left_distance = self.outputInterface.getLeftDistance()
         right_distance = self.outputInterface.getRightDistance()
         self.logger.warning(f"Left Distance: {left_distance:.2f}, Right Distance: {right_distance:.2f}")
         if left_distance < right_distance:
+            distance = left_distance
             walk_function = self.outputInterface.getLeftDistance
             isleft = True
         else:
+            distance = right_distance
             walk_function = self.outputInterface.getRightDistance
             isleft = False
-        
-        self.wallFollowFunc(walk_function,isleft)
-        
+        return (distance, walk_function, isleft)
 
-    def wallFollowFunc(self,distance_func,isleft:bool):
+
+    def wallFollowFunc(self,distance_func,isleft:bool,target_distance:float,Kp=1.0):
         """Follow the wall based on the current direction."""
         dist = distance_func()
-        error = self.D_TARGET - dist
-        angle = self.clamp(self.KP * error, -1*self.MAX_ANGLE, self.MAX_ANGLE)
+        error = target_distance - dist
+        angle = self.clamp(Kp * error, -1*self.MAX_ANGLE, self.MAX_ANGLE)
 
         #TODO: used turnleft or turnright based on direction
         if (isleft is False):
             angle = -angle
 
         self.drivebase.turnsteering(angle)
-        self.drivebase.runfront(self.DEFAULT_SPEED)
+        self.drivebase.runfront(self.DEFAULT_SPEED/2)
 
         self.logger.warning(f"Distance: {dist:.2f}, angle: {angle:.2f}")
         sleep(0.1) 
@@ -120,10 +123,15 @@ class Walker:
         if self.direction == self.UNKNOWN_DIRECTION:
             self.logger.info("Front Distance:%s",self.drivebase.getFrontDistance())
 
+
+            distance, distance_func, isleft = self.wallunknowndirectioninit()
             #Revisit if we need to run this loop or start checking color immediately.
             while self.drivebase.getFrontDistance() > self.MINFRONTDISTANCE or self.drivebase.getFrontDistance() < 0:
                 #can we think of equi wall follow or use gyro to walk straight?.
-                self.walknearwall()
+                left_distance = self.outputInterface.getLeftDistance()
+                right_distance = self.outputInterface.getRightDistance()
+                self.logger.info(f"Left Distance: {left_distance:.2f}, Right Distance: {right_distance:.2f}")
+                self.wallFollowFunc(distance_func,isleft,distance)
                 self.logger.info("Front Distance:%s",self.drivebase.getFrontDistance())
                 sleep(0.1)
             

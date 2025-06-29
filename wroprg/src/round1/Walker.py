@@ -19,7 +19,7 @@ class Walker:
     TURNRIGHT_ANGLE=10
     TURNLEFT_ANGLE=-10
     WALLFRONTENDDISTANCE=10
-    D_TARGET = 10  # Desired distance from the wall
+    D_TARGET = 15  # Desired distance from the wall
     KP = 2.0  # Proportional gain for the controller
     MAX_ANGLE = 10
     

@@ -28,6 +28,7 @@ class robotValidator:
         #Check distance sensors, left and right should be greater than 0
         left_distance = self.outputInterface.getLeftDistance()
         right_distance = self.outputInterface.getRightDistance()
+        self.logger.info(f"Left Distance: {left_distance}, Right Distance: {right_distance}")
         if left_distance <= 0 or right_distance <= 0:
             self.logger.error(f"Invalid distances: Left={left_distance}, Right={right_distance}.")
             return False

@@ -4,6 +4,7 @@ from rpi.RpiInterface import RpiInterface
 from rpi.ShutdownInterfaceManager import ShutdownInterfaceManager
 from time import sleep
 from hat.BuildHatDriveBase import BuildHatDriveBase
+import rpi.robotvalidator as robotvalidator
 import logging
 import argparse
 
@@ -52,11 +53,20 @@ def main():
         shutdownManager.add_interface(drive_base)
 
         logger.info("Drive Base Initialized")
-        piInterface.LED1_green()
-        piInterface.buzzer_beep()
+
+        # Validate the robot's functionality
+        robot_validator = robotvalidator.robotValidator(drive_base, piInterface)
+        if not robot_validator.validate():
+            logger.error("Robot validation failed. Exiting.")
+            piInterface.LED1_red()
+            piInterface.buzzer_beep()
+            raise Exception("Robot validation failed")
+        else:
+            piInterface.LED1_green()
+            piInterface.buzzer_beep()
 
         logger.warning("Test Successful")
-        logger.warning("Waiting for button")
+
         piInterface.force_flush_messages()
         piInterface.wait_for_action()
 

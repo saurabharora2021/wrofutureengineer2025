@@ -40,20 +40,24 @@ class Walker:
         self.logger.warning(f"Left Distance: {left_distance:.2f}, Right Distance: {right_distance:.2f}")
         if left_distance < right_distance:
             walk_function = self.outputInterface.getLeftDistance
+            isleft = True
         else:
             walk_function = self.outputInterface.getRightDistance
+            isleft = False
         
-        self.wallFollowFunc(walk_function)
+        self.wallFollowFunc(walk_function,isleft)
         
 
-    def wallFollowFunc(self,distance_func):
+    def wallFollowFunc(self,distance_func,isleft:bool):
         """Follow the wall based on the current direction."""
         dist = distance_func()
         error = self.D_TARGET - dist
         angle = self.clamp(self.KP * error, -1*self.MAX_ANGLE, self.MAX_ANGLE)
 
         #TODO: used turnleft or turnright based on direction
-        # steering.set_angle(angle)
+        if (isleft is False):
+            angle = -angle
+
         self.drivebase.turnsteering(angle)
         self.drivebase.runfront(self.DEFAULT_SPEED)
 

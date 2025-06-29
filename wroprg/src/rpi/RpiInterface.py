@@ -146,7 +146,7 @@ class RpiInterface(ShutdownInterface):
 
     def wait_for_action(self):
         """Wait for the action button to be pressed."""
-        self.logger.info("Waiting for action button press...")
+        self.logger.warning("Waiting for action button press...")
         self.action_button.wait_for_press()
         self.logger.info("Action button pressed!")
 

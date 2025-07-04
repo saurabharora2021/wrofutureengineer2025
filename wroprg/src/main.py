@@ -4,7 +4,7 @@ from rpi.RpiInterface import RpiInterface
 from rpi.ShutdownInterfaceManager import ShutdownInterfaceManager
 from time import sleep
 from hat.BuildHatDriveBase import BuildHatDriveBase
-import rpi.robotvalidator as robotvalidator
+import rpi.RobotValidator as RobotValidator
 import logging
 import argparse
 
@@ -41,13 +41,6 @@ def main():
 
     try:
 
-        
-        # Lets check if Raspberry Pi is not throttling
-        # We need to check if the Raspberry Pi is throttling, which can happen due to overheating or power issues.
-        # This needs to be done after the logger is set up, so we can log the results.
-        logger.info("Checking Raspberry Pi throttling status")        
-        piInterface.check_throttling()
-
         # Create an instance of BuildHatDriveBase
         drive_base: BuildHatDriveBase = BuildHatDriveBase(front_motor_port='D', back_motor_port='A', bottom_color_sensor_port='C', front_distance_sensor_port='B')
         shutdownManager.add_interface(drive_base)
@@ -55,7 +48,7 @@ def main():
         logger.info("Drive Base Initialized")
 
         # Validate the robot's functionality
-        robot_validator = robotvalidator.robotValidator(drive_base, piInterface)
+        robot_validator = RobotValidator(drive_base, piInterface)
         if not robot_validator.validate():
             logger.error("Robot validation failed. Exiting.")
             piInterface.LED1_red()

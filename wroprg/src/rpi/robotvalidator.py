@@ -6,7 +6,28 @@ from time import sleep
 from hat.BuildHatDriveBase import BuildHatDriveBase
 import logging
 
-class robotValidator:
+class RobotValidator:
+
+    def check_throttling(self) -> bool:
+        """Checks if the Raspberry Pi is throttled using vcgencmd. Returns True if throttled, False otherwise."""
+        import subprocess
+        try:
+            result = subprocess.run(['vcgencmd', 'get_throttled'], capture_output=True, text=True)
+            if result.returncode == 0:
+                throttled_hex = result.stdout.strip().split('=')[-1]
+                throttled = int(throttled_hex, 16)
+                if throttled != 0:
+                    self.logger.error(f"Pi is throttled! get_throttled={throttled_hex}")
+                    return True
+                else:
+                    self.logger.info("Pi is not throttled.")
+                    return False
+            else:
+                self.logger.error("Failed to run vcgencmd get_throttled")
+                return False
+        except Exception as e:
+            self.logger.error(f"Error checking throttling: {e}")
+            return False
 
     logger = logging.getLogger(__name__)
     """This class is used to validate the robot's functionality."""
@@ -32,5 +53,11 @@ class robotValidator:
         if left_distance <= 0 or right_distance <= 0:
             self.logger.error(f"Invalid distances: Left={left_distance}, Right={right_distance}.")
             return False
+        # Lets check if Raspberry Pi is not throttling
+        # We need to check if the Raspberry Pi is throttling, which can happen due to overheating or power issues.
+        # This needs to be done after the logger is set up, so we can log the results.
+        self.logger.info("Checking Raspberry Pi throttling status")        
+        self.check_throttling()
 
+        self.logger.info("Robot validation passed.")
         return True

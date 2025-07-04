@@ -37,16 +37,16 @@ class Walker:
     def wallunknowndirectioninit(self)-> Tuple[float, callable, bool]:
         """This method is used to initialize the walker when the direction is unknown."""
         self.logger.info("Initializing walker with unknown direction.")
-        left_distance = self.outputInterface.getLeftDistance()
-        right_distance = self.outputInterface.getRightDistance()
+        left_distance = self.outputInterface.get_left_distance()
+        right_distance = self.outputInterface.get_right_distance()
         self.logger.warning(f"Left Distance: {left_distance:.2f}, Right Distance: {right_distance:.2f}")
         if left_distance < right_distance:
             distance = left_distance
-            walk_function = self.outputInterface.getLeftDistance
+            walk_function = self.outputInterface.get_left_distance
             isleft = True
         else:
             distance = right_distance
-            walk_function = self.outputInterface.getRightDistance
+            walk_function = self.outputInterface.get_right_distance
             isleft = False
         return (distance, walk_function, isleft)
 
@@ -79,9 +79,9 @@ class Walker:
         """Follow the wall based on the current direction."""
         dist = 0
         if self.direction == self.CLOCKWISE_DIRECTION:   
-            dist = self.outputInterface.getLeftDistance()
+            dist = self.outputInterface.get_left_distance()
         elif self.direction == self.ANTI_CLOCKWISE_DIRECTION:
-            dist = self.outputInterface.getRightDistance()
+            dist = self.outputInterface.get_right_distance()
         error = self.D_TARGET - dist
         angle = self.clamp(self.KP * error, -1*self.MAX_ANGLE, self.MAX_ANGLE)
 
@@ -130,8 +130,8 @@ class Walker:
             #Revisit if we need to run this loop or start checking color immediately.
             while self.drivebase.getFrontDistance() > self.MINFRONTDISTANCE or self.drivebase.getFrontDistance() < 0:
                 #can we think of equi wall follow or use gyro to walk straight?.
-                left_distance = self.outputInterface.getLeftDistance()
-                right_distance = self.outputInterface.getRightDistance()
+                left_distance = self.outputInterface.get_left_distance()
+                right_distance = self.outputInterface.get_right_distance()
                 self.logger.info(f"Left Distance: {left_distance:.2f}, Right Distance: {right_distance:.2f}")
                 self.wallFollowFunc(distance_func,isleft,distance)
                 self.logger.info("Front Distance:%s",self.drivebase.getFrontDistance())
@@ -162,9 +162,9 @@ class Walker:
         while cornerCounter < totalcorners:
             if self.corner:
                 if self.direction == self.CLOCKWISE_DIRECTION:
-                    self.handle_corner(self.TURNRIGHT_ANGLE, self.outputInterface.getRightDistance)
+                    self.handle_corner(self.TURNRIGHT_ANGLE, self.outputInterface.get_right_distance)
                 else:
-                    self.handle_corner(self.TURNLEFT_ANGLE, self.outputInterface.getLeftDistance)
+                    self.handle_corner(self.TURNLEFT_ANGLE, self.outputInterface.get_left_distance)
                 cornerCounter += 1
                 if cornerCounter >= totalcorners:
                     self.logger.info("Reached the end of the walk.")

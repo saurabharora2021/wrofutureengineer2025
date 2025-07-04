@@ -1,10 +1,13 @@
+""" This module implements the Shutdown Manager for closing all impls"""
+import logging
 from typing import List
 from base.ShutdownInterface import ShutdownInterface
-import logging
+
 
 
 class ShutdownInterfaceManager:
-
+    """ This class implements the Shutdown Manager, where all classes
+    would use to register callback."""
     logger: logging.Logger = logging.getLogger(__name__)
 
     def __init__(self) -> None:
@@ -31,4 +34,4 @@ class ShutdownInterfaceManager:
             try:
                 interface.shutdown()
             except Exception as e:
-                self.logger.error(f"Error shutting down {interface}: {e}")
+                self.logger.error("Error shutting down %s",e)

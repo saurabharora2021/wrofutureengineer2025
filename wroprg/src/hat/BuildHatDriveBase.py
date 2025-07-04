@@ -1,22 +1,23 @@
-from typing import Final
+""" This module implements the Drive Base using Build Hat motors and sensors."""
+import logging
+from typing import Final,Any
 from buildhat import Motor,ColorSensor, DistanceSensor,Hat
 from base.ShutdownInterface import ShutdownInterface
-import logging
-import time
-import math
-
-
-from typing import Any
 
 class BuildHatDriveBase(ShutdownInterface):
+    """ This class implements the Drive Base using Build Hat motors and sensors."""
 
     logger: logging.Logger = logging.getLogger(__name__)
 
     MAX_STEERING_DEGREE: Final = 38
     STEERING_GEAR_RATIO: Final = -2
-    # Negative gear ratio indicates that positive steering input results in a negative motor rotation due to the physical gear setup.
+    # Negative gear ratio indicates that positive steering input results in a negative motor
+    # rotation due to the physical gear setup.
     STEERING_GEAR_RATIO:Final = -2
-    def __init__(self, front_motor_port: str, back_motor_port: str, bottom_color_sensor_port: str, front_distance_sensor_port: str) -> None:
+
+    def __init__(self, front_motor_port: str, back_motor_port: str, bottom_color_sensor_port: str,
+                  front_distance_sensor_port: str) -> None:
+        """Initialize the drive base with two motors."""
 
         self.logger.warning("BuildHat start..")
 
@@ -24,14 +25,14 @@ class BuildHatDriveBase(ShutdownInterface):
         # we initialize and handle one failure before proceeding.
         try:
             Hat()  # Attempt to initialize the Build Hat
-        except Exception as e:
+        except Exception: # pylint: disable=broad-except
             self.logger.error("First Buildhat Failed retry.")
         _hat = Hat()  # Initialize the Build Hat
         self.logger.info(_hat.get())  # Enumerate connected devices
         #Lets log the voltage to ensure the Build Hat is powered correctly.
         self.logger.warning("BuildHat v: %s", _hat.get_vin())
 
-        """Initialize the drive base with two motors."""
+
         self.front_motor = Motor(front_motor_port)
         self.back_motor = Motor(back_motor_port)
         self.bottom_color_sensor = ColorSensor(bottom_color_sensor_port)
@@ -40,15 +41,18 @@ class BuildHatDriveBase(ShutdownInterface):
         self.front_distance_sensor.on()
         self.logger.info("BuildHat success")
         self.logger.warning("Position front:%s",self.front_motor.get_position())
-        self.resetfrontmotor()  # Reset the front motor position to zero        
+        self.resetfrontmotor()  # Reset the front motor position to zero.
 
     def resetfrontmotor(self) -> None:
+        """Reset the front motor position to zero."""
         if self.front_motor.get_position() !=0 :
             self.logger.info("BuildHat Front Motor is not at zero position, resetting it.")
-            self.front_motor.run_for_degrees(-self.front_motor.get_position(),speed=50)  # Reset the front motor position to zero
-            self.logger.info("After TurnPosition first round front:%s",self.front_motor.get_position())
+            # Reset the front motor position to zero
+            self.front_motor.run_for_degrees(-self.front_motor.get_position(),speed=50)
+            self.logger.info("After TurnPosition first round front:%s",
+                             self.front_motor.get_position())
 
-        self.checkAndsetSteering(0)  # Ensure the steering is at zero position        
+        self.check_set_steering(0)  # Ensure the steering is at zero position
         self.logger.warning("After TurnPosition front:%s",self.front_motor.get_position())
 
 
@@ -60,19 +64,21 @@ class BuildHatDriveBase(ShutdownInterface):
         Limits steering to +/-38 degrees.
         """
         # Calculate new target position, considering gear ratio and direction
-        
+
         current_position = self.front_motor.get_position()
         target_position = current_position + self.STEERING_GEAR_RATIO * degrees
         # Clamp to allowed range
 
-        target_position = max(min(target_position, self.MAX_STEERING_DEGREE), (-1)*self.MAX_STEERING_DEGREE)
+        target_position = max(min(target_position, self.MAX_STEERING_DEGREE),
+                              (-1)*self.MAX_STEERING_DEGREE)
         # Calculate how much to move from current position
         move_degrees = target_position - current_position
-        self.logger.info("Turning front motor to %s (move %s degrees)", target_position, move_degrees)
+        self.logger.info("Turning front motor to %s (move %s degrees)", target_position,
+                         move_degrees)
         self.front_motor.run_for_degrees(move_degrees, speed=25, blocking=True)
-        self.checkAndsetSteering(target_position)  # Ensure the steering is at the expected position
+        self.check_set_steering(target_position)  # Ensure the steering is at the expected position
 
-    def checkAndsetSteering(self, expected_position: float = 0) -> None:
+    def check_set_steering(self, expected_position: float = 0) -> None:
         """
         Check if the steering is at the specified degrees.
         If not, set it to the specified degrees.
@@ -80,9 +86,10 @@ class BuildHatDriveBase(ShutdownInterface):
         current_position = self.front_motor.get_position()
         counter = 0
         while abs(current_position - expected_position) > 2 and counter < 3:
-            """If the front motor is not at the expected position, reset it."""
+            #If the front motor is not at the expected position, reset it.
             self.logger.warning("Front Motor is not at expected position, resetting it.")
-            self.front_motor.run_for_degrees(-1*(current_position - expected_position), speed=25,blocking=True)
+            self.front_motor.run_for_degrees(-1*(current_position - expected_position),
+                                             speed=25,blocking=True)
             counter += 1
             current_position = self.front_motor.get_position()
         if (current_position - expected_position) > 2:
@@ -93,13 +100,14 @@ class BuildHatDriveBase(ShutdownInterface):
 
     def runfront(self, speed: float) -> None:
         """Run the drive base forward at the specified speed."""
-        # Due to the gear combination, we need to run the motor in negative direction to move forward.
+        # Due to the gear combination, we need to run the motor in negative
+        # direction to move forward.
         self.back_motor.start(-1*speed)
 
     def stop(self) -> None:
         """Stop the drive base."""
         self.back_motor.stop()
-        
+
     def shutdown(self) -> None:
         """Shutdown the drive base."""
         # self.front_motor.stop()
@@ -107,15 +115,14 @@ class BuildHatDriveBase(ShutdownInterface):
         self.back_motor.stop()
         self.logger.info("Drive base shutdown complete.")
 
-    def getBottomColor(self) -> Any:
+    def get_bottom_color(self) -> Any:
         """Get the color detected by the bottom sensor."""
         return self.bottom_color_sensor.get_color()
-    
-    def getBottomColorRGBI(self) -> list:
+
+    def get_bottom_color_rgbi(self) -> list:
         """Get the RGB values detected by the bottom sensor."""
         return self.bottom_color_sensor.get_color_rgbi()
-    
-    def getFrontDistance(self) -> float:
+
+    def get_front_distance(self) -> float:
         """Get the distance to the front obstacle in centimeter."""
         return self.front_distance_sensor.get_distance()/10  # Convert from mm to cm
-        

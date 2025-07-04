@@ -3,7 +3,7 @@ import logging
 
 from logging.handlers import RotatingFileHandler
 from base.ShutdownInterface import ShutdownInterface
-from rpi.RpiInterface import RpiInterface
+from rpi.rpi_interface import RpiInterface
 
 class LoggerSetup(ShutdownInterface):
     """Class defines the logger and Handlers"""

@@ -33,5 +33,5 @@ class ShutdownInterfaceManager:
         for interface in reversed(self.interfaces):
             try:
                 interface.shutdown()
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-except
                 self.logger.error("Error shutting down %s",e)

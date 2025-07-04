@@ -58,11 +58,11 @@ def main():
         robot_validator = robotvalidator.robotValidator(drive_base, piInterface)
         if not robot_validator.validate():
             logger.error("Robot validation failed. Exiting.")
-            piInterface.LED1_red()
+            piInterface.led1_red()
             piInterface.buzzer_beep()
             raise Exception("Robot validation failed")
         else:
-            piInterface.LED1_green()
+            piInterface.led1_green()
             piInterface.buzzer_beep()
 
         logger.warning("Test Successful")
@@ -98,12 +98,12 @@ def main():
         logger.warning(f"Front : {distance} cm")
         piInterface.force_flush_messages()
 
-        piInterface.LED1_off()
+        piInterface.led1_off()
 
     except Exception as e:
         logger.error("Error Running Program")
         logger.error(f"Exception: {e}")        
-        piInterface.LED1_red()
+        piInterface.led1_red()
         piInterface.buzzer_beep()        
         raise   
     finally:

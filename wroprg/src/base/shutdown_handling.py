@@ -1,8 +1,15 @@
-""" This module implements the Shutdown Manager for closing all impls"""
+""" This module defines the Shutdown Interface and Shutdown Interface Manager."""
+from abc import ABC, abstractmethod
 import logging
 from typing import List
-from base.ShutdownInterface import ShutdownInterface
+# Define Interface for shutdown control
 
+
+class ShutdownInterface(ABC):
+    """ Interface for Define Shutdown callback."""
+    @abstractmethod
+    def shutdown(self) -> None:
+        """Method to perform shutdown operations."""
 
 
 class ShutdownInterfaceManager:

@@ -2,7 +2,7 @@
 import subprocess
 import logging
 
-from rpi.RpiInterface import RpiInterface
+from rpi.rpi_interface import RpiInterface
 from hat.BuildHatDriveBase import BuildHatDriveBase
 class RobotValidator:
     """

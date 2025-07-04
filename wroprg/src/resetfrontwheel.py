@@ -1,6 +1,6 @@
 from round1.Walker import Walker
-from rpi.LoggerSetup import LoggerSetup 
-from rpi.RpiInterface import RpiInterface
+from rpi.logger_setup import LoggerSetup 
+from rpi.rpi_interface import RpiInterface
 from rpi.ShutdownInterfaceManager import ShutdownInterfaceManager
 from time import sleep
 from hat.BuildHatDriveBase import BuildHatDriveBase
@@ -92,9 +92,9 @@ def main():
 
 
 
-        color = drive_base.getBottomColor()
+        color = drive_base.get_bottom_color()
         logger.warning(f"Bottom C={color}")
-        distance = drive_base.getFrontDistance()
+        distance = drive_base.get_front_distance()
         logger.warning(f"Front : {distance} cm")
         piInterface.force_flush_messages()
 

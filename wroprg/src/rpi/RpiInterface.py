@@ -100,24 +100,6 @@ class RpiInterface(ShutdownInterface):
 
         self.logger.info("RpiInterface initialized successfully.")
     
-    # Checks if the Raspberry Pi is throttled using vcgencmd
-    # This command returns a hex value indicating the throttling status
-    # If the value is not zero, it means the Raspberry Pi is throttled
-    def check_throttling(self):        
-        try:
-            result = subprocess.run(['vcgencmd', 'get_throttled'], capture_output=True, text=True)
-            if result.returncode == 0:
-                throttled_hex = result.stdout.strip().split('=')[-1]
-                throttled = int(throttled_hex, 16)
-                if throttled != 0:
-                    self.logger.error(f"Pi is throttled! get_throttled={throttled_hex}")
-                else:
-                    self.logger.warning("Pi is not throttled.")
-            else:
-                self.logger.error("Failed to run vcgencmd get_throttled")
-        except Exception as e:
-            self.logger.error(f"Error checking throttling: {e}")
-
 
     def buzzer_beep(self,timer=0.5):
         """Turn on the buzzer."""

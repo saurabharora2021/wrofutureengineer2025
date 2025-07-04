@@ -7,7 +7,7 @@ class LoggerSetup(ShutdownInterface):
     # Get the logger instance
     logger = logging.getLogger(__name__)
 
-    def setup(self, inf:RpiInterface, log_file, log_level=logging.INFO):
+    def setup(self, inf: RpiInterface, log_file: str, log_level: int = logging.INFO, max_bytes: int = 1048576, backup_count: int = 3):
         # Remove all handlers associated with the root logger object (to avoid duplicate logs)
         for handler in logging.root.handlers[:]:
             logging.root.removeHandler(handler)
@@ -15,8 +15,9 @@ class LoggerSetup(ShutdownInterface):
         logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)  # Capture all logs, handlers will filter
 
-        # File handler for log_level and above
-        file_handler = logging.FileHandler(log_file, mode="a")
+        # Rotating file handler for log_level and above
+        from logging.handlers import RotatingFileHandler
+        file_handler = RotatingFileHandler(log_file, mode="a", maxBytes=max_bytes, backupCount=backup_count)
         file_handler.setLevel(logging.DEBUG)
         file_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         file_handler.setFormatter(file_formatter)

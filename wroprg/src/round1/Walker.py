@@ -203,9 +203,3 @@ class Walker:
             r, g, b, _ = self.drivebase.getBottomColorRGBI()
             color = self.mat_color(r, g, b)
         return color
-
-
-            
-
-
-

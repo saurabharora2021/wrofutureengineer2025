@@ -20,7 +20,7 @@ class RpiInterface(ShutdownInterface):
     """ Pin Definitions:"""
     # Buzzer on GPIO pin 20
     BUZZER_PIN = 20
-    # RGB LED on GPIO pins 26 (red), 19 (green), 16 (blue)
+    # RGB LED on GPIO pins 26 (red), 19 (green), 13 (blue)
     LED1_RED_PIN = 26
     LED1_GREEN_PIN = 19
     LED1_BLUE_PIN = 13

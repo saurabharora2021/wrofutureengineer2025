@@ -1,6 +1,5 @@
 from gpiozero import Buzzer,RGBLED, DistanceSensor,Button,Device
 import subprocess
-from signal import pause
 import board
 from PIL import Image, ImageDraw, ImageFont
 import adafruit_ssd1306
@@ -40,7 +39,6 @@ class RpiInterface(ShutdownInterface):
     SCREEN_WIDTH = 128
     SCREEN_HEIGHT = 64
     #array to store the messages to be displayed on the OLED screen
-    messages = []
 
     SCREEN_UPDATE_INTERVAL = 0.5  # seconds
 
@@ -63,21 +61,25 @@ class RpiInterface(ShutdownInterface):
         self.oled.fill(0)
         self.oled.show()
     
-        self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
+        #self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
+        # Load a default font
+        self.font = ImageFont.load_default()
         self._last_oled_update = 0
         self.image = Image.new("1", (self.oled.width, self.oled.height))
         self.draw = ImageDraw.Draw(self.image)
 
+        self.pendingmessage = False  # Initialize pendingmessage flag
+        self.messages = []  # Initialize messages list
+
         #Logger is not setup yet, so we use print for initialization messages
         self.display_message("Initializing Pi Interface...")
-
         try:
             # Use pigpio factory if available
             Device.pin_factory = PiGPIOFactory()
         except :
             # Fallback to default GPIO pin factory
             Device.pin_factory = None
-            self.logger.warning("Pigpio failed.")
+            self.logger.warning("Failed to initialize PiGPIOFactory")
 
         self.buzzer = Buzzer(self.BUZZER_PIN)
         self.led1 = RGBLED(red=self.LED1_RED_PIN, green=self.LED1_GREEN_PIN, blue=self.LED1_BLUE_PIN)
@@ -90,7 +92,7 @@ class RpiInterface(ShutdownInterface):
         time.sleep(self.LED_TEST_DELAY)
         self.led1.color = (0, 0, 0)  # off
 
-        # Set up the shutdown button
+        # Set up the button
         self.action_button = Button(self.BUTTON_PIN, hold_time=1)
 
         self.rightdistancesensor = DistanceSensor(echo=self.RIGHT_SENSOR_ECHO_PIN,trigger=self.RIGHT_SENSOR_TRIG_PIN,partial=True)
@@ -114,7 +116,7 @@ class RpiInterface(ShutdownInterface):
             else:
                 self.logger.error("Failed to run vcgencmd get_throttled")
         except Exception as e:
-            logging.error(f"Error checking throttling: {e}")
+            self.logger.error(f"Error checking throttling: {e}")
 
 
     def buzzer_beep(self,timer=0.5):
@@ -160,13 +162,34 @@ class RpiInterface(ShutdownInterface):
         return self.leftdistancesensor.distance * 100 # Convert to cm    
 
     def shutdown(self):
-        self.flush_pending_messages()
-        self.buzzer.off()
-        self.led1.color = (0, 0, 0)
-        self.led1.close()
-        self.buzzer.close()
-        self.rightdistancesensor.close()
-        self.leftdistancesensor.close()
+        try:
+            self.flush_pending_messages()
+        except Exception as e:
+            self.logger.error(f"Error flushing OLED messages during shutdown: {e}")
+        try:
+            self.buzzer.off()
+        except Exception as e:
+            self.logger.error(f"Error turning off buzzer during shutdown: {e}")
+        try:
+            self.led1.color = (0, 0, 0)
+        except Exception as e:
+            self.logger.error(f"Error turning off LED1 during shutdown: {e}")
+        try:
+            self.led1.close()
+        except Exception as e:
+            self.logger.error(f"Error closing LED1 during shutdown: {e}")
+        try:
+            self.buzzer.close()
+        except Exception as e:
+            self.logger.error(f"Error closing buzzer during shutdown: {e}")
+        try:
+            self.rightdistancesensor.close()
+        except Exception as e:
+            self.logger.error(f"Error closing right distance sensor during shutdown: {e}")
+        try:
+            self.leftdistancesensor.close()
+        except Exception as e:
+            self.logger.error(f"Error closing left distance sensor during shutdown: {e}")
     def display_message(self, message,forceflush=False):
         """
         Display a message on the OLED screen.
@@ -177,22 +200,20 @@ class RpiInterface(ShutdownInterface):
         self.messages.append(message)
         self.messages = self.messages[-5:]  # Keep only the last 5 messages
         
-        self.pendingmessage = True
-
-        # Only update the OLED if enough time has passed since the last update
-        if forceflush or (now - getattr(self, "_last_oled_update", 0) >= self.SCREEN_UPDATE_INTERVAL):
+        if forceflush or (now - self._last_oled_update >= self.SCREEN_UPDATE_INTERVAL):
+            # Only update the OLED if enough time has passed since the last update
             self.flush_pending_messages()
             self.pendingmessage = False
-
     
     def flush_pending_messages(self):          
-            now = time.time()
-            self.draw.rectangle((0, 0, self.SCREEN_WIDTH, self.SCREEN_HEIGHT), outline=0, fill=0)
-            for i, msg in enumerate(self.messages):
-                self.draw.text((0, i*13), msg, font=self.font, fill=255)
-            self.oled.image(self.image)
-            self.oled.show()
-            self._last_oled_update = now
+        now = time.time()
+        self.draw.rectangle((0, 0, self.SCREEN_WIDTH, self.SCREEN_HEIGHT), outline=0, fill=0)
+        for i, msg in enumerate(self.messages):
+            #13 pixels per line, so we can fit 5 lines on the screen
+            self.draw.text((0, i*13), msg, font=self.font, fill=255)
+        self.oled.image(self.image)
+        self.oled.show()
+        self._last_oled_update = now
 
     def force_flush_messages(self):
         """Force the OLED to update immediately."""

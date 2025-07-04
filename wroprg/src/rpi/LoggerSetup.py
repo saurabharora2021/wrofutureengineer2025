@@ -17,7 +17,7 @@ class LoggerSetup(ShutdownInterface):
 
         # File handler for log_level and above
         file_handler = logging.FileHandler(log_file, mode="a")
-        file_handler.setLevel(log_level)
+        file_handler.setLevel(logging.DEBUG)
         file_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)

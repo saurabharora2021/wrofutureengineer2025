@@ -2,12 +2,15 @@ import logging
 from base.ShutdownInterface import ShutdownInterface
 from rpi.RpiInterface import RpiInterface
 
+
+from typing import Any
+
 class LoggerSetup(ShutdownInterface):
 
     # Get the logger instance
-    logger = logging.getLogger(__name__)
+    logger: logging.Logger = logging.getLogger(__name__)
 
-    def setup(self, inf: RpiInterface, log_file: str, log_level: int = logging.INFO, max_bytes: int = 1048576, backup_count: int = 3):
+    def setup(self, inf: RpiInterface, log_file: str, log_level: int = logging.INFO, max_bytes: int = 1048576, backup_count: int = 3) -> None:
         # Remove all handlers associated with the root logger object (to avoid duplicate logs)
         for handler in logging.root.handlers[:]:
             logging.root.removeHandler(handler)
@@ -52,7 +55,7 @@ class LoggerSetup(ShutdownInterface):
 
 
         
-    def shutdown(self):
+    def shutdown(self) -> None:
         # Flush and close all handlers
         for handler in logging.getLogger().handlers:
             handler.flush()

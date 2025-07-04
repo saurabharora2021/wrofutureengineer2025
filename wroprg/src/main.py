@@ -2,10 +2,10 @@
 from time import sleep
 import logging
 import argparse
-from round1.Walker import Walker
+from round1.walker import Walker
+from base.shutdown_handling import ShutdownInterfaceManager
 from rpi.logger_setup import LoggerSetup
 from rpi.rpi_interface import RpiInterface
-from base.shutdown_handling import ShutdownInterfaceManager
 from rpi.validator import RobotValidator
 from hat.BuildHatDriveBase import BuildHatDriveBase
 

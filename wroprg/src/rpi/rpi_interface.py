@@ -8,7 +8,7 @@ import board
 
 import adafruit_ssd1306
 from PIL import Image, ImageDraw, ImageFont
-from base.ShutdownInterface import ShutdownInterface
+from base.shutdown_handling import ShutdownInterface
 
 class RpiInterface(ShutdownInterface):
     """ This interface defines all Interfaces on Raspberry Pi."""

@@ -2,7 +2,7 @@
 import logging
 from typing import Final,Any
 from buildhat import Motor,ColorSensor, DistanceSensor,Hat
-from base.ShutdownInterface import ShutdownInterface
+from base.shutdown_handling import ShutdownInterface
 
 class BuildHatDriveBase(ShutdownInterface):
     """ This class implements the Drive Base using Build Hat motors and sensors."""

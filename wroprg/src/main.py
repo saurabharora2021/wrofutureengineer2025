@@ -5,7 +5,7 @@ import argparse
 from round1.Walker import Walker
 from rpi.logger_setup import LoggerSetup
 from rpi.rpi_interface import RpiInterface
-from rpi.ShutdownInterfaceManager import ShutdownInterfaceManager
+from base.shutdown_handling import ShutdownInterfaceManager
 from rpi.validator import RobotValidator
 from hat.BuildHatDriveBase import BuildHatDriveBase
 

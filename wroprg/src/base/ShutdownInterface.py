@@ -1,3 +1,4 @@
+from typing import Any
 from abc import ABC, abstractmethod
 
 # Define Interface for shutdown control
@@ -5,6 +6,6 @@ from abc import ABC, abstractmethod
 
 class ShutdownInterface(ABC):
     @abstractmethod
-    def shutdown(self):
+    def shutdown(self) -> None:
         """Method to perform shutdown operations."""
         pass

@@ -3,7 +3,7 @@ import subprocess
 import logging
 
 from rpi.rpi_interface import RpiInterface
-from hat.BuildHatDriveBase import BuildHatDriveBase
+from hat.legodriver import BuildHatDriveBase
 class RobotValidator:
     """
     This class is used to validate the robot's functionality.

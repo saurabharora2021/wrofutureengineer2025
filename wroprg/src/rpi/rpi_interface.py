@@ -2,12 +2,13 @@
 import logging
 import time
 from typing import List
-from gpiozero import Buzzer,RGBLED, DistanceSensor,Button,Device
-from gpiozero.pins.pigpio import PiGPIOFactory
-import board
 
+import board
 import adafruit_ssd1306
+from gpiozero import Buzzer, RGBLED, DistanceSensor, Button, Device
+from gpiozero.pins.pigpio import PiGPIOFactory
 from PIL import Image, ImageDraw, ImageFont
+
 from base.shutdown_handling import ShutdownInterface
 
 class RpiInterface(ShutdownInterface):
@@ -37,6 +38,7 @@ class RpiInterface(ShutdownInterface):
     # These are the dimensions of the SSD1306 OLED display
     SCREEN_WIDTH = 128
     SCREEN_HEIGHT = 64
+    LINE_HEIGHT = 13  # pixels per line for OLED display
     #array to store the messages to be displayed on the OLED screen
 
     SCREEN_UPDATE_INTERVAL = 0.5  # seconds
@@ -96,9 +98,11 @@ class RpiInterface(ShutdownInterface):
         self.action_button = Button(self.BUTTON_PIN, hold_time=1)
 
         self.rightdistancesensor = DistanceSensor(echo=self.RIGHT_SENSOR_ECHO_PIN,
-                                                  trigger=self.RIGHT_SENSOR_TRIG_PIN,partial=True)
+                                                  trigger=self.RIGHT_SENSOR_TRIG_PIN,
+                                                  partial=True)
         self.leftdistancesensor = DistanceSensor(echo=self.LEFT_SENSOR_ECHO_PIN,
-                                                 trigger=self.LEFT_SENSOR_TRIG_PIN,partial=True)
+                                                 trigger=self.LEFT_SENSOR_TRIG_PIN,
+                                                 partial=True)
 
         self.logger.info("RpiInterface initialized successfully.")
 
@@ -109,15 +113,15 @@ class RpiInterface(ShutdownInterface):
 
     def led1_green(self) -> None:
         """Turn on the LED1 green."""
-        self.led1.color = (0, 1, 0) # green
+        self.led1.color = (0, 1, 0)  # green
 
     def led1_red(self) -> None:
         """Turn on the LED1 red."""
-        self.led1.color = (1, 0, 0) # red
+        self.led1.color = (1, 0, 0)  # red
 
     def led1_blue(self) -> None:
         """Turn on the LED1 blue."""
-        self.led1.color = (0, 0, 1) # blue
+        self.led1.color = (0, 0, 1)  # blue
 
     def led1_white(self) -> None:
         """Turn on the LED1 white."""
@@ -125,7 +129,7 @@ class RpiInterface(ShutdownInterface):
 
     def led1_off(self) -> None:
         """Turn off the LED1."""
-        self.led1.color = (0, 0, 0) # off
+        self.led1.color = (0, 0, 0)  # off
 
     def wait_for_action(self) -> None:
         """Wait for the action button to be pressed."""
@@ -136,11 +140,11 @@ class RpiInterface(ShutdownInterface):
 
     def get_right_distance(self) -> float:
         """Get the distance from the distance sensor."""
-        return self.rightdistancesensor.distance * 100 # Convert to cm
+        return self.rightdistancesensor.distance * 100  # Convert to cm
 
     def get_left_distance(self) -> float:
         """Get the distance from the distance sensor."""
-        return self.leftdistancesensor.distance * 100 # Convert to cm
+        return self.leftdistancesensor.distance * 100  # Convert to cm
 
     def shutdown(self) -> None:
         try:
@@ -191,8 +195,8 @@ class RpiInterface(ShutdownInterface):
         now = time.time()
         self.draw.rectangle((0, 0, self.SCREEN_WIDTH, self.SCREEN_HEIGHT), outline=0, fill=0)
         for i, msg in enumerate(self.messages):
-            #13 pixels per line, so we can fit 5 lines on the screen
-            self.draw.text((0, i*13), msg, font=self.font, fill=255)
+            # Use constant for line height spacing
+            self.draw.text((0, i * self.LINE_HEIGHT), msg, font=self.font, fill=255)
         self.oled.image(self.image)
         self.oled.show()
         self._last_oled_update = now

@@ -1,19 +1,20 @@
-from round1.Walker import Walker
-from rpi.logger_setup import LoggerSetup 
-from rpi.rpi_interface import RpiInterface
-from rpi.ShutdownInterfaceManager import ShutdownInterfaceManager
-from time import sleep
-from hat.BuildHatDriveBase import BuildHatDriveBase
-import rpi.robotvalidator as robotvalidator
+""" This script is used to reset the front wheel of a robot using the BuildHatDriveBase class."""
 import logging
 import argparse
+from base.shutdown_handling import ShutdownInterfaceManager
+from rpi.logger_setup import LoggerSetup
+from rpi.rpi_interface import RpiInterface
+from rpi.validator import RobotValidator
+from hat.BuildHatDriveBase import BuildHatDriveBase
 
 
 def main():
+    """ Main function to run the Wro - raspberry reset Front Wheel Application."""
 
     parser = argparse.ArgumentParser(description="Wro lego - raspberry Application")
     parser.add_argument('--logfile', type=str, default='application.log', help='Path to log file')
-    parser.add_argument('--debug', action='store_true', help='Enable debug mode')  # <-- Added debug argument
+    # Added debug argument
+    parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     args = parser.parse_args()
 
     print(f"Log file: {args.logfile}")
@@ -21,97 +22,70 @@ def main():
 
 
     # Initialize all the components
-    shutdownManager = ShutdownInterfaceManager()
+    shutdown_manager = ShutdownInterfaceManager()
 
     loggersetup = LoggerSetup()
-    shutdownManager.add_interface(loggersetup)
+    shutdown_manager.add_interface(loggersetup)
     logger = logging.getLogger(__name__)
 
     print("Starting Spike Remote Base application")
     print("Initializing Output Interface")
 
-    piInterface: RpiInterface = RpiInterface()
-    shutdownManager.add_interface(piInterface)
+    pi_inf: RpiInterface = RpiInterface()
+    shutdown_manager.add_interface(pi_inf)
 
     if args.debug:
-        loggersetup.setup(inf=piInterface, log_file=args.logfile, log_level=logging.DEBUG)  # Set log level to DEBUG if debug mode is enabled
+        # Set log level to DEBUG if debug mode is enabled
+        loggersetup.setup(inf=pi_inf, log_file=args.logfile, log_level=logging.DEBUG)
     else:
-        loggersetup.setup(inf=piInterface,log_file=args.logfile, log_level=logging.INFO)
+        loggersetup.setup(inf=pi_inf,log_file=args.logfile, log_level=logging.INFO)
 
 
     try:
-
-        
-        # Lets check if Raspberry Pi is not throttling
-        # We need to check if the Raspberry Pi is throttling, which can happen due to overheating or power issues.
-        # This needs to be done after the logger is set up, so we can log the results.
-        logger.info("Checking Raspberry Pi throttling status")        
-        piInterface.check_throttling()
-
-        # Create an instance of BuildHatDriveBase
-        drive_base: BuildHatDriveBase = BuildHatDriveBase(front_motor_port='D', back_motor_port='A', bottom_color_sensor_port='C', front_distance_sensor_port='B')
-        shutdownManager.add_interface(drive_base)
+       # Create an instance of BuildHatDriveBase
+        drive_base: BuildHatDriveBase = BuildHatDriveBase(front_motor_port='D', back_motor_port='A',
+                                                        bottom_color_sensor_port='C',
+                                                        front_distance_sensor_port='B')
+        shutdown_manager.add_interface(drive_base)
 
         logger.info("Drive Base Initialized")
 
         # Validate the robot's functionality
-        robot_validator = robotvalidator.robotValidator(drive_base, piInterface)
+        robot_validator: RobotValidator = RobotValidator(drive_base, pi_inf)
         if not robot_validator.validate():
             logger.error("Robot validation failed. Exiting.")
-            piInterface.led1_red()
-            piInterface.buzzer_beep()
-            raise Exception("Robot validation failed")
+            pi_inf.led1_red()
+            pi_inf.buzzer_beep()
+            raise RuntimeError("Robot validation failed")
         else:
-            piInterface.led1_green()
-            piInterface.buzzer_beep()
+            pi_inf.led1_green()
+            pi_inf.buzzer_beep()
 
         logger.warning("Test Successful")
 
-        piInterface.force_flush_messages()
-        #piInterface.wait_for_action()
-
-       
-
-        # logger.warning("Button Pressed")
-        # piInterface.buzzer_beep()
-
-
-        # # Run the program
-        # counter = 0
-        # while counter < 10:
-        #     logger.warning(f"Right : {piInterface.getRightDistance()} cm")            
-        #     logger.warning(f"Left : {piInterface.getLeftDistance()} cm")
-        #     piInterface.force_flush_messages()
-        #     sleep(1)
-        #     counter += 1
-        
-
-        # drive_base.runfront(100)
-        #sleep(4)
-        # drive_base.stop()
-
+        pi_inf.force_flush_messages()
 
 
         color = drive_base.get_bottom_color()
-        logger.warning(f"Bottom C={color}")
+        logger.warning("Bottom C=%s",color)
         distance = drive_base.get_front_distance()
-        logger.warning(f"Front : {distance} cm")
-        piInterface.force_flush_messages()
+        logger.warning("Front : %s cm",distance)
+        pi_inf.force_flush_messages()
 
-        piInterface.led1_off()
+        pi_inf.led1_off()
 
     except Exception as e:
         logger.error("Error Running Program")
-        logger.error(f"Exception: {e}")        
-        piInterface.led1_red()
-        piInterface.buzzer_beep()        
-        raise   
+        logger.error("Exception: %s",e)
+        pi_inf.led1_red()
+        pi_inf.buzzer_beep()
+        raise
     finally:
             # Finally, shutdown all interfaces
         logger.warning("Shutting down all interfaces")
-        #piInterface.wait_for_action()
+        pi_inf.wait_for_action()
 
-        shutdownManager.shutdown_all()
+        shutdown_manager.shutdown_all()
 
 if __name__ == "__main__":
     main()

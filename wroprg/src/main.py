@@ -66,7 +66,7 @@ def main():
         logger.warning("Test Successful")
 
         pi_inf.force_flush_messages()
-        pi_inf.wait_for_action()
+        #pi_inf.wait_for_action()
 
         challenge1walker = Walker(drive_base, pi_inf)
 

@@ -49,7 +49,10 @@ def main():
 
         logger.info("Drive Base Initialized")
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 01c3999 (cleanup and validation code.)
         pi_inf.force_flush_messages()
 
         drive_base.runfront(100)

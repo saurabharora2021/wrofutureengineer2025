@@ -5,8 +5,7 @@ from base.shutdown_handling import ShutdownInterfaceManager
 from rpi.logger_setup import LoggerSetup
 from rpi.rpi_interface import RpiInterface
 from rpi.validator import RobotValidator
-from hat.BuildHatDriveBase import BuildHatDriveBase
-
+from hat.legodriver import BuildHatDriveBase
 
 def main():
     """ Main function to run the Wro - raspberry reset Front Wheel Application."""

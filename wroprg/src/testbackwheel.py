@@ -1,10 +1,10 @@
 """ This script is used to reset the front wheel of a robot using the BuildHatDriveBase class."""
 import logging
 import argparse
+from time import sleep
 from base.shutdown_handling import ShutdownInterfaceManager
 from rpi.logger_setup import LoggerSetup
 from rpi.rpi_interface import RpiInterface
-from rpi.validator import RobotValidator
 from hat.legodriver import BuildHatDriveBase
 
 def main():
@@ -49,21 +49,13 @@ def main():
 
         logger.info("Drive Base Initialized")
 
-        # Validate the robot's functionality
-        robot_validator: RobotValidator = RobotValidator(drive_base, pi_inf)
-        if not robot_validator.validate():
-            logger.error("Robot validation failed. Exiting.")
-            pi_inf.led1_red()
-            pi_inf.buzzer_beep()
-            raise RuntimeError("Robot validation failed")
-        else:
-            pi_inf.led1_green()
-            pi_inf.buzzer_beep()
-
-        logger.warning("Test Successful")
-
         pi_inf.force_flush_messages()
 
+        drive_base.runfront(100)
+
+        sleep(10)  # Allow the motor to run for a while
+
+        drive_base.stop()
 
         color = drive_base.get_bottom_color()
         logger.warning("Bottom C=%s",color)

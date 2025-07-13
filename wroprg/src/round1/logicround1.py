@@ -3,8 +3,8 @@ from time import sleep
 import logging
 import math
 from typing import Tuple
-from hat.BuildHatDriveBase import BuildHatDriveBase
-from rpi.rpi_interface import RpiInterface
+from rpi.rpi_interface  import RpiInterface
+from hat.legodriver import BuildHatDriveBase
 
 class Walker:
     """This class implements the Challenge 1 Walker for the WRO2025 Robot."""

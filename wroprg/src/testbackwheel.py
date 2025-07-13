@@ -7,6 +7,7 @@ from rpi.logger_setup import LoggerSetup
 from rpi.rpi_interface import RpiInterface
 from hat.legodriver import BuildHatDriveBase
 
+
 def main():
     """ Main function to run the Wro - raspberry reset Front Wheel Application."""
 
@@ -49,11 +50,13 @@ def main():
 
         logger.info("Drive Base Initialized")
 
+
         pi_inf.force_flush_messages()
 
         drive_base.runfront(100)
 
         sleep(10)  # Allow the motor to run for a while
+
 
         drive_base.stop()
 

@@ -1,13 +1,12 @@
 """Main application for the Wro - Raspberry Pi interface."""
-from time import sleep
 import logging
 import argparse
-from round1.walker import Walker
+from round1.logicround1 import Walker
 from base.shutdown_handling import ShutdownInterfaceManager
 from rpi.logger_setup import LoggerSetup
 from rpi.rpi_interface import RpiInterface
 from rpi.validator import RobotValidator
-from hat.BuildHatDriveBase import BuildHatDriveBase
+from hat.legodriver import BuildHatDriveBase
 
 
 def main():

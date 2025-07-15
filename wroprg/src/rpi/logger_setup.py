@@ -25,7 +25,7 @@ class LoggerSetup(ShutdownInterface):
 
         file_handler = RotatingFileHandler(log_file, mode="a", maxBytes=max_bytes,
                                            backupCount=backup_count)
-        file_handler.setLevel(logging.DEBUG)
+        file_handler.setLevel(logging.INFO)
         file_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)

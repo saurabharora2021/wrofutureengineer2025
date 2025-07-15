@@ -53,7 +53,7 @@ class Walker:
         return (distance, walk_function, isleft)
 
 
-    def wall_follow_func(self,distance_func,isleft:bool,target_distance:float,kp:float=1.0):
+    def wall_follow_func(self,distance_func,isleft:bool,target_distance:float,kp:float=1.0,speed=DEFAULT_SPEED/2):
         """Follow the wall based on the current direction."""
         dist = distance_func()
         error = target_distance - dist
@@ -66,7 +66,7 @@ class Walker:
         if abs(angle) > 4:
             self.drivebase.turnsteering(angle)
 
-        self.drivebase.runfront(self.DEFAULT_SPEED/2)
+        self.drivebase.runfront(speed)
 
         self.logger.warning("Distance: %.2f, angle: %.2f", dist, angle)
         sleep(0.1)
@@ -103,8 +103,8 @@ class Walker:
         :rtype: str
         """
         table = [("black", (0, 0, 0)),
-                 ("orange", (255, 102, 0)),
-                 ("blue", (0, 51, 255)),
+                 ("orange", (145, 85, 82)), #changes r to 145 , g to 85, b to 82 based on test color.
+                 ("blue", (0, 51, 77)),  #changed blue to 77 based on test color.
                  ("white", (255, 255, 255)),
                  ("line", (179, 179, 179))
                  ]
@@ -142,7 +142,10 @@ class Walker:
                 self.logger.info("Front Distance:%s",self.drivebase.get_front_distance())
                 sleep(0.1)
 
-            self.drivebase.stop()
+            # self.drivebase.stop()
+            self.output_inf.buzzer_beep()
+            # sleep(2)
+            
             self.logger.info("Time to check color")
             color = self.wait_for_color(["blue", "orange"])
 
@@ -206,12 +209,27 @@ class Walker:
 
     def wait_for_color(self, colors):
         """Wait for the robot to detect one of the specified colors."""
+        distance, distance_func, isleft = self.wallunknowndirectioninit()
+        self.logger.info("Base distance: %s", distance)
+
         r, g, b, _ = self.drivebase.get_bottom_color_rgbi()
         color = self.mat_color(r, g, b)
-        self.logger.info("Waiting for color: {colors}, current color: {color}")
+        self.logger.info("Waiting for color: %s, current color: %s", colors, color)
         while color not in colors:
-            self.drivebase.runfront(self.DEFAULT_SPEED)
+            left_distance = self.output_inf.get_left_distance()
+            right_distance = self.output_inf.get_right_distance()
+            self.logger.warning("Left Distance: %.2f, Right Distance: %.2f",
+                                     left_distance, right_distance)
+            self.wall_follow_func(distance_func,isleft,distance,speed=self.DEFAULT_SPEED/5)
+            self.logger.info("Front Distance:%s",self.drivebase.get_front_distance())
             sleep(0.1)
             r, g, b, _ = self.drivebase.get_bottom_color_rgbi()
             color = self.mat_color(r, g, b)
+            self.logger.info("Current rgb: R=%d, G=%d, B=%d", r, g, b)
+            self.logger.info("Waiting for color: %s, current color: %s", colors, color)
+        self.logger.info("Detected color: %s", color)
+        self.drivebase.stop()
+        self.output_inf.buzzer_beep()
+        sleep(1)
+        self.output_inf.force_flush_messages()
         return color

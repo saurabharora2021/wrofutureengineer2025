@@ -2,11 +2,10 @@
 import logging
 import argparse
 from round1.logicround1 import Walker
-from base.shutdown_handling import ShutdownInterfaceManager
-from rpi.logger_setup import LoggerSetup
 from rpi.rpi_interface import RpiInterface
 from rpi.validator import RobotValidator
 from hat.legodriver import BuildHatDriveBase
+from utils.helpers import HelperFunctions
 
 
 def main():
@@ -21,38 +20,20 @@ def main():
     print(f"Log file: {args.logfile}")
     print(f"Debug mode: {args.debug}")  # Optional: print debug status
 
-
-    # Initialize all the components
-    shutdown_manager = ShutdownInterfaceManager()
-
-    loggersetup = LoggerSetup()
-    shutdown_manager.add_interface(loggersetup)
+    helper: HelperFunctions = HelperFunctions(args.logfile, args.debug)
     logger = logging.getLogger(__name__)
 
-    print("Starting Spike Remote Base application")
-    print("Initializing Output Interface")
-
-    pi_inf: RpiInterface = RpiInterface()
-    shutdown_manager.add_interface(pi_inf)
-
-    if args.debug:
-        # Set log level to DEBUG if debug mode is enabled
-        loggersetup.setup(inf=pi_inf, log_file=args.logfile, log_level=logging.DEBUG)
-    else:
-        loggersetup.setup(inf=pi_inf,log_file=args.logfile, log_level=logging.INFO)
-
+    drive_base: BuildHatDriveBase
+    pi_inf: RpiInterface
 
     try:
 
-        # Create an instance of BuildHatDriveBase
-        drive_base: BuildHatDriveBase = BuildHatDriveBase(front_motor_port='D', back_motor_port='A',
-                                                        bottom_color_sensor_port='C',
-                                                        front_distance_sensor_port='B')
-        shutdown_manager.add_interface(drive_base)
+        pi_inf,drive_base = helper.hardware_init()
 
         logger.info("Drive Base Initialized")
+        pi_inf.force_flush_messages()
 
-        # Validate the robot's functionality
+         # Validate the robot's functionality
         robot_validator: RobotValidator = RobotValidator(drive_base, pi_inf)
         if not robot_validator.validate():
             logger.error("Robot validation failed. Exiting.")
@@ -64,34 +45,20 @@ def main():
             pi_inf.buzzer_beep()
 
         logger.warning("Test Successful")
-
         pi_inf.force_flush_messages()
-        #pi_inf.wait_for_action()
 
         challenge1walker = Walker(drive_base, pi_inf)
 
         challenge1walker.start_walk(nooflaps=1)
 
-
-        color = drive_base.get_bottom_color()
-        logger.warning("Bottom C=%s",color)
-        distance = drive_base.get_front_distance()
-        logger.warning("Front : %s cm",distance)
-        pi_inf.force_flush_messages()
-
-        pi_inf.led1_off()
-
-    except Exception as e:
+    except (ImportError, AttributeError, RuntimeError) as e:
         logger.error("Error Running Program")
         logger.error("Exception: %s",e)
         pi_inf.led1_red()
         pi_inf.buzzer_beep()
         raise
     finally:
-            # Finally, shutdown all interfaces
-        logger.warning("Shutting down all interfaces")
-
-        shutdown_manager.shutdown_all()
+        helper.shutdownall()
 
 if __name__ == "__main__":
     main()

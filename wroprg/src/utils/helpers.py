@@ -23,6 +23,10 @@ class HelperFunctions:
         loggersetup = LoggerSetup()
         self._shutdown_manager.add_interface(loggersetup)
 
+        print("Initializing Output Interface")
+        self._pi_inf = RpiInterface()
+        self._shutdown_manager.add_interface(self._pi_inf)
+
         print("Log file: %s",log_file)
         print("Debug mode:%s", debugflag)  # Optional: print debug status
 
@@ -35,12 +39,12 @@ class HelperFunctions:
         self._logger = logging.getLogger(__name__)
         print("Starting Logger successfully")
 
+    def get_pi_interface(self) -> RpiInterface:
+        """ Function to get the Raspberry Pi Interface."""
+        return self._pi_inf
 
-    def hardware_init(self) -> Tuple[RpiInterface, BuildHatDriveBase]:
+    def buildhat_init(self) -> BuildHatDriveBase:
         """ Function to initialize the system components."""
-        self._logger.info("Initializing Output Interface")
-        self._pi_inf = RpiInterface()
-        self._shutdown_manager.add_interface(self._pi_inf)
 
         self._logger.info("BuildHatDriveBase Initialization")
 
@@ -52,7 +56,7 @@ class HelperFunctions:
 
         self._logger.info("Drive Base Initialized")
 
-        return (self._pi_inf,self._drive_base)
+        return self._drive_base
 
 
     def shutdownall(self):

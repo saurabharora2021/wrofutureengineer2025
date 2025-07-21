@@ -27,13 +27,20 @@ class RobotValidator:
         if not self.drivebase or not self.hardware_inf:
             self.logger.error("Drivebase or Output Interface is not initialized.")
             return False
-        self.logger.info("Robot validation completed successfully.")
+        if self.drivebase.get_front_distance() <= 0:
+            self.logger.error("Front distance sensor is not initialized or not working.")
+            return False
+        if self.drivebase.get_bottom_color() is None:
+            self.logger.error("Bottom color sensor is not initialized or not working.")
+            return False
 
         #Check distance sensors, left and right should be greater than 0
         left_distance = self.hardware_inf.get_left_distance()
         right_distance = self.hardware_inf.get_right_distance()
         self.logger.info("Left Distance: %s, Right Distance: %s", left_distance, right_distance)
-        if left_distance <= 0 or right_distance <= 0:
+        if (left_distance <= 0 or right_distance <= 0 or 
+            left_distance >= self.hardware_inf.get_left_distance_max() or
+              right_distance >= self.hardware_inf.get_right_distance_max()):
             self.logger.error("Invalid distances: Left=%s, Right=%s.",
                               left_distance, right_distance)
             return False

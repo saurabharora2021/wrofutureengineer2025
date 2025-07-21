@@ -25,7 +25,7 @@ class Walker:
     D_TARGET = 15  # Desired distance from the wall
     KP = 2.0  # Proportional gain for the controller
     MAX_ANGLE = 10
-    DELTA_DISTANCE_CM = 3
+    DELTA_DISTANCE_CM = 1.5
 
     drivebase:BuildHatDriveBase
     output_inf: RpiInterface
@@ -63,7 +63,7 @@ class Walker:
         return (left_distance, right_distance)
 
     def equidistance_walk(self, def_distance_left: float,
-                           def_distance_right: float) -> Tuple[float, float]:
+                           def_distance_right: float,kp:float = 1) -> Tuple[float, float]:
         """Walk in a straight line, maintaining equal distance from both walls."""
         self.logger.info("Starting equidistance walk.")
 
@@ -83,10 +83,11 @@ class Walker:
             right_distance = def_distance_right
 
         if (abs(left_distance - def_distance_left)> self.DELTA_DISTANCE_CM
-            and abs(right_distance < def_distance_right)> self.DELTA_DISTANCE_CM):
+            or abs(right_distance < def_distance_right)> self.DELTA_DISTANCE_CM):
             # Adjust steering based on the difference in distances
             error = (left_distance - def_distance_left) - (right_distance - def_distance_right)
-            angle = self.clamp(self.KP * error, -1*self.MAX_ANGLE, self.MAX_ANGLE)
+            angle = self.clamp(kp * error, -1*self.MAX_ANGLE, self.MAX_ANGLE)
+            self.logger.warning("steering angle: %.2f", angle)
             self.drivebase.turnsteering(angle)
 
         return (left_distance, right_distance)
@@ -185,8 +186,9 @@ class Walker:
                 self.logger.info("Front Distance:%s",self.drivebase.get_front_distance())
                 sleep(0.1)
 
-            # self.drivebase.stop()
+            self.drivebase.stop()
             self.output_inf.buzzer_beep()
+            return  
             # sleep(2)
 
             self.logger.info("Time to check color")

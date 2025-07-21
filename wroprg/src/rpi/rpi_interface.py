@@ -3,7 +3,8 @@ import logging
 import time
 from typing import List
 
-import board
+from board import SCL, SDA
+import busio
 import adafruit_ssd1306
 from gpiozero import Buzzer, RGBLED, DistanceSensor, Button, Device
 from gpiozero.pins.pigpio import PiGPIOFactory
@@ -30,11 +31,11 @@ class RpiInterface(ShutdownInterface):
 
     RIGHT_SENSOR_TRIG_PIN = 22
     RIGHT_SENSOR_ECHO_PIN = 27
-    RIGHT_DISTANCE_MAX_DISTANCE = 2.0  # Maximum distance for right sensor in meters
+    RIGHT_DISTANCE_MAX_DISTANCE = 2  # Maximum distance for right sensor in meters
 
     LEFT_SENSOR_TRIG_PIN = 23
     LEFT_SENSOR_ECHO_PIN = 24
-    LEFT_DISTANCE_MAX_DISTANCE = 2.0  # Maximum distance for left sensor in meters
+    LEFT_DISTANCE_MAX_DISTANCE = 2  # Maximum distance for left sensor in meters
 
 
     # OLED display settings
@@ -56,7 +57,7 @@ class RpiInterface(ShutdownInterface):
 
         self.logger.info("Initializing RpiInterface...")
         #Setup Screen First.
-        i2c = board.I2C()  # uses board.SCL and board.SDA
+        i2c = busio.I2C(SCL,SDA)  # uses board.SCL and board.SDA
 
         # Create the SSD1306 OLED class.
         self.oled = adafruit_ssd1306.SSD1306_I2C(self.SCREEN_WIDTH, self.SCREEN_HEIGHT, i2c)
@@ -67,7 +68,7 @@ class RpiInterface(ShutdownInterface):
 
         #self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
         # Load a default font
-        self.font: ImageFont.ImageFont = ImageFont.load_default()
+        self.font: ImageFont.FreeTypeFont | ImageFont.ImageFont = ImageFont.load_default()
         self._last_oled_update: float = 0
         self.image: Image.Image = Image.new("1", (self.oled.width, self.oled.height))
         self.draw: ImageDraw.ImageDraw = ImageDraw.Draw(self.image)
@@ -112,7 +113,7 @@ class RpiInterface(ShutdownInterface):
         self.logger.info("RpiInterface initialized successfully.")
 
 
-    def buzzer_beep(self, timer: float = 0.5) -> None:
+    def buzzer_beep(self, timer: int = 1) -> None:
         """Turn on the buzzer."""
         self.buzzer.blink(on_time=timer, off_time=timer, n=1)  # Blink 1 time.
 
@@ -139,7 +140,7 @@ class RpiInterface(ShutdownInterface):
     def wait_for_action(self) -> None:
         """Wait for the action button to be pressed."""
         self.logger.warning("Waiting for action button press...")
-        self.action_button.wait_for_press()
+        self.action_button.wait_for_active()
         self.logger.info("Action button pressed!")
 
 

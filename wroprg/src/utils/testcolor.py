@@ -19,12 +19,12 @@ def main():
     logger = logging.getLogger(__name__)
 
     drive_base: BuildHatDriveBase
-    pi_inf: RpiInterface
+    pi_inf: RpiInterface = helper.get_pi_interface()
     challenge1walker: Walker
 
     try:
 
-        pi_inf,drive_base = helper.hardware_init()
+        drive_base = helper.buildhat_init()
         logger.info("Drive Base Initialized")
 
         challenge1walker = Walker(drive_base, pi_inf)

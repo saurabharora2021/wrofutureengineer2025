@@ -30,9 +30,12 @@ class RpiInterface(ShutdownInterface):
 
     RIGHT_SENSOR_TRIG_PIN = 22
     RIGHT_SENSOR_ECHO_PIN = 27
+    RIGHT_DISTANCE_MAX_DISTANCE = 2.0  # Maximum distance for right sensor in meters
 
     LEFT_SENSOR_TRIG_PIN = 23
     LEFT_SENSOR_ECHO_PIN = 24
+    LEFT_DISTANCE_MAX_DISTANCE = 2.0  # Maximum distance for left sensor in meters
+
 
     # OLED display settings
     # These are the dimensions of the SSD1306 OLED display
@@ -99,10 +102,12 @@ class RpiInterface(ShutdownInterface):
 
         self.rightdistancesensor = DistanceSensor(echo=self.RIGHT_SENSOR_ECHO_PIN,
                                                   trigger=self.RIGHT_SENSOR_TRIG_PIN,
-                                                  partial=True)
+                                                  partial=True,
+                                                  max_distance=self.RIGHT_DISTANCE_MAX_DISTANCE)
         self.leftdistancesensor = DistanceSensor(echo=self.LEFT_SENSOR_ECHO_PIN,
                                                  trigger=self.LEFT_SENSOR_TRIG_PIN,
-                                                 partial=True)
+                                                 partial=True,
+                                                 max_distance=self.LEFT_DISTANCE_MAX_DISTANCE)
 
         self.logger.info("RpiInterface initialized successfully.")
 
@@ -142,9 +147,17 @@ class RpiInterface(ShutdownInterface):
         """Get the distance from the distance sensor."""
         return self.rightdistancesensor.distance * 100  # Convert to cm
 
+    def get_right_distance_max(self) -> float:
+        """Get the maximum distance for the right distance sensor."""
+        return self.RIGHT_DISTANCE_MAX_DISTANCE * 100  # Convert to cm
+
     def get_left_distance(self) -> float:
         """Get the distance from the distance sensor."""
         return self.leftdistancesensor.distance * 100  # Convert to cm
+
+    def get_left_distance_max(self) -> float:
+        """Get the maximum distance for the left distance sensor."""
+        return self.LEFT_DISTANCE_MAX_DISTANCE * 100  # Convert to cm
 
     def shutdown(self) -> None:
         try:

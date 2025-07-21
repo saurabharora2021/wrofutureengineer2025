@@ -15,7 +15,7 @@ class Walker:
     CLOCKWISE_DIRECTION=1
     DEFAULT_SPEED=100
     ANTI_CLOCKWISE_DIRECTION=2
-    MINFRONTDISTANCE=100
+    FRONTDISTANCE_FOR_COLOR_CHECK=100
     WALLFRONTDISTANCE=30
     WALLSIDEDISTANCE=15
     UNKNOWN_DIRECTION=-1
@@ -25,6 +25,7 @@ class Walker:
     D_TARGET = 15  # Desired distance from the wall
     KP = 2.0  # Proportional gain for the controller
     MAX_ANGLE = 10
+    DELTA_DISTANCE_CM = 3
 
     drivebase:BuildHatDriveBase
     output_inf: RpiInterface
@@ -52,8 +53,47 @@ class Walker:
             isleft = False
         return (distance, walk_function, isleft)
 
+    def equidistance_walk_init(self) -> Tuple[float, float]:
+        """Initialize the equidistance walk with default distances."""
+        self.logger.info("Initializing equidistance walk.")
+        left_distance = self.output_inf.get_left_distance()
+        right_distance = self.output_inf.get_right_distance()
+        self.logger.warning("Left Distance: %.2f, Right Distance: %.2f",
+                            left_distance, right_distance)
+        return (left_distance, right_distance)
 
-    def wall_follow_func(self,distance_func,isleft:bool,target_distance:float,kp:float=1.0,speed=DEFAULT_SPEED/2):
+    def equidistance_walk(self, def_distance_left: float,
+                           def_distance_right: float) -> Tuple[float, float]:
+        """Walk in a straight line, maintaining equal distance from both walls."""
+        self.logger.info("Starting equidistance walk.")
+
+        left_distance = self.output_inf.get_left_distance()
+        right_distance = self.output_inf.get_right_distance()
+        self.logger.warning("Left Distance: %.2f, Right Distance: %.2f",
+                                 left_distance, right_distance)
+
+        #If you are at a point, where the left rail is not present or the right rail is not present,
+        # then we will not adjust the steering.
+        if left_distance >= self.output_inf.get_left_distance_max():
+            self.logger.warning("Left distance sensor is at maximum distance.")
+            left_distance = def_distance_left
+
+        if right_distance >= self.output_inf.get_right_distance_max():
+            self.logger.warning("Right distance sensor is at maximum distance.")
+            right_distance = def_distance_right
+
+        if (abs(left_distance - def_distance_left)> self.DELTA_DISTANCE_CM
+            and abs(right_distance < def_distance_right)> self.DELTA_DISTANCE_CM):
+            # Adjust steering based on the difference in distances
+            error = (left_distance - def_distance_left) - (right_distance - def_distance_right)
+            angle = self.clamp(self.KP * error, -1*self.MAX_ANGLE, self.MAX_ANGLE)
+            self.drivebase.turnsteering(angle)
+
+        return (left_distance, right_distance)
+
+
+    def wall_follow_func(self,distance_func,isleft:bool,target_distance:float,
+                         kp:float=1.0,speed=DEFAULT_SPEED/2):
         """Follow the wall based on the current direction."""
         dist = distance_func()
         error = target_distance - dist
@@ -103,7 +143,7 @@ class Walker:
         :rtype: str
         """
         table = [("black", (0, 0, 0)),
-                 ("orange", (145, 85, 82)), #changes r to 145 , g to 85, b to 82 based on test color.
+                 ("orange", (145, 85, 82)), #r to 145 , g to 85, b to 82 based on test color.
                  ("blue", (0, 51, 77)),  #changed blue to 77 based on test color.
                  ("white", (255, 255, 255)),
                  ("line", (179, 179, 179))
@@ -126,30 +166,56 @@ class Walker:
         if self.direction == self.UNKNOWN_DIRECTION:
             self.logger.info("Front Distance:%s",self.drivebase.get_front_distance())
 
+            default_left_distance, default_right_distance = self.equidistance_walk_init()
+            self.logger.info("Default Left Distance: %.2f, Default Right Distance: %.2f",
+                             default_left_distance, default_right_distance)
 
-            distance, distance_func, isleft = self.wallunknowndirectioninit()
-            #Revisit if we need to run this loop or start checking color immediately.
+            #Lets start the walk until we reach the front distance,but at slow speed.
+            self.drivebase.runfront(self.DEFAULT_SPEED/2)
+            #TODO: Revisit if we need to run this loop or start checking color immediately.
             while (
-                self.drivebase.get_front_distance() > self.MINFRONTDISTANCE
+                self.drivebase.get_front_distance() > self.FRONTDISTANCE_FOR_COLOR_CHECK
                 or self.drivebase.get_front_distance() < 0
             ):
-                #can we think of equi wall follow or use gyro to walk straight?.
-                left_distance = self.output_inf.get_left_distance()
-                right_distance = self.output_inf.get_right_distance()
+                current_left, current_right =self.equidistance_walk(default_left_distance,
+                                                                     default_right_distance)
+
                 self.logger.warning("Left Distance: %.2f, Right Distance: %.2f",
-                                     left_distance, right_distance)
-                self.wall_follow_func(distance_func,isleft,distance)
+                                     current_left, current_right)
                 self.logger.info("Front Distance:%s",self.drivebase.get_front_distance())
                 sleep(0.1)
 
             # self.drivebase.stop()
             self.output_inf.buzzer_beep()
             # sleep(2)
-            
+
             self.logger.info("Time to check color")
             color = self.wait_for_color(["blue", "orange"])
 
+            default_left_distance, default_right_distance = self.equidistance_walk_init()
 
+
+            while (color is None and
+                   self.drivebase.get_front_distance() > self.WALLFRONTENDDISTANCE):
+
+                current_left, current_right = self.equidistance_walk(default_left_distance,
+                                                                     default_right_distance)
+                self.logger.warning("Left Distance: %.2f, Right Distance: %.2f",
+                                     current_left, current_right)
+                self.logger.info("Front Distance:%s",self.drivebase.get_front_distance())
+                color = self.check_bottom_color(["blue", "orange"])
+                sleep(0.1)
+
+            #Lets first stop the base and then check the color.
+            self.drivebase.stop()
+
+            if color is None:
+                ##FixMe, can we do this in a better way, can we still walk?
+                self.logger.warning("No color detected, stopping the walk.")
+                self.output_inf.buzzer_beep()
+                self.output_inf.led1_red()
+                self.output_inf.force_flush_messages()
+                return
             if color == "blue":
                 self.direction = self.ANTI_CLOCKWISE_DIRECTION
             elif color == "orange":
@@ -233,3 +299,16 @@ class Walker:
         sleep(1)
         self.output_inf.force_flush_messages()
         return color
+
+    def check_bottom_color(self,colors):
+        """Read the bottom color and return it if it matches the specified colors."""
+        r, g, b, _ = self.drivebase.get_bottom_color_rgbi()
+        color = self.mat_color(r, g, b)
+        self.logger.info("Current rgb: R=%d, G=%d, B=%d", r, g, b)
+        self.logger.info("Waiting for color: %s, current color: %s", colors, color)
+        if color in colors:
+            self.logger.info("Detected color: %s", color)
+            return color
+        else:
+            self.logger.info("Color not detected, current color: %s", color)
+            return None

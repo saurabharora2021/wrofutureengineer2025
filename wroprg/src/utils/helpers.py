@@ -1,6 +1,5 @@
 """ This modules contains the utility functions for the WRO Future Engineer 2025 project."""
 import logging
-from typing import Tuple
 from base.shutdown_handling import ShutdownInterfaceManager
 from rpi.logger_setup import LoggerSetup
 from rpi.rpi_interface import RpiInterface

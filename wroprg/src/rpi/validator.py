@@ -38,7 +38,7 @@ class RobotValidator:
         left_distance = self.hardware_inf.get_left_distance()
         right_distance = self.hardware_inf.get_right_distance()
         self.logger.info("Left Distance: %s, Right Distance: %s", left_distance, right_distance)
-        if (left_distance <= 0 or right_distance <= 0 or 
+        if (left_distance <= 0 or right_distance <= 0 or
             left_distance >= self.hardware_inf.get_left_distance_max() or
               right_distance >= self.hardware_inf.get_right_distance_max()):
             self.logger.error("Invalid distances: Left=%s, Right=%s.",

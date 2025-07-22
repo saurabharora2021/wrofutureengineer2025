@@ -88,7 +88,7 @@ class Walker:
             error = (left_distance - def_distance_left) - (right_distance - def_distance_right)
             angle = self.clamp(kp * error, -1*self.MAX_ANGLE, self.MAX_ANGLE)
             self.logger.warning("steering angle: %.2f", angle)
-            self.drivebase.turnsteering(angle)
+            self.drivebase.turn_steering(angle)
 
         return (left_distance, right_distance)
 
@@ -105,9 +105,9 @@ class Walker:
             angle = -angle
 
         if abs(angle) > 4:
-            self.drivebase.turnsteering(angle)
+            self.drivebase.turn_steering(angle)
 
-        self.drivebase.runfront(speed)
+        self.drivebase.run_front(speed)
 
         self.logger.warning("Distance: %.2f, angle: %.2f", dist, angle)
         sleep(0.1)
@@ -128,7 +128,7 @@ class Walker:
 
         #TODO: used turnleft or turnright based on direction
         # steering.set_angle(angle)
-        self.drivebase.runfront(self.DEFAULT_SPEED)
+        self.drivebase.run_front(self.DEFAULT_SPEED)
 
         self.logger.warning("Distance: %.2f, angle: %.2f", dist, angle)
         sleep(0.1)
@@ -172,7 +172,7 @@ class Walker:
                              default_left_distance, default_right_distance)
 
             #Lets start the walk until we reach the front distance,but at slow speed.
-            self.drivebase.runfront(self.DEFAULT_SPEED/2)
+            self.drivebase.run_front(self.DEFAULT_SPEED/2)
             #TODO: Revisit if we need to run this loop or start checking color immediately.
             while (
                 self.drivebase.get_front_distance() > self.FRONTDISTANCE_FOR_COLOR_CHECK
@@ -260,12 +260,12 @@ class Walker:
 
     def handle_corner(self, turn_angle, side_distance_func):
         """Handle the corner turn based on the current direction."""
-        self.drivebase.turnsteering(turn_angle)
-        self.drivebase.runfront(self.DEFAULT_SPEED)
+        self.drivebase.turn_steering(turn_angle)
+        self.drivebase.run_front(self.DEFAULT_SPEED)
         while (self.drivebase.get_front_distance() > self.WALLFRONTDISTANCE
                 or side_distance_func() > self.WALLSIDEDISTANCE):
             sleep(0.1)
-        self.drivebase.turnsteering(-turn_angle)
+        self.drivebase.turn_steering(-turn_angle)
         self.corner = False
 
     def follow_wall_until(self, distance):

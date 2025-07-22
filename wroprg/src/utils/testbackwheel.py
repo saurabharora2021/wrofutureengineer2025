@@ -26,7 +26,7 @@ def main():
         drive_base = helper.buildhat_init()
         logger.info("Drive Base Initialized")
 
-        drive_base.runfront(100)
+        drive_base.run_front(100)
 
         sleep(10)  # Allow the motor to run for a while
 

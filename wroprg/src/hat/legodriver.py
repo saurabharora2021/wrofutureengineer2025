@@ -56,7 +56,7 @@ class BuildHatDriveBase(ShutdownInterface):
 
 
 
-    def turn_steering(self, degrees: float) -> None:
+    def turn_steering(self, degrees: float,steering_speed:float=10) -> None:
         """
         Turn the steering by the specified degrees.
         Positive degrees turn right, negative turn left.
@@ -73,33 +73,32 @@ class BuildHatDriveBase(ShutdownInterface):
         move_degrees = target_position - current_position
         self.logger.info("Turning front motor to %s (move %s degrees)", target_position,
                          move_degrees)
-        self.front_motor.run_for_degrees(move_degrees, speed=25, blocking=True)
-        self.check_set_steering(target_position)  # Ensure the steering is at the expected position
+        self.front_motor.run_for_degrees(move_degrees, speed=steering_speed, blocking=True)
+        self.check_set_steering(target_position,steering_speed=steering_speed)  # Ensure the steering is at the expected position
 
-    def check_set_steering(self, expected_position: float = 0) -> None:
+    def check_set_steering(self, expected_position: float = 0,min_error:float = 2,
+                           retrycount:int = 3,steering_speed:float=10) -> None:
         """
         Check if the steering is at the specified degrees.
         If not, set it to the specified degrees.
         """
+        self.logger.info("set steering to %s with min_error %s and retrycount %s",
+                    expected_position, min_error, retrycount)
         current_position = self.front_motor.get_position()
         counter = 0
-        while abs(current_position - expected_position) > 2 and counter < 3:
+        while abs(current_position - expected_position) > min_error and counter < retrycount:
             # If the front motor is not at the expected position, reset it.
-            self.logger.warning("Front Motor is not at expected position, resetting it.")
-            if current_position > 0:
-                # Move anticlockwise to expected position
-                self.logger.info("Resetting front motor to expected position anticlockwise.")
-                self.front_motor.run_to_position(expected_position, speed=25, blocking=True,
-                                                  direction='anticlockwise')
-            else:
-                # Move clockwise to expected position
-                self.logger.info("Resetting front motor to expected position clockwise.")
-                self.front_motor.run_to_position(expected_position, speed=25, blocking=True,
-                                                  direction='clockwise')
+            self.logger.warning("Front Motor is not at expected position, resetting it. %s",
+                                current_position)
+            difference =  expected_position - current_position
+            self.front_motor.run_for_degrees(difference, speed=steering_speed,
+                                                      blocking=True)
             counter += 1
             current_position = self.front_motor.get_position()
-        if abs(current_position - expected_position) > 2:
-            self.logger.warning("Front Motor is still not at expected position.")
+        if abs(current_position - expected_position) > min_error:
+            self.logger.warning("Front Motor is still not at expected position," \
+            " current position: %s, expected: %s",
+                                current_position, expected_position )
         else:
             self.logger.info("Front Motor is at expected position.")
 
@@ -116,7 +115,7 @@ class BuildHatDriveBase(ShutdownInterface):
 
     def shutdown(self) -> None:
         """Shutdown the drive base."""
-        self.reset_front_motor()
+        #self.reset_front_motor()
         self.back_motor.stop()
         self.logger.info("Drive base shutdown complete.")
 

@@ -27,6 +27,12 @@ def main():
         logger.info("Drive Base Initialized")
         pi_inf.force_flush_messages()
         drive_base.get_bottom_color()
+        # ## Generate a random number for front wheel steering angle.
+        # import random
+        # rand_int = random.randint(-100, 100)
+        # logger.warning("Random Steering Angle: %d", rand_int)
+        # drive_base.turn_steering(rand_int)
+        
 
     except (ImportError, AttributeError, RuntimeError) as e:
         logger.error("Error Running Program")

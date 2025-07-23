@@ -36,7 +36,7 @@ def main():
         logger.info("Bottom Color RGBI: R=%d, G=%d, B=%d, I=%d", r, g, b, i)
         logger.debug("Remaining data: %s", other)
         color = challenge1walker.mat_color(r, g, b)
-        logger.info("Detected color: %s", color)
+        logger.warning("Detected color: %s", color)
 
         pi_inf.force_flush_messages()
 

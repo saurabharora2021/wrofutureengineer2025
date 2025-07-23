@@ -39,7 +39,7 @@ class BuildHatDriveBase(ShutdownInterface):
         self.front_distance_sensor = DistanceSensor(front_distance_sensor_port)
         self.front_distance_sensor.on()
         self.logger.info("BuildHat success")
-        self.logger.warning("Position front:%s", self.front_motor.get_position())
+        self.logger.warning("Position front wheel:%s", self.front_motor.get_position())
         self.reset_front_motor()  # Reset the front motor position to zero.
 
     def reset_front_motor(self) -> None:
@@ -52,7 +52,7 @@ class BuildHatDriveBase(ShutdownInterface):
             self.logger.info("BuildHat Front Motor is not at zero position, resetting it.")
             self.check_set_steering(0)
 
-        self.logger.warning("After TurnPosition front:%s", self.front_motor.get_position())
+        self.logger.warning("After TurnPosition front wheel:%s", self.front_motor.get_position())
 
 
 

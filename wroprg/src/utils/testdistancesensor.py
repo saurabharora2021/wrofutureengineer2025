@@ -44,7 +44,7 @@ def main():
         pi_inf.led1_red()
         pi_inf.buzzer_beep()
     finally:
-        helper.shutdownall()
+        helper.shutdown_all()
 
 if __name__ == "__main__":
     main()

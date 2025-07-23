@@ -58,7 +58,7 @@ def main():
         pi_inf.buzzer_beep()
         raise
     finally:
-        helper.shutdownall()
+        helper.shutdown_all()
 
 if __name__ == "__main__":
     main()

@@ -12,7 +12,7 @@ class HelperFunctions:
 
     def __init__(self, log_file: str, debugflag: bool) -> None:
         """Initialize the HelperFunctions Logger class."""
-        
+
         # Initialize instance attributes
         self._shutdown_manager: ShutdownInterfaceManager
         self._pi_inf: RpiInterface

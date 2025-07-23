@@ -20,8 +20,8 @@ class BuildHatDriveBase(ShutdownInterface):
 
         self.logger.warning("BuildHat start..")
 
-        # Build Hat has a history of issues to fail first initialization on reboot. So we ensure that
-        # we initialize and handle one failure before proceeding.
+        # Build Hat has a history of issues to fail first initialization on reboot.
+        # So we ensure that we initialize and handle one failure before proceeding.
         try:
             Hat()  # Attempt to initialize the Build Hat
         except Exception:  # pylint: disable=broad-except
@@ -74,7 +74,6 @@ class BuildHatDriveBase(ShutdownInterface):
         self.logger.info("Turning front motor to %s (move %s degrees)", target_position,
                          move_degrees)
         self.front_motor.run_for_degrees(move_degrees, speed=steering_speed, blocking=True)
-        self.check_set_steering(target_position,steering_speed=steering_speed)  # Ensure the steering is at the expected position
 
     def check_set_steering(self, expected_position: float = 0,min_error:float = 2,
                            retrycount:int = 3,steering_speed:float=10) -> None:

@@ -1,9 +1,8 @@
 """ This script is used to test distance sensor using the BuildHatDriveBase class."""
 import logging
 import argparse
-from hardware.rpi_interface import RpiInterface
 from hardware.validator import RobotValidator
-from hardware.legodriver import BuildHatDriveBase
+from hardware.hardware_interface import HardwareInterface
 from utils.helpers import HelperFunctions
 
 def main():
@@ -18,15 +17,11 @@ def main():
     helper: HelperFunctions = HelperFunctions(args.logfile, args.debug)
     logger = logging.getLogger(__name__)
 
-    drive_base: BuildHatDriveBase
-    pi_inf: RpiInterface = helper.get_pi_interface()
+    pi_inf: HardwareInterface = helper.get_pi_interface()
 
     try:
 
-        drive_base = helper.buildhat_init()
-        logger.info("Drive Base Initialized")
-
-        robot_validator:RobotValidator =  RobotValidator(drive_base, pi_inf)
+        robot_validator:RobotValidator =  RobotValidator(pi_inf)
         robot_validator.validate()  # Validate the robot's functionality
 
         left_distance = pi_inf.get_left_distance()
@@ -36,7 +31,7 @@ def main():
 
 
         pi_inf.force_flush_messages()
-        drive_base.get_bottom_color()
+        pi_inf.get_bottom_color()
 
     except (ImportError, AttributeError, RuntimeError) as e:
         logger.error("Error Running Program")

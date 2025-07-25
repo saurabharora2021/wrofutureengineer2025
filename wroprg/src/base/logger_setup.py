@@ -1,9 +1,7 @@
 """ This Module is used the initialize the Logging SubSystem"""
 import logging
-
 from logging.handlers import RotatingFileHandler
 from base.shutdown_handling import ShutdownInterface
-from hardware.hardware_interface import HardwareInterface
 
 class LoggerSetup(ShutdownInterface):
     """Class defines the logger and Handlers"""
@@ -39,30 +37,6 @@ class LoggerSetup(ShutdownInterface):
 
 
         self.logger.info("Logger setup complete with file: %s, level: %s", log_file, log_level)
-
-    def add_screen_logger(self, inf: HardwareInterface) -> None:
-        """Add a logger to display messages on the OLED screen."""
-
-         # define a custom handler using rpiInferface display_message method
-        logger = logging.getLogger()
-        class ScreenOledHandler(logging.Handler):
-            """ Inner class to handle logging to oled display."""
-            def __init__(self, oled_interface: HardwareInterface):
-                super().__init__()
-                self.oled_control_interface = oled_interface
-
-            def emit(self, record):
-                msg = self.format(record)
-                self.oled_control_interface.display_message(msg)
-                if record.levelno >= logging.ERROR:
-                    self.oled_control_interface.buzzer_beep()  # Beep on error messages
-
-        # Add the custom handler to the logger
-        oledscreen_handler = ScreenOledHandler(inf)
-        oledscreen_handler.setLevel(logging.WARNING)  # Set the level for the RpiInterface display
-        oled_formatter = logging.Formatter("%(message)s")  # Format for the RpiInterface display
-        oledscreen_handler.setFormatter(oled_formatter)
-        logger.addHandler(oledscreen_handler)
 
     def shutdown(self) -> None:
         # Flush and close all handlers

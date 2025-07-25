@@ -3,7 +3,6 @@ import subprocess
 import logging
 
 from hardware.rpi_interface import RpiInterface
-from hardware.legodriver import BuildHatDriveBase
 class RobotValidator:
     """
     This class is used to validate the robot's functionality.
@@ -15,8 +14,7 @@ class RobotValidator:
 
     logger: logging.Logger = logging.getLogger(__name__)
 
-    def __init__(self, drivebase: BuildHatDriveBase, hardware_inf: RpiInterface) -> None:
-        self.drivebase: BuildHatDriveBase = drivebase
+    def __init__(self, hardware_inf: RpiInterface) -> None:
         self.hardware_inf: RpiInterface = hardware_inf
 
     def validate(self) -> bool:
@@ -24,13 +22,13 @@ class RobotValidator:
         # Add validation logic here
         self.logger.warning("Robot validation started.")
         # Example: Check if drivebase and outputInterface are initialized
-        if not self.drivebase or not self.hardware_inf:
-            self.logger.error("Drivebase or Output Interface is not initialized.")
+        if not self.hardware_inf:
+            self.logger.error("Hardware Interface is not initialized.")
             return False
-        if self.drivebase.get_front_distance() <= 0:
+        if self.hardware_inf.get_front_distance() <= 0:
             self.logger.error("Front distance sensor is not initialized or not working.")
             return False
-        if self.drivebase.get_bottom_color() is None:
+        if self.hardware_inf.get_bottom_color() is None:
             self.logger.error("Bottom color sensor is not initialized or not working.")
             return False
 

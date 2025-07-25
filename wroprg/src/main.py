@@ -2,9 +2,8 @@
 import logging
 import argparse
 from round1.logicround1 import Walker
-from hardware.rpi_interface import RpiInterface
-from hardware.legodriver import BuildHatDriveBase
 from hardware.validator import RobotValidator
+from hardware.hardware_interface import HardwareInterface
 
 from utils.helpers import HelperFunctions
 
@@ -24,18 +23,14 @@ def main():
     helper: HelperFunctions = HelperFunctions(args.logfile, args.debug)
     logger = logging.getLogger(__name__)
 
-    drive_base: BuildHatDriveBase
-    pi_inf: RpiInterface = helper.get_pi_interface()
+    pi_inf: HardwareInterface = helper.get_pi_interface()
 
     try:
 
-        drive_base = helper.buildhat_init()
-
-        logger.info("Drive Base Initialized")
         pi_inf.force_flush_messages()
 
          # Validate the robot's functionality
-        robot_validator: RobotValidator = RobotValidator(drive_base, pi_inf)
+        robot_validator: RobotValidator = RobotValidator(pi_inf)
         if not robot_validator.validate():
             logger.error("Robot validation failed. Exiting.")
             pi_inf.led1_red()
@@ -48,7 +43,7 @@ def main():
         logger.warning("Test Successful")
         pi_inf.force_flush_messages()
 
-        challenge1walker = Walker(drive_base, pi_inf)
+        challenge1walker = Walker(pi_inf)
 
         challenge1walker.start_walk(nooflaps=1)
 

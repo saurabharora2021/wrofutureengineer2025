@@ -11,41 +11,15 @@ from gpiozero.pins.pigpio import PiGPIOFactory
 from PIL import Image, ImageDraw, ImageFont
 
 from base.shutdown_handling import ShutdownInterface
+from rpi.pin_config import PinConfig
 
 class RpiInterface(ShutdownInterface):
     """ This interface defines all Interfaces on Raspberry Pi."""
 
     logger: logging.Logger = logging.getLogger(__name__)
-
-    """ Pin Definitions:"""
-    # Buzzer on GPIO pin 20
-    BUZZER_PIN = 20
-    # RGB LED on GPIO pins 26 (red), 19 (green), 13 (blue)
-    LED1_RED_PIN = 26
-    LED1_GREEN_PIN = 19
-    LED1_BLUE_PIN = 13
-
-    LED_TEST_DELAY = 0.25  # seconds
-
-    BUTTON_PIN = 21
-
-    RIGHT_SENSOR_TRIG_PIN = 22
-    RIGHT_SENSOR_ECHO_PIN = 27
-    RIGHT_DISTANCE_MAX_DISTANCE = 2  # Maximum distance for right sensor in meters
-
-    LEFT_SENSOR_TRIG_PIN = 23
-    LEFT_SENSOR_ECHO_PIN = 24
-    LEFT_DISTANCE_MAX_DISTANCE = 2  # Maximum distance for left sensor in meters
-
-
-    # OLED display settings
-    # These are the dimensions of the SSD1306 OLED display
-    SCREEN_WIDTH = 128
-    SCREEN_HEIGHT = 64
-    LINE_HEIGHT = 13  # pixels per line for OLED display
-    #array to store the messages to be displayed on the OLED screen
-
-    SCREEN_UPDATE_INTERVAL = 0.5  # seconds
+    
+    # Use the centralized pin configuration class
+    # All pin definitions are imported from PinConfig
 
 
     def __init__(self) -> None:
@@ -60,7 +34,7 @@ class RpiInterface(ShutdownInterface):
         i2c = busio.I2C(SCL,SDA)  # uses board.SCL and board.SDA
 
         # Create the SSD1306 OLED class.
-        self.oled = adafruit_ssd1306.SSD1306_I2C(self.SCREEN_WIDTH, self.SCREEN_HEIGHT, i2c)
+        self.oled = adafruit_ssd1306.SSD1306_I2C(PinConfig.SCREEN_WIDTH, PinConfig.SCREEN_HEIGHT, i2c)
 
         # Clear display.
         self.oled.fill(0)
@@ -70,7 +44,7 @@ class RpiInterface(ShutdownInterface):
         # Load a default font
         self.font: ImageFont.FreeTypeFont | ImageFont.ImageFont = ImageFont.load_default()
         self._last_oled_update: float = 0
-        self.image: Image.Image = Image.new("1", (self.oled.width, self.oled.height))
+        self.image: Image.Image = Image.new("1", (PinConfig.SCREEN_WIDTH, PinConfig.SCREEN_HEIGHT))
         self.draw: ImageDraw.ImageDraw = ImageDraw.Draw(self.image)
 
         self.pendingmessage: bool = False  # Initialize pendingmessage flag
@@ -78,6 +52,10 @@ class RpiInterface(ShutdownInterface):
 
         #Logger is not setup yet, so we use print for initialization messages
         self.display_message("Initializing Pi Interface...")
+        
+        # Log the pin configuration for debugging purposes
+        PinConfig.log_pin_configuration()
+        
         try:
             # Use pigpio factory if available
             Device.pin_factory = PiGPIOFactory()
@@ -86,29 +64,30 @@ class RpiInterface(ShutdownInterface):
             Device.pin_factory = None
             self.logger.warning("Failed to initialize PiGPIOFactory")
 
-        self.buzzer = Buzzer(self.BUZZER_PIN)
-        self.led1 = RGBLED(red=self.LED1_RED_PIN, green=self.LED1_GREEN_PIN,
-                           blue=self.LED1_BLUE_PIN)
+        self.buzzer = Buzzer(PinConfig.BUZZER_PIN)
+        self.led1 = RGBLED(red=PinConfig.LED1_RED_PIN, 
+                           green=PinConfig.LED1_GREEN_PIN,
+                           blue=PinConfig.LED1_BLUE_PIN)
         """Turn on the LED1 Test."""
         self.led1.color = (0, 1, 0)  # green
-        time.sleep(self.LED_TEST_DELAY)
+        time.sleep(PinConfig.LED_TEST_DELAY)
         self.led1.color = (1, 0, 0)  # red
-        time.sleep(self.LED_TEST_DELAY)
+        time.sleep(PinConfig.LED_TEST_DELAY)
         self.led1.color = (0, 0, 1)  # blue
-        time.sleep(self.LED_TEST_DELAY)
+        time.sleep(PinConfig.LED_TEST_DELAY)
         self.led1.color = (0, 0, 0)  # off
 
         # Set up the button
-        self.action_button = Button(self.BUTTON_PIN, hold_time=1)
+        self.action_button = Button(PinConfig.BUTTON_PIN, hold_time=1)
 
-        self.rightdistancesensor = DistanceSensor(echo=self.RIGHT_SENSOR_ECHO_PIN,
-                                                  trigger=self.RIGHT_SENSOR_TRIG_PIN,
+        self.rightdistancesensor = DistanceSensor(echo=PinConfig.RIGHT_SENSOR_ECHO_PIN,
+                                                  trigger=PinConfig.RIGHT_SENSOR_TRIG_PIN,
                                                   partial=True,
-                                                  max_distance=self.RIGHT_DISTANCE_MAX_DISTANCE)
-        self.leftdistancesensor = DistanceSensor(echo=self.LEFT_SENSOR_ECHO_PIN,
-                                                 trigger=self.LEFT_SENSOR_TRIG_PIN,
+                                                  max_distance=PinConfig.RIGHT_DISTANCE_MAX_DISTANCE)
+        self.leftdistancesensor = DistanceSensor(echo=PinConfig.LEFT_SENSOR_ECHO_PIN,
+                                                 trigger=PinConfig.LEFT_SENSOR_TRIG_PIN,
                                                  partial=True,
-                                                 max_distance=self.LEFT_DISTANCE_MAX_DISTANCE)
+                                                 max_distance=PinConfig.LEFT_DISTANCE_MAX_DISTANCE)
 
         self.logger.info("RpiInterface initialized successfully.")
 
@@ -150,7 +129,7 @@ class RpiInterface(ShutdownInterface):
 
     def get_right_distance_max(self) -> float:
         """Get the maximum distance for the right distance sensor."""
-        return self.RIGHT_DISTANCE_MAX_DISTANCE * 100  # Convert to cm
+        return PinConfig.RIGHT_DISTANCE_MAX_DISTANCE * 100  # Convert to cm
 
     def get_left_distance(self) -> float:
         """Get the distance from the distance sensor."""
@@ -158,7 +137,7 @@ class RpiInterface(ShutdownInterface):
 
     def get_left_distance_max(self) -> float:
         """Get the maximum distance for the left distance sensor."""
-        return self.LEFT_DISTANCE_MAX_DISTANCE * 100  # Convert to cm
+        return PinConfig.LEFT_DISTANCE_MAX_DISTANCE * 100  # Convert to cm
 
     def shutdown(self) -> None:
         try:
@@ -199,7 +178,7 @@ class RpiInterface(ShutdownInterface):
         self.messages.append(message)
         self.messages = self.messages[-5:]  # Keep only the last 5 messages
 
-        if forceflush or (now - self._last_oled_update >= self.SCREEN_UPDATE_INTERVAL):
+        if forceflush or (now - self._last_oled_update >= PinConfig.SCREEN_UPDATE_INTERVAL):
             # Only update the OLED if enough time has passed since the last update
             self.flush_pending_messages()
             self.pendingmessage = False
@@ -207,10 +186,10 @@ class RpiInterface(ShutdownInterface):
     def flush_pending_messages(self) -> None:
         """Flush the pending messages to the OLED display."""
         now = time.time()
-        self.draw.rectangle((0, 0, self.SCREEN_WIDTH, self.SCREEN_HEIGHT), outline=0, fill=0)
+        self.draw.rectangle((0, 0, PinConfig.SCREEN_WIDTH, PinConfig.SCREEN_HEIGHT), outline=0, fill=0)
         for i, msg in enumerate(self.messages):
             # Use constant for line height spacing
-            self.draw.text((0, i * self.LINE_HEIGHT), msg, font=self.font, fill=255)
+            self.draw.text((0, i * PinConfig.LINE_HEIGHT), msg, font=self.font, fill=255)
         self.oled.image(self.image)
         self.oled.show()
         self._last_oled_update = now

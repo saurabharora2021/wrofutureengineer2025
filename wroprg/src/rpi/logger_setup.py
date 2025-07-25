@@ -3,7 +3,7 @@ import logging
 
 from logging.handlers import RotatingFileHandler
 from base.shutdown_handling import ShutdownInterface
-from rpi.rpi_interface import RpiInterface
+from hardware.hardware_interface import HardwareInterface
 
 class LoggerSetup(ShutdownInterface):
     """Class defines the logger and Handlers"""
@@ -11,7 +11,7 @@ class LoggerSetup(ShutdownInterface):
     # Get the logger instance
     logger: logging.Logger = logging.getLogger(__name__)
 
-    def setup(self, inf: RpiInterface, log_file: str, log_level: int = logging.INFO,
+    def setup(self, log_file: str, log_level: int = logging.INFO,
               max_bytes: int = 1048576, backup_count: int = 3) -> None:
         """ Intializes the log interfaces """
         # Remove all handlers associated with the root logger object (to avoid duplicate logs)
@@ -32,15 +32,22 @@ class LoggerSetup(ShutdownInterface):
 
         # Console handler for WARNING and above
         console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.WARNING)
+        console_handler.setLevel(logging.INFO)
         console_formatter = logging.Formatter("%(levelname)s - %(message)s")
         console_handler.setFormatter(console_formatter)
         logger.addHandler(console_handler)
 
-        # define a custom handler using rpiInferface display_message method
+
+        self.logger.info("Logger setup complete with file: %s, level: %s", log_file, log_level)
+
+    def add_screen_logger(self, inf: HardwareInterface) -> None:
+        """Add a logger to display messages on the OLED screen."""
+
+         # define a custom handler using rpiInferface display_message method
+        logger = logging.getLogger()
         class RpiInterfaceHandler(logging.Handler):
             """ Inner class to handle logging to oled display."""
-            def __init__(self, rpi_interface: RpiInterface):
+            def __init__(self, rpi_interface: HardwareInterface):
                 super().__init__()
                 self.rpi_interface = rpi_interface
 
@@ -56,9 +63,6 @@ class LoggerSetup(ShutdownInterface):
         rpi_formatter = logging.Formatter("%(message)s")  # Format for the RpiInterface display
         rpi_handler.setFormatter(rpi_formatter)
         logger.addHandler(rpi_handler)
-        self.logger.info("Logger setup complete with file: %s, level: %s", log_file, log_level)
-
-
 
     def shutdown(self) -> None:
         # Flush and close all handlers

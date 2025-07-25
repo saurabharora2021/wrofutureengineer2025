@@ -2,9 +2,10 @@
 import logging
 import argparse
 from round1.logicround1 import Walker
-from rpi.rpi_interface import RpiInterface
-from rpi.validator import RobotValidator
-from hat.legodriver import BuildHatDriveBase
+from hardware.rpi_interface import RpiInterface
+from hardware.legodriver import BuildHatDriveBase
+from hardware.validator import RobotValidator
+
 from utils.helpers import HelperFunctions
 
 

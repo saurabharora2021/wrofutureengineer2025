@@ -2,8 +2,8 @@
 import logging
 import argparse
 from time import sleep
-from rpi.rpi_interface import RpiInterface
-from hat.legodriver import BuildHatDriveBase
+from hardware.rpi_interface import RpiInterface
+from hardware.legodriver import BuildHatDriveBase
 from utils.helpers import HelperFunctions
 
 def main():

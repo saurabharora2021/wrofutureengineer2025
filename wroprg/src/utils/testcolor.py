@@ -1,8 +1,8 @@
 """ This script is used to test the color using the BuildHatDriveBase class."""
 import logging
 import argparse
-from rpi.rpi_interface import RpiInterface
-from hat.legodriver import BuildHatDriveBase
+from hardware.rpi_interface import RpiInterface
+from hardware.legodriver import BuildHatDriveBase
 from utils.helpers import HelperFunctions
 from round1.logicround1 import Walker
 

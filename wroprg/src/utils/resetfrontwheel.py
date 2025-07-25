@@ -1,8 +1,8 @@
 """ This script is used to reset the front wheel of a robot using the BuildHatDriveBase class."""
 import logging
 import argparse
-from rpi.rpi_interface import RpiInterface
-from hat.legodriver import BuildHatDriveBase
+from hardware.rpi_interface import RpiInterface
+from hardware.legodriver import BuildHatDriveBase
 from utils.helpers import HelperFunctions
 
 def main():
@@ -32,7 +32,7 @@ def main():
         # rand_int = random.randint(-100, 100)
         # logger.warning("Random Steering Angle: %d", rand_int)
         # drive_base.turn_steering(rand_int)
-        
+
 
     except (ImportError, AttributeError, RuntimeError) as e:
         logger.error("Error Running Program")

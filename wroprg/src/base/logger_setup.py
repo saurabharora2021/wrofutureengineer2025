@@ -45,24 +45,24 @@ class LoggerSetup(ShutdownInterface):
 
          # define a custom handler using rpiInferface display_message method
         logger = logging.getLogger()
-        class RpiInterfaceHandler(logging.Handler):
+        class ScreenOledHandler(logging.Handler):
             """ Inner class to handle logging to oled display."""
-            def __init__(self, rpi_interface: HardwareInterface):
+            def __init__(self, oled_interface: HardwareInterface):
                 super().__init__()
-                self.rpi_interface = rpi_interface
+                self.oled_control_interface = oled_interface
 
             def emit(self, record):
                 msg = self.format(record)
-                self.rpi_interface.display_message(msg)
+                self.oled_control_interface.display_message(msg)
                 if record.levelno >= logging.ERROR:
-                    self.rpi_interface.buzzer_beep()  # Beep on error messages
+                    self.oled_control_interface.buzzer_beep()  # Beep on error messages
 
         # Add the custom handler to the logger
-        rpi_handler = RpiInterfaceHandler(inf)
-        rpi_handler.setLevel(logging.WARNING)  # Set the level for the RpiInterface display
-        rpi_formatter = logging.Formatter("%(message)s")  # Format for the RpiInterface display
-        rpi_handler.setFormatter(rpi_formatter)
-        logger.addHandler(rpi_handler)
+        oledscreen_handler = ScreenOledHandler(inf)
+        oledscreen_handler.setLevel(logging.WARNING)  # Set the level for the RpiInterface display
+        oled_formatter = logging.Formatter("%(message)s")  # Format for the RpiInterface display
+        oledscreen_handler.setFormatter(oled_formatter)
+        logger.addHandler(oledscreen_handler)
 
     def shutdown(self) -> None:
         # Flush and close all handlers

@@ -1,6 +1,7 @@
 """Unified Hardware Interface for WRO Future Engineer 2025 project."""
 
 import logging
+from typing import Optional
 from base.shutdown_handling import ShutdownInterface
 from hardware.legodriver import BuildHatDriveBase
 from hardware.rpi_interface import RpiInterface
@@ -15,7 +16,7 @@ class HardwareInterface(ShutdownInterface):
 
     def __init__(self):
         self._rpi = RpiInterface()
-        self._lego_drive_base: BuildHatDriveBase | None = None
+        self._lego_drive_base: Optional[BuildHatDriveBase] = None
 
     def full_initialization(self) -> None:
         """Initialize all hardware components."""
@@ -86,12 +87,18 @@ class HardwareInterface(ShutdownInterface):
         self._rpi.force_flush_messages()
 
     def shutdown(self) -> None:
-        self._lego_drive_base.shutdown()
+        """Shutdown the hardware interface."""
+        if self._lego_drive_base is None:
+            logger.warning("LEGO Drive Base not initialized, skipping shutdown.")
+        else:
+           self._lego_drive_base.shutdown()
         self._rpi.shutdown()
 
     # --- LEGO Driver Methods ---
     def drive_forward(self, speed: float) -> None:
         """Run the drive base forward at the specified speed."""
+        if self._lego_drive_base is None:
+            raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
         self._lego_drive_base.run_front(speed)
 
     def turn_steering(self, degrees: float,steering_speed:float=10) -> None:
@@ -100,8 +107,33 @@ class HardwareInterface(ShutdownInterface):
         Positive degrees turn right, negative turn left.
         Limits steering to +/-38 degrees.
         """
+        if self._lego_drive_base is None:
+            raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
         self._lego_drive_base.turn_steering(degrees, steering_speed)
 
     def drive_stop(self) -> None:
         """Stop the drive base."""
+        if self._lego_drive_base is None:
+            raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
         self._lego_drive_base.stop()
+    
+    def get_bottom_color(self) -> str:
+        """Get the color detected by the bottom sensor."""
+        if self._lego_drive_base is None:
+            raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
+        return self._lego_drive_base.get_bottom_color()
+
+    def get_bottom_color_rgbi(self) -> list[float]:
+        """Get the RGB values detected by the bottom sensor."""
+        if self._lego_drive_base is None:
+            raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
+        return self._lego_drive_base.get_bottom_color_rgbi()
+
+    def get_front_distance(self) -> float:
+        """Get the distance to the front obstacle in centimeter."""
+        if self._lego_drive_base is None:
+            raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
+        return self._lego_drive_base.get_front_distance()
+    
+    ## End of LEGO Driver Methods
+

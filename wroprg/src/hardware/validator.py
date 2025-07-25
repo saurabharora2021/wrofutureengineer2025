@@ -2,7 +2,7 @@
 import subprocess
 import logging
 
-from hardware.rpi_interface import RpiInterface
+from hardware.hardware_interface import HardwareInterface
 class RobotValidator:
     """
     This class is used to validate the robot's functionality.
@@ -14,8 +14,8 @@ class RobotValidator:
 
     logger: logging.Logger = logging.getLogger(__name__)
 
-    def __init__(self, hardware_inf: RpiInterface) -> None:
-        self.hardware_inf: RpiInterface = hardware_inf
+    def __init__(self, hardware_inf: HardwareInterface) -> None:
+        self.hardware_inf: HardwareInterface = hardware_inf
 
     def validate(self) -> bool:
         """Validate the robot's functionality."""

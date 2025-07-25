@@ -23,11 +23,11 @@ class PinConfig:
     # Distance sensors
     RIGHT_SENSOR_TRIG_PIN = 22
     RIGHT_SENSOR_ECHO_PIN = 27
-    RIGHT_DISTANCE_MAX_DISTANCE = 2.0  # Maximum distance in meters
+    RIGHT_DISTANCE_MAX_DISTANCE = 2 # Maximum distance in meters
 
     LEFT_SENSOR_TRIG_PIN = 23
     LEFT_SENSOR_ECHO_PIN = 24
-    LEFT_DISTANCE_MAX_DISTANCE = 2.0  # Maximum distance in meters
+    LEFT_DISTANCE_MAX_DISTANCE = 2  # Maximum distance in meters
 
     # OLED display settings
     SCREEN_WIDTH = 128

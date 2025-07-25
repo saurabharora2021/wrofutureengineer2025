@@ -104,7 +104,7 @@ class Walker:
         if abs(angle) > 4:
             self.output_inf.turn_steering(angle)
 
-        self.output_inf.run_front(speed)
+        self.output_inf.drive_forward(speed)
 
         self.logger.warning("Distance: %.2f, angle: %.2f", dist, angle)
         sleep(0.1)
@@ -125,7 +125,7 @@ class Walker:
 
         #TODO: used turnleft or turnright based on direction
         # steering.set_angle(angle)
-        self.output_inf.run_front(self.DEFAULT_SPEED)
+        self.output_inf.drive_forward(self.DEFAULT_SPEED)
 
         self.logger.warning("Distance: %.2f, angle: %.2f", dist, angle)
         sleep(0.1)
@@ -146,7 +146,7 @@ class Walker:
                              default_left_distance, default_right_distance)
 
             #Lets start the walk until we reach the front distance,but at slow speed.
-            self.output_inf.run_front(self.DEFAULT_SPEED/2)
+            self.output_inf.drive_forward(self.DEFAULT_SPEED/2)
             #TODO: Revisit if we need to run this loop or start checking color immediately.
             while (
                 self.output_inf.get_front_distance() > self.FRONTDISTANCE_FOR_COLOR_CHECK
@@ -160,7 +160,7 @@ class Walker:
                 self.logger.info("Front Distance:%s",self.output_inf.get_front_distance())
                 sleep(0.1)
 
-            self.output_inf.stop()
+            self.output_inf.drive_stop()
             self.output_inf.buzzer_beep()
             return
             # sleep(2)
@@ -218,7 +218,7 @@ class Walker:
                 corner_counter += 1
                 if corner_counter >= totalcorners:
                     self.logger.info("Reached the end of the walk.")
-                    self.output_inf.back_motor.stop()
+                    self.output_inf.drive_stop()
                     return
             else:
                 self.follow_wall_until(self.WALLFRONTENDDISTANCE)
@@ -235,7 +235,7 @@ class Walker:
     def handle_corner(self, turn_angle, side_distance_func):
         """Handle the corner turn based on the current direction."""
         self.output_inf.turn_steering(turn_angle)
-        self.output_inf.run_front(self.DEFAULT_SPEED)
+        self.output_inf.drive_forward(self.DEFAULT_SPEED)
         while (self.output_inf.get_front_distance() > self.WALLFRONTDISTANCE
                 or side_distance_func() > self.WALLSIDEDISTANCE):
             sleep(0.1)
@@ -270,7 +270,7 @@ class Walker:
             self.logger.info("Current rgb: R=%d, G=%d, B=%d", r, g, b)
             self.logger.info("Waiting for color: %s, current color: %s", colors, color)
         self.logger.info("Detected color: %s", color)
-        self.output_inf.stop()
+        self.output_inf.drive_stop()
         self.output_inf.buzzer_beep()
         sleep(1)
         self.output_inf.force_flush_messages()

@@ -23,11 +23,11 @@ def main():
 
         logger.info("Drive Base Initialized")
 
-        pi_inf.run_front(100)
+        pi_inf.drive_forward(100)
 
         sleep(10)  # Allow the motor to run for a while
 
-        pi_inf.stop()
+        pi_inf.drive_stop()
 
         pi_inf.force_flush_messages()
         pi_inf.get_bottom_color()

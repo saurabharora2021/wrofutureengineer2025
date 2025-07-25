@@ -118,7 +118,7 @@ class BuildHatDriveBase(ShutdownInterface):
         self.back_motor.stop()
         self.logger.info("Drive base shutdown complete.")
 
-    def get_bottom_color(self) -> Any:
+    def get_bottom_color(self) -> str:
         """Get the color detected by the bottom sensor."""
         return self.bottom_color_sensor.get_color()
 

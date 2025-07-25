@@ -2,8 +2,7 @@
 import subprocess
 import logging
 
-from rpi.rpi_interface import RpiInterface
-from hat.legodriver import BuildHatDriveBase
+from hardware.hardware_interface import HardwareInterface
 class RobotValidator:
     """
     This class is used to validate the robot's functionality.
@@ -15,25 +14,31 @@ class RobotValidator:
 
     logger: logging.Logger = logging.getLogger(__name__)
 
-    def __init__(self, drivebase: BuildHatDriveBase, hardware_inf: RpiInterface) -> None:
-        self.drivebase: BuildHatDriveBase = drivebase
-        self.hardware_inf: RpiInterface = hardware_inf
+    def __init__(self, hardware_inf: HardwareInterface) -> None:
+        self.hardware_inf: HardwareInterface = hardware_inf
 
     def validate(self) -> bool:
         """Validate the robot's functionality."""
         # Add validation logic here
         self.logger.warning("Robot validation started.")
         # Example: Check if drivebase and outputInterface are initialized
-        if not self.drivebase or not self.hardware_inf:
-            self.logger.error("Drivebase or Output Interface is not initialized.")
+        if not self.hardware_inf:
+            self.logger.error("Hardware Interface is not initialized.")
             return False
-        self.logger.info("Robot validation completed successfully.")
+        if self.hardware_inf.get_front_distance() <= 0:
+            self.logger.error("Front distance sensor is not initialized or not working.")
+            return False
+        if self.hardware_inf.get_bottom_color() is None:
+            self.logger.error("Bottom color sensor is not initialized or not working.")
+            return False
 
         #Check distance sensors, left and right should be greater than 0
         left_distance = self.hardware_inf.get_left_distance()
         right_distance = self.hardware_inf.get_right_distance()
         self.logger.info("Left Distance: %s, Right Distance: %s", left_distance, right_distance)
-        if left_distance <= 0 or right_distance <= 0:
+        if (left_distance <= 0 or right_distance <= 0 or
+            left_distance >= self.hardware_inf.get_left_distance_max() or
+              right_distance >= self.hardware_inf.get_right_distance_max()):
             self.logger.error("Invalid distances: Left=%s, Right=%s.",
                               left_distance, right_distance)
             return False

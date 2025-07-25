@@ -1,14 +1,14 @@
-""" This script is used to test distance sensor using the BuildHatDriveBase class."""
+""" This script is used to test the color using the BuildHatDriveBase class."""
 import logging
 import argparse
-from hardware.validator import RobotValidator
+from base.mat import mat_color
 from hardware.hardware_interface import HardwareInterface
 from utils.helpers import HelperFunctions
 
 def main():
-    """ Main function to run the Wro - raspberry test distance sensor Application."""
+    """ Main function to run the Wro - raspberry test color Application."""
 
-    parser = argparse.ArgumentParser(description="Wro lego - test distance sensor Application")
+    parser = argparse.ArgumentParser(description="Wro lego - test color Application")
     parser.add_argument('--logfile', type=str, default='application.log', help='Path to log file')
     # Added debug argument
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
@@ -18,20 +18,16 @@ def main():
     logger = logging.getLogger(__name__)
 
     pi_inf: HardwareInterface = helper.get_pi_interface()
-
     try:
 
-        robot_validator:RobotValidator =  RobotValidator(pi_inf)
-        robot_validator.validate()  # Validate the robot's functionality
+        r, g, b, i ,*other = pi_inf.get_bottom_color_rgbi()
 
-        left_distance = pi_inf.get_left_distance()
-        right_distance = pi_inf.get_right_distance()
-        logger.warning("Left Distance: %d cm Right Distance: %d cm",
-                     left_distance, right_distance)
-
+        logger.info("Bottom Color RGBI: R=%d, G=%d, B=%d, I=%d", r, g, b, i)
+        logger.debug("Remaining data: %s", other)
+        color = mat_color(r, g, b)
+        logger.warning("Detected color: %s", color)
 
         pi_inf.force_flush_messages()
-        pi_inf.get_bottom_color()
 
     except (ImportError, AttributeError, RuntimeError) as e:
         logger.error("Error Running Program")

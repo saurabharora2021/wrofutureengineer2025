@@ -188,7 +188,7 @@ class Walker:
 
             self.drivebase.stop()
             self.output_inf.buzzer_beep()
-            return  
+            return
             # sleep(2)
 
             self.logger.info("Time to check color")

@@ -1,0 +1,10 @@
+# Development requirements for non-Raspberry Pi platforms
+pyserial
+opencv-python
+pillow
+numpy
+adafruit-circuitpython-ssd1306
+# Mock GPIO for development
+fake-rpi
+gpiozero
+buildhat

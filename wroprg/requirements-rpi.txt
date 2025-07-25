@@ -1,0 +1,10 @@
+# Production requirements for Raspberry Pi
+pyserial
+gpiozero
+buildhat
+adafruit-circuitpython-ssd1306
+pillow
+pigpio
+Rpi.GPIO
+# On Raspberry Pi, install these via apt:
+# sudo apt install python3-picamera2 libcap-dev python3-libcamera python3-opencv

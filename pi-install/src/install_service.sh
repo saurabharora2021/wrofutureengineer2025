@@ -10,7 +10,7 @@ PIGPIOD_SERVICE_FILE="/etc/systemd/system/pigpiod_custom.service"
 
 # Create virtual environment if not exists
 if [ ! -d "$VENV_DIR" ]; then
-    sudo -u piwro python3 -m venv "$VENV_DIR"
+    sudo -u piwro python3 -m venv --system-site-packages "$VENV_DIR"
 fi
 
 # Install requirements

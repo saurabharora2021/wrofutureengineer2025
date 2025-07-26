@@ -1,6 +1,6 @@
 """ This module implements the Drive Base using Build Hat motors and sensors."""
 import logging
-from typing import Final, Any
+from typing import Final, Optional
 from buildhat import Motor, ColorSensor, DistanceSensor, Hat
 from base.shutdown_handling import ShutdownInterface
 
@@ -13,6 +13,8 @@ class BuildHatDriveBase(ShutdownInterface):
     # Negative gear ratio indicates that positive steering input results in a negative motor
     # rotation due to the physical gear setup.
     STEERING_GEAR_RATIO: Final = -2
+
+    front_distance_sensor: Optional[DistanceSensor] = None
 
     def __init__(self, front_motor_port: str, back_motor_port: str, bottom_color_sensor_port: str,
                   front_distance_sensor_port: str) -> None:
@@ -36,8 +38,15 @@ class BuildHatDriveBase(ShutdownInterface):
         self.back_motor = Motor(back_motor_port)
         self.bottom_color_sensor = ColorSensor(bottom_color_sensor_port)
         self.bottom_color_sensor.on()
-        self.front_distance_sensor = DistanceSensor(front_distance_sensor_port)
-        self.front_distance_sensor.on()
+        if front_distance_sensor_port is None:
+            self.front_distance_sensor = None
+            self.logger.info("Front Lego distance sensor is not connected.")
+        else:
+            # Initialize the front distance sensor if the port is provided
+            self.logger.info("Front distance sensor port: %s", front_distance_sensor_port)
+            self.front_distance_sensor = DistanceSensor(front_distance_sensor_port)
+            self.front_distance_sensor.on()
+
         self.logger.info("BuildHat success")
         self.logger.warning("Position front wheel:%s", self.front_motor.get_position())
         self.reset_front_motor()  # Reset the front motor position to zero.
@@ -128,4 +137,6 @@ class BuildHatDriveBase(ShutdownInterface):
 
     def get_front_distance(self) -> float:
         """Get the distance to the front obstacle in centimeter."""
+        if self.front_distance_sensor is None:
+            raise RuntimeError("Front distance sensor not initialized. Check the port connection.")
         return self.front_distance_sensor.get_distance() / 10  # Convert from mm to cm

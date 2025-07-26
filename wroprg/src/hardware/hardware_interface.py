@@ -3,6 +3,7 @@
 import logging
 from typing import Optional
 from base.shutdown_handling import ShutdownInterface
+from hardware.hardwareconfig import HardwareConfig
 from hardware.legodriver import BuildHatDriveBase
 from hardware.rpi_interface import RpiInterface
 
@@ -21,9 +22,14 @@ class HardwareInterface(ShutdownInterface):
     def full_initialization(self) -> None:
         """Initialize all hardware components."""
         try:
-            self._lego_drive_base = BuildHatDriveBase(front_motor_port='D', back_motor_port='A',
+            if HardwareConfig.CHASSIS_VERSION == 1:
+                self._lego_drive_base = BuildHatDriveBase(front_motor_port='D', back_motor_port='A',
                                                bottom_color_sensor_port='C',
                                                front_distance_sensor_port='B')
+            elif HardwareConfig.CHASSIS_VERSION == 2:
+                self._lego_drive_base = BuildHatDriveBase(front_motor_port='D', back_motor_port='A',
+                                               bottom_color_sensor_port='C',
+                                               front_distance_sensor_port=None)
         except Exception as e:
             logger.error("Failed to initialize drive base: %s", e)
             raise RuntimeError(f"Drive base initialization failed: {e}") from e
@@ -91,7 +97,8 @@ class HardwareInterface(ShutdownInterface):
         if self._lego_drive_base is None:
             logger.warning("LEGO Drive Base not initialized, skipping shutdown.")
         else:
-           self._lego_drive_base.shutdown()
+            self._lego_drive_base.shutdown()
+
         self._rpi.shutdown()
 
     # --- LEGO Driver Methods ---
@@ -116,7 +123,7 @@ class HardwareInterface(ShutdownInterface):
         if self._lego_drive_base is None:
             raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
         self._lego_drive_base.stop()
-    
+
     def get_bottom_color(self) -> str:
         """Get the color detected by the bottom sensor."""
         if self._lego_drive_base is None:
@@ -131,9 +138,12 @@ class HardwareInterface(ShutdownInterface):
 
     def get_front_distance(self) -> float:
         """Get the distance to the front obstacle in centimeter."""
-        if self._lego_drive_base is None:
-            raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
-        return self._lego_drive_base.get_front_distance()
-    
-    ## End of LEGO Driver Methods
+        if HardwareConfig.CHASSIS_VERSION == 1:
+            if self._lego_drive_base is None:
+                raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization()" \
+                " first.")
+            return self._lego_drive_base.get_front_distance()
+        elif HardwareConfig.CHASSIS_VERSION == 2:
+            return self._rpi.get_front_distance()
 
+    ## End of LEGO Driver Methods

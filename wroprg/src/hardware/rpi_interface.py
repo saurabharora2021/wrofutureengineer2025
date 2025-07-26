@@ -1,7 +1,7 @@
 """This module is to interact with all hardware connected to RasperryPi."""
 import logging
 import time
-from typing import List
+from typing import List,Optional
 
 from board import SCL, SDA
 import busio
@@ -10,8 +10,9 @@ from gpiozero import Buzzer, RGBLED, DistanceSensor, Button, Device
 from gpiozero.pins.pigpio import PiGPIOFactory
 from PIL import Image, ImageDraw, ImageFont
 
-from base.shutdown_handling import ShutdownInterface
 from hardware.pin_config import PinConfig
+from hardware.hardwareconfig import HardwareConfig
+from base.shutdown_handling import ShutdownInterface
 
 class RpiInterface(ShutdownInterface):
     """ This interface defines all Interfaces on Raspberry Pi."""
@@ -21,6 +22,7 @@ class RpiInterface(ShutdownInterface):
     # Use the centralized pin configuration class
     # All pin definitions are imported from PinConfig
 
+    front_distance_sensor: Optional[DistanceSensor] = None
 
     def __init__(self) -> None:
         """
@@ -30,6 +32,15 @@ class RpiInterface(ShutdownInterface):
         super().__init__()
 
         self.logger.info("Initializing RpiInterface...")
+
+        # Initialize Optional Front Distance Sensor
+        if HardwareConfig.CHASSIS_VERSION == 2:
+            self.front_distance_sensor = DistanceSensor(echo=PinConfig.FRONT_SENSOR_ECHO_PIN,
+                                                        trigger=PinConfig.FRONT_SENSOR_TRIG_PIN,
+                                                        partial=True,
+                                                        max_distance=
+                                                        PinConfig.FRONT_DISTANCE_MAX_DISTANCE)
+
         #Setup Screen First.
         i2c = busio.I2C(SCL,SDA)  # uses board.SCL and board.SDA
 
@@ -83,15 +94,28 @@ class RpiInterface(ShutdownInterface):
 
         self.rightdistancesensor = DistanceSensor(echo=PinConfig.RIGHT_SENSOR_ECHO_PIN,
                                                   trigger=PinConfig.RIGHT_SENSOR_TRIG_PIN,
-                                                  partial=True,
+                                                  partial=False,
                                                   max_distance=
                                                   PinConfig.RIGHT_DISTANCE_MAX_DISTANCE)
         self.leftdistancesensor = DistanceSensor(echo=PinConfig.LEFT_SENSOR_ECHO_PIN,
                                                  trigger=PinConfig.LEFT_SENSOR_TRIG_PIN,
-                                                 partial=True,
+                                                 partial=False,
                                                  max_distance=PinConfig.LEFT_DISTANCE_MAX_DISTANCE)
+                                                 
 
         self.logger.info("RpiInterface initialized successfully.")
+
+        self.logger.warning("Stabilize Distance Sensors...")
+        # Stabilize distance sensors
+        time.sleep(1)  # Wait for sensors to stabilize
+        counter = 0
+        while (counter<10) and (self.get_right_distance() < 0.1 or
+               self.get_left_distance() < 0.1 or
+               self.get_right_distance() >= self.get_right_distance_max() or
+                 self.get_left_distance() >= self.get_left_distance_max()):
+            self.logger.warning("Waiting for distance sensors to stabilize...")
+            time.sleep(0.5)
+            counter += 1
 
 
     def buzzer_beep(self, timer: int = 1) -> None:
@@ -140,6 +164,23 @@ class RpiInterface(ShutdownInterface):
     def get_left_distance_max(self) -> float:
         """Get the maximum distance for the left distance sensor."""
         return PinConfig.LEFT_DISTANCE_MAX_DISTANCE * 100  # Convert to cm
+
+    def get_front_distance(self) -> float:
+        """Get the distance from the front distance sensor."""
+        if self.front_distance_sensor is None:
+            raise ValueError("Front distance sensor is not initialized.")
+
+        # Check if the front distance sensor is initialized
+        return self.front_distance_sensor.distance * 100  # Convert to cm
+
+    def get_front_distance_max(self) -> float:
+        """Get the maximum distance for the front distance sensor."""
+        if self.front_distance_sensor is None:
+            raise ValueError("Front distance sensor is not initialized.")
+
+        # Check if the front distance sensor is initialized
+        return PinConfig.FRONT_DISTANCE_MAX_DISTANCE * 100  # Convert to cm
+
 
     def shutdown(self) -> None:
         try:

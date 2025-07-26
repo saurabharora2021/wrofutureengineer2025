@@ -44,6 +44,7 @@ class PinConfig:
             'FRONT_SENSOR_TRIG_PIN': 27,
             'FRONT_SENSOR_ECHO_PIN': 22,
             'FRONT_DISTANCE_MAX_DISTANCE': 2,
+            'JUMPER_PIN': 26,
         },
         3: {  # V3 - 3D printed chassis
             'BUZZER_PIN': 17,
@@ -78,6 +79,7 @@ class PinConfig:
     FRONT_SENSOR_TRIG_PIN = 0
     FRONT_SENSOR_ECHO_PIN = 0
     FRONT_DISTANCE_MAX_DISTANCE = 0
+    JUMPER_PIN = 0 # Used for a jumper to change program detection.
 
 
     # Common settings for all chassis versions
@@ -109,7 +111,7 @@ class PinConfig:
         chassis_version = HardwareConfig.CHASSIS_VERSION
 
         logger.info("=== GPIO Pin Configuration (Chassis V%d) ===", chassis_version)
-        logger.info("Buzzer Pin: %d", cls.BUZZER_PIN) 
+        logger.info("Buzzer Pin: %d", cls.BUZZER_PIN)
         logger.info("RGB LED Pins: Red=%d, Green=%d, Blue=%d",
                    cls.LED1_RED_PIN, cls.LED1_GREEN_PIN, cls.LED1_BLUE_PIN)
         logger.info("Button Pin: %d", cls.BUTTON_PIN)
@@ -134,7 +136,7 @@ def _initialize_pins():
     chassis_version = HardwareConfig.CHASSIS_VERSION
     logger.info("Initializing pin configuration for Chassis V%d", chassis_version)
 
-    config = PinConfig._get_current_config()
+    config = PinConfig._get_current_config() # pylint: disable=W0212
     for pin_name, pin_value in config.items():
         setattr(PinConfig, pin_name, pin_value)
 

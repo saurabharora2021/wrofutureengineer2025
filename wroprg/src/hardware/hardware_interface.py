@@ -15,8 +15,8 @@ class HardwareInterface(ShutdownInterface):
     Includes methods for both LEGO driver and Raspberry Pi interface.
     """
 
-    def __init__(self):
-        self._rpi = RpiInterface()
+    def __init__(self,stabilize:bool) -> None:
+        self._rpi = RpiInterface(stabilize)
         self._lego_drive_base: Optional[BuildHatDriveBase] = None
 
     def full_initialization(self) -> None:
@@ -36,7 +36,7 @@ class HardwareInterface(ShutdownInterface):
 
 
     # --- Raspberry Pi Interface Methods ---
-    def buzzer_beep(self, timer: int = 1) -> None:
+    def buzzer_beep(self, timer: float = 0.5) -> None:
         """Turn on the buzzer."""
         self._rpi.buzzer_beep(timer)
 
@@ -91,6 +91,10 @@ class HardwareInterface(ShutdownInterface):
     def force_flush_messages(self) -> None:
         """Force flush the messages on the OLED screen."""
         self._rpi.force_flush_messages()
+
+    def get_jumper_state(self) -> bool:
+        """Get the state of the jumper pin."""        
+        return self._rpi.get_jumper_state()
 
     def shutdown(self) -> None:
         """Shutdown the hardware interface."""

@@ -23,8 +23,9 @@ class RpiInterface(ShutdownInterface):
     # All pin definitions are imported from PinConfig
 
     front_distance_sensor: Optional[DistanceSensor] = None
+    jumper_pin: Optional[Button] = None
 
-    def __init__(self) -> None:
+    def __init__(self,stabilize:bool) -> None:
         """
         Initialize the LED control class.
         Sets up the GPIO pins for the LEDs and initializes the buzzer and RGB LED.
@@ -32,14 +33,6 @@ class RpiInterface(ShutdownInterface):
         super().__init__()
 
         self.logger.info("Initializing RpiInterface...")
-
-        # Initialize Optional Front Distance Sensor
-        if HardwareConfig.CHASSIS_VERSION == 2:
-            self.front_distance_sensor = DistanceSensor(echo=PinConfig.FRONT_SENSOR_ECHO_PIN,
-                                                        trigger=PinConfig.FRONT_SENSOR_TRIG_PIN,
-                                                        partial=True,
-                                                        max_distance=
-                                                        PinConfig.FRONT_DISTANCE_MAX_DISTANCE)
 
         #Setup Screen First.
         i2c = busio.I2C(SCL,SDA)  # uses board.SCL and board.SDA
@@ -71,10 +64,11 @@ class RpiInterface(ShutdownInterface):
         try:
             # Use pigpio factory if available
             Device.pin_factory = PiGPIOFactory()
+            self.logger.info("Using PiGPIOFactory for GPIO pin control.")
         except : # pylint: disable=bare-except
             # Fallback to default GPIO pin factory
             Device.pin_factory = None
-            self.logger.warning("Failed to initialize PiGPIOFactory")
+            self.logger.error("Failed to initialize PiGPIOFactory")
 
         self.buzzer = Buzzer(PinConfig.BUZZER_PIN)
         self.led1 = RGBLED(red=PinConfig.LED1_RED_PIN,
@@ -94,33 +88,55 @@ class RpiInterface(ShutdownInterface):
 
         self.rightdistancesensor = DistanceSensor(echo=PinConfig.RIGHT_SENSOR_ECHO_PIN,
                                                   trigger=PinConfig.RIGHT_SENSOR_TRIG_PIN,
-                                                  partial=False,
+                                                  partial=True,
                                                   max_distance=
                                                   PinConfig.RIGHT_DISTANCE_MAX_DISTANCE)
         self.leftdistancesensor = DistanceSensor(echo=PinConfig.LEFT_SENSOR_ECHO_PIN,
                                                  trigger=PinConfig.LEFT_SENSOR_TRIG_PIN,
-                                                 partial=False,
+                                                 partial=True,
                                                  max_distance=PinConfig.LEFT_DISTANCE_MAX_DISTANCE)
-                                                 
+
+                # Initialize Optional Front Distance Sensor
+        if HardwareConfig.CHASSIS_VERSION == 2:
+            self.front_distance_sensor = DistanceSensor(echo=PinConfig.FRONT_SENSOR_ECHO_PIN,
+                                                        trigger=PinConfig.FRONT_SENSOR_TRIG_PIN,
+                                                        partial=True,
+                                                        max_distance=
+                                                        PinConfig.FRONT_DISTANCE_MAX_DISTANCE)
+            self.jumper_pin = Button(PinConfig.JUMPER_PIN, hold_time=1)
+
 
         self.logger.info("RpiInterface initialized successfully.")
 
-        self.logger.warning("Stabilize Distance Sensors...")
-        # Stabilize distance sensors
-        time.sleep(1)  # Wait for sensors to stabilize
-        counter = 0
-        while (counter<10) and (self.get_right_distance() < 0.1 or
-               self.get_left_distance() < 0.1 or
-               self.get_right_distance() >= self.get_right_distance_max() or
-                 self.get_left_distance() >= self.get_left_distance_max()):
-            self.logger.warning("Waiting for distance sensors to stabilize...")
-            time.sleep(0.5)
-            counter += 1
+        if stabilize:
+            self.logger.warning("Stabilize Distance Sensors...")
+            # Stabilize distance sensors
+            time.sleep(1)  # Wait for sensors to stabilize
+            counter = 0
+            valid_distance = False
+            while counter<10 and valid_distance is False:
+                valid_distance = True
+                if (self.get_right_distance() < 0.1 or
+                        self.get_right_distance() >= self.get_right_distance_max()):
+                    self.logger.info("Right distance sensor is not stable, %s cm",
+                                    self.get_right_distance())
+                    valid_distance = False
+                if (self.get_left_distance() < 0.1 or
+                        self.get_left_distance() >= self.get_left_distance_max()):
+                    self.logger.info("Left distance sensor is not stable, %s cm",
+                                    self.get_left_distance())
+                    valid_distance = False
+                if valid_distance is False:
+                    self.logger.warning("Waiting for distance sensors to stabilize...")
+                    time.sleep(1)
+                counter += 1
 
 
-    def buzzer_beep(self, timer: int = 1) -> None:
+    def buzzer_beep(self, timer: float = 1) -> None:
         """Turn on the buzzer."""
-        self.buzzer.blink(on_time=timer, off_time=timer, n=1)  # Blink 1 time.
+        self.buzzer.on()
+        time.sleep(timer)
+        self.buzzer.off()
 
     def led1_green(self) -> None:
         """Turn on the LED1 green."""
@@ -211,6 +227,17 @@ class RpiInterface(ShutdownInterface):
             self.leftdistancesensor.close()
         except Exception as e:  # pylint: disable=broad-except
             self.logger.error("Error closing left distance sensor during shutdown: %s", e)
+        if self.front_distance_sensor is not None:
+            try:
+                self.front_distance_sensor.close()
+            except Exception as e:  # pylint: disable=broad-except
+                self.logger.error("Error closing front distance sensor during shutdown: %s", e)
+        if self.jumper_pin is not None:
+            try:
+                self.jumper_pin.close()
+            except Exception as e:  # pylint: disable=broad-except
+                self.logger.error("Error closing jumper pin during shutdown: %s", e)
+
     def display_message(self, message: str, forceflush: bool = False) -> None:
         """
         Display a message on the OLED screen.
@@ -243,3 +270,9 @@ class RpiInterface(ShutdownInterface):
         if self.pendingmessage:
             self.flush_pending_messages()
             self.pendingmessage = False
+
+    def get_jumper_state(self) -> bool:
+        """Get the state of the jumper pin."""
+        if self.jumper_pin is None:
+            raise ValueError("Jumper pin is not initialized.")
+        return self.jumper_pin.is_pressed

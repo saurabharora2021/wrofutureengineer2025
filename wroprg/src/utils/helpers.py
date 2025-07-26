@@ -8,7 +8,7 @@ from hardware.hardware_interface import HardwareInterface
 class HelperFunctions:
     """A class containing helper functions for the WRO Future Engineer 2025 project."""
 
-    def __init__(self, log_file: str, debugflag: bool) -> None:
+    def __init__(self, log_file: str, debugflag: bool,stabilize:bool=True) -> None:
         """Initialize the HelperFunctions Logger class."""
 
         # Initialize instance attributes
@@ -34,7 +34,7 @@ class HelperFunctions:
         print("Starting Logger successfully")
 
         self._logger.warning("Initializing Output Interface")
-        self._hardware_interface = HardwareInterface()
+        self._hardware_interface = HardwareInterface(stabilize)
         self._shutdown_manager.add_interface(self._hardware_interface)
 
         self.add_screen_logger(self._hardware_interface)

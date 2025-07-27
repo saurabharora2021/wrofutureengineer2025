@@ -1,13 +1,13 @@
-""" This script is used to test distance sensor using the BuildHatDriveBase class."""
+""" This script is used to test the Buzzer using the BuildHatDriveBase class."""
 import logging
 import argparse
 from hardware.hardware_interface import HardwareInterface
 from utils.helpers import HelperFunctions
 
 def main():
-    """ Main function to run the Wro - raspberry test distance sensor Application."""
+    """ Main function to run the Wro - raspberry test color Application."""
 
-    parser = argparse.ArgumentParser(description="Wro lego - test distance sensor Application")
+    parser = argparse.ArgumentParser(description="Wro lego - test color Application")
     parser.add_argument('--logfile', type=str, default='application.log', help='Path to log file')
     # Added debug argument
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
@@ -17,12 +17,9 @@ def main():
     logger = logging.getLogger(__name__)
 
     pi_inf: HardwareInterface = helper.get_pi_interface()
-
     try:
 
-        front_distance = pi_inf.get_front_distance()
-        logger.warning("Front Distance: %d cm", front_distance)
-
+        logger.warning("Hello World Screen is working")
         pi_inf.force_flush_messages()
 
     except (ImportError, AttributeError, RuntimeError) as e:

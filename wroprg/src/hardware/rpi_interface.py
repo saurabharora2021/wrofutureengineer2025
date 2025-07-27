@@ -20,7 +20,11 @@ class RpiInterface(ShutdownInterface):
     logger: logging.Logger = logging.getLogger(__name__)
 
     # Use the centralized pin configuration class
-    # All pin definitions are imported from PinConfig
+
+    MAX_STABILIZATION_CHECKS = 5
+    LINE_HEIGHT = 8  # pixels per line
+    FONT_SIZE = 9 # font size for messages
+
 
     front_distance_sensor: Optional[DistanceSensor] = None
     jumper_pin: Optional[Button] = None
@@ -45,9 +49,10 @@ class RpiInterface(ShutdownInterface):
         self.oled.fill(0)
         self.oled.show()
 
-        #self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
+        self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                                        RpiInterface.FONT_SIZE)
         # Load a default font
-        self.font: ImageFont.FreeTypeFont | ImageFont.ImageFont = ImageFont.load_default()
+        #self.font: ImageFont.FreeTypeFont | ImageFont.ImageFont = ImageFont.load_default()
         self._last_oled_update: float = 0
         self.image: Image.Image = Image.new("1", (PinConfig.SCREEN_WIDTH, PinConfig.SCREEN_HEIGHT))
         self.draw: ImageDraw.ImageDraw = ImageDraw.Draw(self.image)
@@ -114,7 +119,8 @@ class RpiInterface(ShutdownInterface):
             time.sleep(1)  # Wait for sensors to stabilize
             counter = 0
             valid_distance = False
-            while counter<10 and valid_distance is False:
+
+            while counter< self.MAX_STABILIZATION_CHECKS and valid_distance is False:
                 valid_distance = True
                 if (self.get_right_distance() < 0.1 or
                         self.get_right_distance() >= self.get_right_distance_max()):
@@ -260,7 +266,7 @@ class RpiInterface(ShutdownInterface):
                             outline=0, fill=0)
         for i, msg in enumerate(self.messages):
             # Use constant for line height spacing
-            self.draw.text((0, i * PinConfig.LINE_HEIGHT), msg, font=self.font, fill=255)
+            self.draw.text((0, i * RpiInterface.LINE_HEIGHT), msg, font=self.font, fill=255)
         self.oled.image(self.image)
         self.oled.show()
         self._last_oled_update = now

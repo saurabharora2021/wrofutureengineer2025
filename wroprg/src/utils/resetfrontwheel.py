@@ -13,7 +13,7 @@ def main():
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     args = parser.parse_args()
 
-    helper: HelperFunctions = HelperFunctions(args.logfile, args.debug)
+    helper: HelperFunctions = HelperFunctions(args.logfile, args.debug,stabilize=False)
     logger = logging.getLogger(__name__)
 
     pi_inf: HardwareInterface = helper.get_pi_interface()

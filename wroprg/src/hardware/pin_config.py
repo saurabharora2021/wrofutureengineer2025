@@ -85,7 +85,6 @@ class PinConfig:
     # Common settings for all chassis versions
     SCREEN_WIDTH = 128
     SCREEN_HEIGHT = 64
-    LINE_HEIGHT = 13  # pixels per line
     SCREEN_UPDATE_INTERVAL = 0.5  # seconds
     LED_TEST_DELAY = 0.25  # seconds
 
@@ -124,8 +123,8 @@ class PinConfig:
         logger.info("Front Distance Sensor: Trigger=%d, Echo=%d, Max=%0.1fm",
                    cls.FRONT_SENSOR_TRIG_PIN, cls.FRONT_SENSOR_ECHO_PIN,
                    cls.FRONT_DISTANCE_MAX_DISTANCE)
-        logger.info("OLED Display: %dx%d, Line Height=%dpx, Update Interval=%0.1fs",
-                   cls.SCREEN_WIDTH, cls.SCREEN_HEIGHT, cls.LINE_HEIGHT,
+        logger.info("OLED Display: %dx%d, Update Interval=%0.1fs",
+                   cls.SCREEN_WIDTH, cls.SCREEN_HEIGHT,
                    cls.SCREEN_UPDATE_INTERVAL)
         logger.info("LED Test Delay: %0.2fs", cls.LED_TEST_DELAY)
 

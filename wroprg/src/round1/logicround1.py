@@ -1,7 +1,9 @@
 """ This modules implements the Challenge 1 Walker for the WRO2025 Robot."""
+from statistics import median
 from time import sleep
 import logging
 from typing import Tuple
+from collections import deque
 from base.mat import mat_color
 from hardware.hardware_interface import HardwareInterface
 
@@ -17,6 +19,7 @@ class Walker:
     FRONTDISTANCE_FOR_COLOR_CHECK=100
     WALLFRONTDISTANCE=30
     WALLSIDEDISTANCE=15
+    EQUIWALKMAXDELTA=15
     UNKNOWN_DIRECTION=-1
     TURNRIGHT_ANGLE=10
     TURNLEFT_ANGLE=-10
@@ -32,6 +35,7 @@ class Walker:
 
     def __init__(self, output_inf:HardwareInterface):
         self.output_inf = output_inf
+        self._queue: deque[float] = deque(maxlen=10)  # Initialize a deque to store distances.
 
     def wallunknowndirectioninit(self)-> Tuple[float, callable, bool]:
         """This method is used to initialize the walker when the direction is unknown."""
@@ -57,6 +61,8 @@ class Walker:
         right_distance = self.output_inf.get_right_distance()
         self.logger.warning("Left Distance: %.2f, Right Distance: %.2f",
                             left_distance, right_distance)
+        self._queue.clear()  # Clear the queue for new distances
+
         return (left_distance, right_distance)
 
     def equidistance_walk(self, def_distance_left: float,
@@ -79,13 +85,30 @@ class Walker:
             self.logger.warning("Right distance sensor is at maximum distance.")
             right_distance = def_distance_right
 
-        if (abs(left_distance - def_distance_left)> self.DELTA_DISTANCE_CM
-            or abs(right_distance < def_distance_right)> self.DELTA_DISTANCE_CM):
+        left_delta = abs(left_distance - def_distance_left)
+        right_delta = abs(right_distance - def_distance_right)
+
+        if (abs(left_delta) > self.DELTA_DISTANCE_CM
+            or abs(right_delta) > self.DELTA_DISTANCE_CM):
+
+            #Handle sudden changes in distance
+            if abs(left_delta) > self.EQUIWALKMAXDELTA:
+                self.logger.warning("Left distance change is too high: %.2f", left_delta)
+                left_delta = self.EQUIWALKMAXDELTA* (left_delta / abs(left_delta))
+            if abs(right_delta) > self.EQUIWALKMAXDELTA:
+                self.logger.warning("Right distance change is too high: %.2f", right_delta)
+                right_delta = self.EQUIWALKMAXDELTA * (right_delta / abs(right_delta))
+
             # Adjust steering based on the difference in distances
             error = (left_distance - def_distance_left) - (right_distance - def_distance_right)
-            angle = self.clamp(kp * error, -1*self.MAX_ANGLE, self.MAX_ANGLE)
-            self.logger.warning("steering angle: %.2f", angle)
-            self.output_inf.turn_steering(angle)
+            angle = self.clamp(kp * -error, -1*self.MAX_ANGLE, self.MAX_ANGLE)
+            self.logger.warning("angle: %.2f", angle)
+            self._queue.append(angle)
+
+            final_angle = median(self._queue)
+            self.logger.warning("Final angle: %.2f", final_angle)
+
+            self.output_inf.turn_steering(final_angle)
 
         return (left_distance, right_distance)
 

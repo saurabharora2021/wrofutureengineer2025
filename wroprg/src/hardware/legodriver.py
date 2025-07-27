@@ -17,7 +17,7 @@ class BuildHatDriveBase(ShutdownInterface):
     front_distance_sensor: Optional[DistanceSensor] = None
 
     def __init__(self, front_motor_port: str, back_motor_port: str, bottom_color_sensor_port: str,
-                  front_distance_sensor_port: str) -> None:
+                  front_distance_sensor_port: Optional[str]) -> None:
         """Initialize the drive base with two motors."""
 
         self.logger.warning("BuildHat start..")

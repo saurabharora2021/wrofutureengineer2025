@@ -105,6 +105,12 @@ class HardwareInterface(ShutdownInterface):
 
         self._rpi.shutdown()
 
+    def reset_steering(self) -> None:
+        """Reset the steering mechanism to its default position."""
+        if self._lego_drive_base is None:
+            raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
+        self._lego_drive_base.reset_front_motor()
+
     # --- LEGO Driver Methods ---
     def drive_forward(self, speed: float) -> None:
         """Run the drive base forward at the specified speed."""
@@ -144,10 +150,12 @@ class HardwareInterface(ShutdownInterface):
         """Get the distance to the front obstacle in centimeter."""
         if HardwareConfig.CHASSIS_VERSION == 1:
             if self._lego_drive_base is None:
-                raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization()" \
+                raise ValueError("LEGO Drive Base not initialized. Call full_initialization()" \
                 " first.")
             return self._lego_drive_base.get_front_distance()
         elif HardwareConfig.CHASSIS_VERSION == 2:
             return self._rpi.get_front_distance()
+        else:
+            raise ValueError("Unsupported chassis version for front distance sensor.")
 
     ## End of LEGO Driver Methods

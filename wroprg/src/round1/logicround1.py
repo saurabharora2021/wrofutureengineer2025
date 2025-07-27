@@ -1,5 +1,5 @@
 """ This modules implements the Challenge 1 Walker for the WRO2025 Robot."""
-from statistics import median
+from statistics import mean as average
 from time import sleep
 import logging
 from typing import Tuple
@@ -66,10 +66,10 @@ class Walker:
         return (left_distance, right_distance)
 
     def equidistance_walk(self, def_distance_left: float,
-                           def_distance_right: float,kp:float = 1) -> Tuple[float, float]:
+                           def_distance_right: float,kp:float = 0.5) -> Tuple[float, float]:
         """Walk in a straight line, maintaining equal distance from both walls."""
-        self.logger.info("Starting equidistance walk.")
-
+        # self.logger.info("Starting equidistance walk.")
+        errorcount = 0
         left_distance = self.output_inf.get_left_distance()
         right_distance = self.output_inf.get_right_distance()
         self.logger.warning("Left Distance: %.2f, Right Distance: %.2f",
@@ -77,20 +77,24 @@ class Walker:
 
         #If you are at a point, where the left rail is not present or the right rail is not present,
         # then we will not adjust the steering.
-        if left_distance >= self.output_inf.get_left_distance_max():
-            self.logger.warning("Left distance sensor is at maximum distance.")
+        if left_distance >= self.output_inf.get_left_distance_max() or left_distance <= 0:
+            self.logger.warning("Left distance is not set.")
             left_distance = def_distance_left
+            errorcount += 1
 
-        if right_distance >= self.output_inf.get_right_distance_max():
-            self.logger.warning("Right distance sensor is at maximum distance.")
+        if right_distance >= self.output_inf.get_right_distance_max() or right_distance <= 0 :
+            self.logger.warning("Right distance is not set.")
             right_distance = def_distance_right
+            errorcount += 1
 
         left_delta = abs(left_distance - def_distance_left)
         right_delta = abs(right_distance - def_distance_right)
 
         if (abs(left_delta) > self.DELTA_DISTANCE_CM
-            or abs(right_delta) > self.DELTA_DISTANCE_CM):
+            or abs(right_delta) > self.DELTA_DISTANCE_CM) and errorcount < 2:
 
+            self.logger.warning("Left Delta: %.2f, Right Delta: %.2f",
+                                left_delta, right_delta)
             #Handle sudden changes in distance
             if abs(left_delta) > self.EQUIWALKMAXDELTA:
                 self.logger.warning("Left distance change is too high: %.2f", left_delta)
@@ -100,12 +104,12 @@ class Walker:
                 right_delta = self.EQUIWALKMAXDELTA * (right_delta / abs(right_delta))
 
             # Adjust steering based on the difference in distances
-            error = (left_distance - def_distance_left) - (right_distance - def_distance_right)
+            error = left_delta - right_delta
             angle = self.clamp(kp * -error, -1*self.MAX_ANGLE, self.MAX_ANGLE)
             self.logger.warning("angle: %.2f", angle)
             self._queue.append(angle)
 
-            final_angle = median(self._queue)
+            final_angle = average(self._queue)
             self.logger.warning("Final angle: %.2f", final_angle)
 
             self.output_inf.turn_steering(final_angle)

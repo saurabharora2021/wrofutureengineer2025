@@ -33,14 +33,14 @@ class HardwareInterface(ShutdownInterface):
                         process_variance=0.2,      # Increased, so filter adapts faster
                         measurement_variance=0.5,   # Moderate, as HC-SR04 is noisy
                         estimated_error=1.0,        # Start with high uncertainty
-                        initial_value=self._rpi.get_left_distance()  # Or your expected starting distance
-        )
+                        initial_value=self._rpi.get_left_distance()
+                        )
         self._right_distance_kf = DumpKalmanFilter(
                         process_variance=0.2,      # Increased, so filter adapts faster
                         measurement_variance=0.5,   # Moderate, as HC-SR04 is noisy
                         estimated_error=1.0,        # Start with high uncertainty
-                        initial_value=self._rpi.get_right_distance() # Or your expected starting distance
-        )
+                        initial_value=self._rpi.get_right_distance()
+                        )
 
     def full_initialization(self) -> None:
         """Initialize all hardware components."""
@@ -58,7 +58,8 @@ class HardwareInterface(ShutdownInterface):
                     process_variance=1e-2,      # Larger, as distance changes faster
                     measurement_variance=0.5,   # Moderate, as HC-SR04 is noisy
                     estimated_error=1.0,        # Start with high uncertainty
-                    initial_value=self._rpi.get_front_distance()  # Or your expected starting distance
+                    initial_value=self._rpi.get_front_distance()
+                      # Or your expected starting distance
                 )
                 # Create Kalman filters for each axis
                 self._kf_accel = [KalmanFilter() for _ in range(3)]

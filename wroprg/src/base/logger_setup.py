@@ -6,9 +6,6 @@ from base.shutdown_handling import ShutdownInterface
 class LoggerSetup(ShutdownInterface):
     """Class defines the logger and Handlers"""
 
-    # Get the logger instance
-    logger: logging.Logger = logging.getLogger(__name__)
-
     def setup(self, log_file: str, log_level: int = logging.INFO,
               max_bytes: int = 1048576, backup_count: int = 3) -> None:
         """ Intializes the log interfaces """
@@ -36,7 +33,7 @@ class LoggerSetup(ShutdownInterface):
         logger.addHandler(console_handler)
 
 
-        self.logger.info("Logger setup complete with file: %s, level: %s", log_file, log_level)
+        logger.info("Logger setup complete with file: %s, level: %s", log_file, log_level)
 
     def shutdown(self) -> None:
         # Flush and close all handlers

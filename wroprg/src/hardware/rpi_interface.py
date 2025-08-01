@@ -15,10 +15,9 @@ from hardware.pin_config import PinConfig
 from hardware.hardwareconfig import HardwareConfig
 from base.shutdown_handling import ShutdownInterface
 
+logger: logging.Logger = logging.getLogger(__name__)
 class RpiInterface(ShutdownInterface):
     """ This interface defines all Interfaces on Raspberry Pi."""
-
-    logger: logging.Logger = logging.getLogger(__name__)
 
     # Use the centralized pin configuration class
 
@@ -37,7 +36,7 @@ class RpiInterface(ShutdownInterface):
         """
         super().__init__()
 
-        self.logger.info("Initializing RpiInterface...")
+        logger.info("Initializing RpiInterface...")
 
         #Setup I2c devices.
         i2c = busio.I2C(SCL,SDA)  # uses board.SCL and board.SDA
@@ -73,11 +72,11 @@ class RpiInterface(ShutdownInterface):
         try:
             # Use pigpio factory if available
             Device.pin_factory = PiGPIOFactory()
-            self.logger.info("Using PiGPIOFactory for GPIO pin control.")
+            logger.info("Using PiGPIOFactory for GPIO pin control.")
         except : # pylint: disable=bare-except
             # Fallback to default GPIO pin factory
             Device.pin_factory = None
-            self.logger.error("Failed to initialize PiGPIOFactory")
+            logger.error("Failed to initialize PiGPIOFactory")
 
         self.buzzer = Buzzer(PinConfig.BUZZER_PIN)
         self.led1 = RGBLED(red=PinConfig.LED1_RED_PIN,
@@ -115,10 +114,10 @@ class RpiInterface(ShutdownInterface):
             self.jumper_pin = Button(PinConfig.JUMPER_PIN, hold_time=1)
 
 
-        self.logger.info("RpiInterface initialized successfully.")
+        logger.info("RpiInterface initialized successfully.")
 
         if stabilize:
-            self.logger.warning("Stabilize Distance Sensors...")
+            logger.warning("Stabilize Distance Sensors...")
             # Stabilize distance sensors
             time.sleep(1)  # Wait for sensors to stabilize
             counter = 0
@@ -128,16 +127,16 @@ class RpiInterface(ShutdownInterface):
                 valid_distance = True
                 if (self.get_right_distance() < 0.1 or
                         self.get_right_distance() >= self.get_right_distance_max()):
-                    self.logger.info("Right distance sensor is not stable, %s cm",
+                    logger.info("Right distance sensor is not stable, %s cm",
                                     self.get_right_distance())
                     valid_distance = False
                 if (self.get_left_distance() < 0.1 or
                         self.get_left_distance() >= self.get_left_distance_max()):
-                    self.logger.info("Left distance sensor is not stable, %s cm",
+                    logger.info("Left distance sensor is not stable, %s cm",
                                     self.get_left_distance())
                     valid_distance = False
                 if valid_distance is False:
-                    self.logger.warning("Waiting for distance sensors to stabilize...")
+                    logger.warning("Waiting for distance sensors to stabilize...")
                     time.sleep(1)
                 counter += 1
 
@@ -170,9 +169,9 @@ class RpiInterface(ShutdownInterface):
 
     def wait_for_action(self) -> None:
         """Wait for the action button to be pressed."""
-        self.logger.warning("Waiting for action button press...")
+        logger.warning("Waiting for action button press...")
         self.action_button.wait_for_active()
-        self.logger.info("Action button pressed!")
+        logger.info("Action button pressed!")
 
 
     def get_right_distance(self) -> float:
@@ -212,41 +211,41 @@ class RpiInterface(ShutdownInterface):
         try:
             self.flush_pending_messages()
         except Exception as e:  # pylint: disable=broad-except
-            self.logger.error("Error flushing OLED messages during shutdown: %s", e)
+            logger.error("Error flushing OLED messages during shutdown: %s", e)
         try:
             self.buzzer.off()
         except Exception as e:  # pylint: disable=broad-except
-            self.logger.error("Error turning off buzzer during shutdown: %s", e)
+            logger.error("Error turning off buzzer during shutdown: %s", e)
         try:
             self.led1.color = (0, 0, 0)
         except Exception as e:  # pylint: disable=broad-except
-            self.logger.error("Error turning off LED1 during shutdown: %s", e)
+            logger.error("Error turning off LED1 during shutdown: %s", e)
         try:
             self.led1.close()
         except Exception as e:  # pylint: disable=broad-except
-            self.logger.error("Error closing LED1 during shutdown: %s", e)
+            logger.error("Error closing LED1 during shutdown: %s", e)
         try:
             self.buzzer.close()
         except Exception as e:  # pylint: disable=broad-except
-            self.logger.error("Error closing buzzer during shutdown: %s", e)
+            logger.error("Error closing buzzer during shutdown: %s", e)
         try:
             self.rightdistancesensor.close()
         except Exception as e:  # pylint: disable=broad-except
-            self.logger.error("Error closing right distance sensor during shutdown: %s", e)
+            logger.error("Error closing right distance sensor during shutdown: %s", e)
         try:
             self.leftdistancesensor.close()
         except Exception as e:  # pylint: disable=broad-except
-            self.logger.error("Error closing left distance sensor during shutdown: %s", e)
+            logger.error("Error closing left distance sensor during shutdown: %s", e)
         if self.front_distance_sensor is not None:
             try:
                 self.front_distance_sensor.close()
             except Exception as e:  # pylint: disable=broad-except
-                self.logger.error("Error closing front distance sensor during shutdown: %s", e)
+                logger.error("Error closing front distance sensor during shutdown: %s", e)
         if self.jumper_pin is not None:
             try:
                 self.jumper_pin.close()
             except Exception as e:  # pylint: disable=broad-except
-                self.logger.error("Error closing jumper pin during shutdown: %s", e)
+                logger.error("Error closing jumper pin during shutdown: %s", e)
 
     def display_message(self, message: str, forceflush: bool = False) -> None:
         """

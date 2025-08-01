@@ -140,3 +140,8 @@ class BuildHatDriveBase(ShutdownInterface):
         if self.front_distance_sensor is None:
             raise RuntimeError("Front distance sensor not initialized. Check the port connection.")
         return self.front_distance_sensor.get_distance() / 10  # Convert from mm to cm
+
+    def get_steering_angle(self) -> float:
+        """Get the current steering angle in degrees."""
+        current_position = self.front_motor.get_position()
+        return current_position / self.STEERING_GEAR_RATIO

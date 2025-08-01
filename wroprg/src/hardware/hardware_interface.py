@@ -5,6 +5,7 @@ from typing import Optional
 from base.shutdown_handling import ShutdownInterface
 from hardware.hardwareconfig import HardwareConfig
 from hardware.legodriver import BuildHatDriveBase
+from hardware.measurements import MeasurementsManager
 from hardware.rpi_interface import RpiInterface
 
 logger = logging.getLogger(__name__)
@@ -18,6 +19,7 @@ class HardwareInterface(ShutdownInterface):
     def __init__(self,stabilize:bool) -> None:
         self._rpi = RpiInterface(stabilize)
         self._lego_drive_base: Optional[BuildHatDriveBase] = None
+        self._measurements_manager: Optional[MeasurementsManager] = None
 
     def full_initialization(self) -> None:
         """Initialize all hardware components."""
@@ -30,10 +32,19 @@ class HardwareInterface(ShutdownInterface):
                 self._lego_drive_base = BuildHatDriveBase(front_motor_port='D', back_motor_port='A',
                                                bottom_color_sensor_port='C',
                                                front_distance_sensor_port=None)
+                self._measurements_manager = MeasurementsManager(self)
+
         except Exception as e:
             logger.error("Failed to initialize drive base: %s", e)
             raise RuntimeError(f"Drive base initialization failed: {e}") from e
 
+
+    def start_measurement_recording(self) -> None:
+        """Start the measurements manager thread."""
+        if self._measurements_manager is None:
+            raise RuntimeError("Measurements manager not initialized. Call" \
+                    " full_initialization() first.")
+        self._measurements_manager.start_reading()
 
     # --- Raspberry Pi Interface Methods ---
     def buzzer_beep(self, timer: float = 0.5) -> None:
@@ -104,6 +115,8 @@ class HardwareInterface(ShutdownInterface):
             self._lego_drive_base.shutdown()
 
         self._rpi.shutdown()
+        if self._measurements_manager is not None:
+            self._measurements_manager.shutdown()
 
     def reset_steering(self) -> None:
         """Reset the steering mechanism to its default position."""
@@ -157,5 +170,11 @@ class HardwareInterface(ShutdownInterface):
             return self._rpi.get_front_distance()
         else:
             raise ValueError("Unsupported chassis version for front distance sensor.")
+
+    def get_steering_angle(self) -> float:
+        """Get the current steering angle in degrees."""
+        if self._lego_drive_base is None:
+            raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
+        return self._lego_drive_base.get_steering_angle()
 
     ## End of LEGO Driver Methods

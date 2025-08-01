@@ -66,7 +66,7 @@ class BuildHatDriveBase(ShutdownInterface):
 
 
 
-    def turn_steering(self, degrees: float,steering_speed:float=20) -> None:
+    def turn_steering(self, degrees: float,steering_speed:float=50) -> None:
         """
         Turn the steering to the specified degrees.
         Positive degrees turn right, negative turn left.
@@ -81,9 +81,10 @@ class BuildHatDriveBase(ShutdownInterface):
                               -self.MAX_STEERING_DEGREE)
         # Calculate how much to move from current position
         move_degrees = target_position - current_position
-        logger.info("Turning front motor to %s (move %s degrees)", target_position,
-                         move_degrees)
+        logger.info("Turning front motor to %s (move %s degrees) current position %s", target_position,
+                         move_degrees, current_position)
         self.front_motor.run_for_degrees(move_degrees, speed=steering_speed, blocking=True)
+        logger.info("Front motor position after turn: %s", self.front_motor.get_position())
 
     def check_set_steering(self, expected_position: float = 0,min_error:float = 2,
                            retrycount:int = 3,steering_speed:float=10) -> None:

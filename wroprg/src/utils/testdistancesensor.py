@@ -24,14 +24,9 @@ def main():
         robot_validator:RobotValidator =  RobotValidator(pi_inf)
         robot_validator.validate()  # Validate the robot's functionality
 
-        left_distance = pi_inf.get_left_distance()
-        right_distance = pi_inf.get_right_distance()
-        logger.warning("Left Distance: %d cm Right Distance: %d cm",
-                     left_distance, right_distance)
-
+        pi_inf.logdistances()  # Log the distances
 
         pi_inf.force_flush_messages()
-        pi_inf.get_bottom_color()
 
     except (ImportError, AttributeError, RuntimeError) as e:
         logger.error("Error Running Program")

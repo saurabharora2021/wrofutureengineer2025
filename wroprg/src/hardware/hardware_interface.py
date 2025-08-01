@@ -248,6 +248,14 @@ class HardwareInterface(ShutdownInterface):
 
     ## End of LEGO Driver Methods
 
+    def logdistances(self) -> None:
+        """Log the current distances from all sensors."""
+        left_distance = self.get_left_distance()
+        right_distance = self.get_right_distance()
+        front_distance = self.get_front_distance()
+        logger.warning("L:%.1f, R:%.1f, F:%.1f",
+                       left_distance, right_distance, front_distance)
+
 class MeasurementsManager(ShutdownInterface):
     """Class to read and store measurements from hardware sensors in a separate thread."""
     def __init__(self, hardware_interface: HardwareInterface):
@@ -290,6 +298,7 @@ class MeasurementsManager(ShutdownInterface):
 
     def start_reading(self) -> None:
         """Start the background thread for reading hardware."""
+        self._mlogger.writeheader()  # Write header to the measurements file
         if self._reading_thread is None or not self._reading_thread.is_alive():
             self._stop_event.clear()
             self._reading_thread = threading.Thread(target=self._read_hardware_loop, daemon=True)

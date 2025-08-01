@@ -22,8 +22,8 @@ class RpiInterface(ShutdownInterface):
     # Use the centralized pin configuration class
 
     MAX_STABILIZATION_CHECKS = 5
-    LINE_HEIGHT = 8  # pixels per line
-    FONT_SIZE = 9 # font size for messages
+    LINE_HEIGHT = 10  # pixels per line
+    FONT_SIZE = 10 # font size for messages
 
 
     front_distance_sensor: Optional[DistanceSensor] = None

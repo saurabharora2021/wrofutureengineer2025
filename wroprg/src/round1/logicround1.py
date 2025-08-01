@@ -40,8 +40,7 @@ class Walker:
         logger.info("Initializing walker with unknown direction.")
         left_distance = self.output_inf.get_left_distance()
         right_distance = self.output_inf.get_right_distance()
-        logger.warning("Left Distance: %.2f, Right Distance: %.2f",
-                            left_distance, right_distance)
+        self.output_inf.logdistances()  # Log the distances
         if left_distance < right_distance:
             distance = left_distance
             walk_function = self.output_inf.get_left_distance
@@ -57,21 +56,19 @@ class Walker:
         logger.info("Initializing equidistance walk.")
         left_distance = self.output_inf.get_left_distance()
         right_distance = self.output_inf.get_right_distance()
-        logger.warning("Left Distance: %.2f, Right Distance: %.2f",
-                            left_distance, right_distance)
+        self.output_inf.logdistances()  # Log the distances
         self._queue.clear()  # Clear the queue for new distances
 
         return (left_distance, right_distance)
 
     def equidistance_walk(self, def_distance_left: float,
-                           def_distance_right: float,kp:float = 0.5) -> Tuple[float, float]:
+                           def_distance_right: float,kp:float = -1) -> Tuple[float, float]:
         """Walk in a straight line, maintaining equal distance from both walls."""
         # logger.info("Starting equidistance walk.")
         errorcount = 0
         left_distance = self.output_inf.get_left_distance()
         right_distance = self.output_inf.get_right_distance()
-        logger.warning("Left Distance: %.2f, Right Distance: %.2f",
-                                 left_distance, right_distance)
+        self.output_inf.logdistances()  # Log the distances
 
         #If you are at a point, where the left rail is not present or the right rail is not present,
         # then we will not adjust the steering.
@@ -87,10 +84,12 @@ class Walker:
 
         #if the left or right distance is less than 10 cm , we need to move to steer away.
         if left_distance < 10:
-            right_delta = 5
+            logger.warning("Left distance is less than 10 cm, steering away.")
+            right_delta = 10 + (10 - left_distance)*2
             left_delta = 0
         elif right_distance < 10:
-            left_delta=5
+            logger.warning("Right distance is less than 10 cm, steering away.")
+            left_delta = 10 + (10 - right_distance)*2
             right_delta = 0
         else:
             left_delta = abs(left_distance - def_distance_left)
@@ -111,7 +110,7 @@ class Walker:
 
             # Adjust steering based on the difference in distances
             error = left_delta - right_delta
-            angle = self.clamp(kp * -error, -1*self.MAX_ANGLE, self.MAX_ANGLE)
+            angle = self.clamp(kp * error, -1*self.MAX_ANGLE, self.MAX_ANGLE)
             logger.warning("angle: %.2f", angle)
             self._queue.append(angle)
 
@@ -172,10 +171,9 @@ class Walker:
         corner_counter = 0
         # Implement the logic for starting a walk
         if self.direction == self.UNKNOWN_DIRECTION:
-            logger.info("Front Distance:%s",self.output_inf.get_front_distance())
-
+            logger.info("Direction is unknown, starting the walk with default distances.")
             default_left_distance, default_right_distance = self.equidistance_walk_init()
-            logger.info("Default Left Distance: %.2f, Default Right Distance: %.2f",
+            logger.info("Default Left: %.2f, Right: %.2f",
                              default_left_distance, default_right_distance)
 
             #Lets start the walk until we reach the front distance,but at slow speed.
@@ -188,9 +186,8 @@ class Walker:
                 current_left, current_right =self.equidistance_walk(default_left_distance,
                                                                      default_right_distance)
 
-                logger.warning("Left Distance: %.2f, Right Distance: %.2f",
-                                     current_left, current_right)
-                logger.info("Front Distance:%s",self.output_inf.get_front_distance())
+                self.output_inf.logdistances()  # Log the distances
+
                 sleep(0.1)
 
             self.output_inf.drive_stop()
@@ -291,12 +288,8 @@ class Walker:
         color = mat_color(r, g, b)
         logger.info("Waiting for color: %s, current color: %s", colors, color)
         while color not in colors:
-            left_distance = self.output_inf.get_left_distance()
-            right_distance = self.output_inf.get_right_distance()
-            logger.warning("Left Distance: %.2f, Right Distance: %.2f",
-                                     left_distance, right_distance)
+            self.output_inf.logdistances()  # Log the distances
             self.wall_follow_func(distance_func,isleft,distance,speed=self.DEFAULT_SPEED/5)
-            logger.info("Front Distance:%s",self.output_inf.get_front_distance())
             sleep(0.1)
             r, g, b, _ = self.output_inf.get_bottom_color_rgbi()
             color = mat_color(r, g, b)

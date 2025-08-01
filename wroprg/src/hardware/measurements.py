@@ -95,7 +95,6 @@ class MeasurementsLogger:
     def __init__(self):
         self.filename = "measurements.csv" # Default filename
         self._file = None
-        self.open_file()
 
     def open_file(self) -> None:
         """Open the file for writing measurements, rotating if it already exists."""
@@ -105,9 +104,14 @@ class MeasurementsLogger:
             rotated_name = f"measurements_{timestamp}.csv"
             os.rename(self.filename, rotated_name)
         self._file = open(self.filename, 'w', encoding='utf-8')
-        self._file.write("left_distance,right_distance,front_distance,steering_angle,accel_x,"
-                         "accel_y,accel_z,gyro_x,gyro_y,gyro_z,timestamp\n")
 
+    def writeheader(self) -> None:
+        """Write the header to the measurements file."""
+        self.open_file()
+        if self._file is not None:
+            self._file.write("left_distance,right_distance,front_distance,steering_angle,"
+                             "accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z,timestamp\n")
+            self._file.flush()
     def write_measurement(self, measurement: Measurement) -> None:
         """Write a single measurement to the file,rounding to 2 decimal places."""
         if self._file is not None:

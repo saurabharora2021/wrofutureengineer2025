@@ -1,11 +1,12 @@
 """This module is to interact with all hardware connected to RasperryPi."""
 import logging
 import time
-from typing import List,Optional
+from typing import List,Optional, Tuple
 
 from board import SCL, SDA
 import busio
 import adafruit_ssd1306
+import adafruit_mpu6050
 from gpiozero import Buzzer, RGBLED, DistanceSensor, Button, Device
 from gpiozero.pins.pigpio import PiGPIOFactory
 from PIL import Image, ImageDraw, ImageFont
@@ -38,8 +39,11 @@ class RpiInterface(ShutdownInterface):
 
         self.logger.info("Initializing RpiInterface...")
 
-        #Setup Screen First.
+        #Setup I2c devices.
         i2c = busio.I2C(SCL,SDA)  # uses board.SCL and board.SDA
+
+        # Initialize MPU6050 sensor
+        self.mpu = adafruit_mpu6050.MPU6050(i2c)
 
         # Create the SSD1306 OLED class.
         self.oled = adafruit_ssd1306.SSD1306_I2C(PinConfig.SCREEN_WIDTH,
@@ -282,3 +286,12 @@ class RpiInterface(ShutdownInterface):
         if self.jumper_pin is None:
             raise ValueError("Jumper pin is not initialized.")
         return self.jumper_pin.is_pressed
+
+    def get_acceleration(self) -> Tuple[float, float, float]:
+        """Get the acceleration from the MPU6050 sensor."""
+        accel = self.mpu.acceleration
+        return accel
+    def get_gyro(self) -> Tuple[float, float, float]:
+        """Get the gyroscope data from the MPU6050 sensor."""
+        gyro = self.mpu.gyro
+        return gyro

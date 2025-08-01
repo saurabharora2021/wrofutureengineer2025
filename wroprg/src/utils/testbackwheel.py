@@ -22,6 +22,7 @@ def main():
     try:
 
         logger.info("Drive Base Initialized")
+        pi_inf.start_measurement_recording()
 
         pi_inf.drive_forward(100)
 

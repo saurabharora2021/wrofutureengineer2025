@@ -1,23 +1,26 @@
 """ This class defines the class to keep the measures of hardware sensors and store them. """
-from collections import deque
-import threading
 import time
 import logging
 import os
 
-from hardware.hardware_interface import HardwareInterface
-from base.shutdown_handling import ShutdownInterface
 
 logger = logging.getLogger(__name__)
 
 class Measurement:
     """Class to represent a single measurement from the hardware sensors."""
     def __init__(self, left_distance: float, right_distance: float, front_distance: float,
-                    steering_angle: float, timestamp: float):
+                    steering_angle: float, accel_x: float, accel_y: float, accel_z: float,
+                    gyro_x: float, gyro_y: float, gyro_z: float, timestamp: float):
         self._left_distance = left_distance
         self._right_distance = right_distance
         self._front_distance = front_distance
         self._steering_angle = steering_angle
+        self._accel_x = accel_x
+        self._accel_y = accel_y
+        self._accel_z = accel_z
+        self._gyro_x = gyro_x
+        self._gyro_y = gyro_y
+        self._gyro_z = gyro_z
         self._timestamp = timestamp
 
     @property
@@ -44,6 +47,30 @@ class Measurement:
     def timestamp(self) -> float:
         """Get the timestamp of the measurement."""
         return self._timestamp
+    @property
+    def accel_x(self) -> float:
+        """Get the x-axis acceleration measurement."""
+        return self._accel_x
+    @property
+    def accel_y(self) -> float:
+        """Get the y-axis acceleration measurement."""
+        return self._accel_y
+    @property
+    def accel_z(self) -> float:
+        """Get the z-axis acceleration measurement."""
+        return self._accel_z
+    @property
+    def gyro_x(self) -> float:
+        """Get the x-axis gyroscope measurement."""
+        return self._gyro_x
+    @property
+    def gyro_y(self) -> float:
+        """Get the y-axis gyroscope measurement."""
+        return self._gyro_y
+    @property
+    def gyro_z(self) -> float:
+        """Get the z-axis gyroscope measurement."""
+        return self._gyro_z
 
     def __repr__(self):
         return (
@@ -52,65 +79,14 @@ class Measurement:
             f"right_distance={self.right_distance}, "
             f"front_distance={self.front_distance}, "
             f"steering_angle={self.steering_angle}, "
+            f"accel_x={self.accel_x}, "
+            f"accel_y={self.accel_y}, "
+            f"accel_z={self.accel_z}, "
+            f"gyro_x={self.gyro_x}, "
+            f"gyro_y={self.gyro_y}, "
+            f"gyro_z={self.gyro_z}, "
             f"timestamp={self.timestamp})"
         )
-
-
-class MeasurementsManager(ShutdownInterface):
-    """Class to read and store measurements from hardware sensors in a separate thread."""
-    def __init__(self, hardware_interface: HardwareInterface):
-        self.measurements: deque[Measurement] = deque(maxlen=5)  # Store last 5 measurements
-        self._reading_thread: threading.Thread | None = None
-        self._stop_event = threading.Event()
-        self._hardware_interface = hardware_interface
-        self._mlogger = MeasurementsLogger()
-
-    def add_measurement(self, measurement: Measurement) -> None:
-        """Add a new measurement to the list."""
-        self.measurements.append(measurement)
-        self._mlogger.write_measurement(measurement)
-        logger.debug("Added measurement: %s", measurement)
-
-
-    def get_latest_measurement(self) -> Measurement | None:
-        """Get the latest measurement."""
-        if self.measurements:
-            return self.measurements[-1]
-        return None
-
-    def _read_hardware_loop(self) -> None:
-        """Thread target: read hardware every 0.5 seconds."""
-        while not self._stop_event.is_set():
-            if self._hardware_interface is not None:
-                left = self._hardware_interface.get_left_distance()
-                right = self._hardware_interface.get_right_distance()
-                front = self._hardware_interface.get_front_distance()
-                steering_angle = self._hardware_interface.get_steering_angle()
-                timestamp = time.time()
-                measurement = Measurement(left, right, front, steering_angle, timestamp)
-                self.add_measurement(measurement)
-            time.sleep(0.5)
-
-    def start_reading(self) -> None:
-        """Start the background thread for reading hardware."""
-        if self._reading_thread is None or not self._reading_thread.is_alive():
-            self._stop_event.clear()
-            self._reading_thread = threading.Thread(target=self._read_hardware_loop, daemon=True)
-            self._reading_thread.start()
-
-    def stop_reading(self) -> None:
-        """Stop the background thread for reading hardware."""
-        self._stop_event.set()
-        if self._reading_thread is not None:
-            self._reading_thread.join()
-            self._reading_thread = None
-
-    def shutdown(self) -> None:
-        """Shutdown the reader and stop the reading thread."""
-        self.stop_reading()
-        self.measurements.clear()
-        self._mlogger.close_file()
-        logger.info("MeasurementsReader shutdown complete.")
 
 
 class MeasurementsLogger:
@@ -129,19 +105,27 @@ class MeasurementsLogger:
             rotated_name = f"measurements_{timestamp}.csv"
             os.rename(self.filename, rotated_name)
         self._file = open(self.filename, 'w', encoding='utf-8')
-        self._file.write("left_distance,right_distance,front_distance,steering_angle,timestamp\n")
+        self._file.write("left_distance,right_distance,front_distance,steering_angle,accel_x,"
+                         "accel_y,accel_z,gyro_x,gyro_y,gyro_z,timestamp\n")
 
     def write_measurement(self, measurement: Measurement) -> None:
-        """Write a single measurement to the file."""
+        """Write a single measurement to the file,rounding to 2 decimal places."""
         if self._file is not None:
             line = (
-                f"{measurement.left_distance},"
-                f"{measurement.right_distance},"
-                f"{measurement.front_distance},"
-                f"{measurement.steering_angle},"
-                f"{measurement.timestamp}\n"
+                f"{measurement.left_distance:.2f},"
+                f"{measurement.right_distance:.2f},"
+                f"{measurement.front_distance:.2f},"
+                f"{measurement.steering_angle:.2f},"
+                f"{measurement.accel_x:.2f},"
+                f"{measurement.accel_y:.2f},"
+                f"{measurement.accel_z:.2f},"
+                f"{measurement.gyro_x:.2f},"
+                f"{measurement.gyro_y:.2f},"
+                f"{measurement.gyro_z:.2f},"
+                f"{measurement.timestamp:.2f}\n"
             )
             self._file.write(line)
+            self._file.flush()
 
     def close_file(self) -> None:
         """Close the file."""

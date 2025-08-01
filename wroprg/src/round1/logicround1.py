@@ -16,7 +16,7 @@ class Walker:
     CLOCKWISE_DIRECTION=1
     DEFAULT_SPEED=100
     ANTI_CLOCKWISE_DIRECTION=2
-    FRONTDISTANCE_FOR_COLOR_CHECK=100
+    FRONTDISTANCE_FOR_COLOR_CHECK=120
     WALLFRONTDISTANCE=30
     WALLSIDEDISTANCE=15
     EQUIWALKMAXDELTA=15
@@ -86,9 +86,17 @@ class Walker:
             self.logger.warning("Right distance is not set.")
             right_distance = def_distance_right
             errorcount += 1
-
-        left_delta = abs(left_distance - def_distance_left)
-        right_delta = abs(right_distance - def_distance_right)
+        
+        #if the left or right distance is less than 10 cm , we need to move to steer away.
+        if left_distance < 10:
+            right_delta = 5
+            left_delta = 0
+        elif right_distance < 10:
+            left_delta=5
+            right_delta = 0
+        else:
+            left_delta = abs(left_distance - def_distance_left)
+            right_delta = abs(right_distance - def_distance_right)
 
         if (abs(left_delta) > self.DELTA_DISTANCE_CM
             or abs(right_delta) > self.DELTA_DISTANCE_CM) and errorcount < 2:

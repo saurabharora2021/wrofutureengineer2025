@@ -6,5 +6,6 @@ adafruit-circuitpython-ssd1306
 pillow
 pigpio
 Rpi.GPIO
+adafruit-circuitpython-mpu6050
 # On Raspberry Pi, install these via apt:
 # sudo apt install python3-picamera2 libcap-dev python3-libcamera python3-opencv

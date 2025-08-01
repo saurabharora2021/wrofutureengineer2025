@@ -68,14 +68,14 @@ class BuildHatDriveBase(ShutdownInterface):
 
     def turn_steering(self, degrees: float,steering_speed:float=20) -> None:
         """
-        Turn the steering by the specified degrees.
+        Turn the steering to the specified degrees.
         Positive degrees turn right, negative turn left.
         Limits steering to +/-38 degrees.
         """
         # Calculate new target position, considering gear ratio and direction
 
         current_position = self.front_motor.get_position()
-        target_position = current_position + self.STEERING_GEAR_RATIO * degrees
+        target_position = self.STEERING_GEAR_RATIO * degrees
         # Clamp to allowed range
         target_position = max(min(target_position, self.MAX_STEERING_DEGREE),
                               -self.MAX_STEERING_DEGREE)

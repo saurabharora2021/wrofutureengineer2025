@@ -33,7 +33,7 @@ class Walker:
 
     def __init__(self, output_inf:HardwareInterface):
         self.output_inf = output_inf
-        self._queue: deque[float] = deque(maxlen=10)  # Initialize a deque to store distances.
+        self._queue: deque[float] = deque(maxlen=3)  # Initialize a deque to store angles.
 
     def wallunknowndirectioninit(self)-> Tuple[float, callable, bool]:
         """This method is used to initialize the walker when the direction is unknown."""

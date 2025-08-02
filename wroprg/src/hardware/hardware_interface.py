@@ -160,30 +160,30 @@ class HardwareInterface(ShutdownInterface):
     def get_acceleration(self) -> tuple[float, float, float]:
         """Get the acceleration from the MPU6050 sensor."""
         if HardwareConfig.CHASSIS_VERSION == 1:
-            if self._lego_drive_base is None:
-                raise ValueError("LEGO Drive Base not initialized. Call full_initialization()" \
-                " first.")
-            return self._lego_drive_base.get_front_distance()
-        elif HardwareConfig.CHASSIS_VERSION == 2:
+            raise ValueError("not Supported mpu6050")
+        if HardwareConfig.CHASSIS_VERSION == 2:
             accel = self._rpi.get_acceleration()
-            accel_filtered = [
-                self._kf_accel[0].update(accel[0]),
-                self._kf_accel[1].update(accel[1]),
-                self._kf_accel[2].update(accel[2])
-            ]
-            return tuple(accel_filtered)
+            if self._kf_accel is not None:
+                accel_filtered = [
+                    self._kf_accel[0].update(accel[0]),
+                    self._kf_accel[1].update(accel[1]),
+                    self._kf_accel[2].update(accel[2])
+                ]
+                return tuple(accel_filtered)
+            else:
+                raise ValueError("Kalman filters for acceleration not initialized.")
         else:
             raise ValueError("Unsupported chassis version for acceleration sensor.")
 
     def get_gyro(self) -> tuple[float, float, float]:
         """Get the gyroscope data from the MPU6050 sensor."""
         if HardwareConfig.CHASSIS_VERSION == 1:
-            if self._lego_drive_base is None:
-                raise ValueError("LEGO Drive Base not initialized. Call full_initialization()" \
+            raise ValueError("LEGO Drive Base not initialized. Call full_initialization()" \
                 " first.")
-            return self._lego_drive_base.get_front_distance()
         elif HardwareConfig.CHASSIS_VERSION == 2:
             gyro = self._rpi.get_gyro()
+            if self._kf_gyro is None:
+                raise ValueError("Kalman filters for gyroscope not initialized.")
             gyro_filtered = [
                 self._kf_gyro[0].update(gyro[0]),
                 self._kf_gyro[1].update(gyro[1]),
@@ -236,6 +236,8 @@ class HardwareInterface(ShutdownInterface):
                 " first.")
             return self._lego_drive_base.get_front_distance()
         elif HardwareConfig.CHASSIS_VERSION == 2:
+            if self._front_distance_kf is None:
+                raise ValueError("Kalman filter for front distance not initialized.")
             return self._front_distance_kf.update(self._rpi.get_front_distance())
         else:
             raise ValueError("Unsupported chassis version for front distance sensor.")

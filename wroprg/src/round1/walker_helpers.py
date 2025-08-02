@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 class EquiWalkerHelper:
     """Helper class for Round 1 mathetical Function"""
 
-    MAX_ANGLE = 10
+    MAX_ANGLE = 15
     DELTA_DISTANCE_CM = 1.5
     EQUIWALKMAXDELTA=15
 
@@ -20,14 +20,14 @@ class EquiWalkerHelper:
         self.max_left_distance = max_left_distance
         self.max_right_distance = max_right_distance
 
-        if def_distance_left < 10:
-            logger.warning("Left distance is less than 10 cm, reset at least 10 cm.")
-            self.def_distance_left = 10
-            self.def_distance_right= def_distance_right - (10- def_distance_left)
-        elif def_distance_right < 10:
-            logger.warning("Right distance is less than 10 cm, reset at least 10 cm.")
-            self.def_distance_right = 10
-            self.def_distance_left = def_distance_left - (10 - def_distance_right)
+        if def_distance_left < 20:
+            logger.warning("Left distance is less than 20 cm, reset at least 20 cm.")
+            self.def_distance_left = 20
+            self.def_distance_right= def_distance_right - (20- def_distance_left)
+        elif def_distance_right < 20:
+            logger.warning("Right distance is less than 20 cm, reset at least 20 cm.")
+            self.def_distance_right = 20
+            self.def_distance_left = def_distance_left - (20 - def_distance_right)
 
 
         logger.info("Default Left: %.2f, Right: %.2f",
@@ -35,7 +35,7 @@ class EquiWalkerHelper:
 
 
     def equidistance_walk_func(self, left_distance: float,
-                               right_distance: float, kp: float=-1) -> float:
+                               right_distance: float, kp: float=-4) -> float:
         """Calculate the angle for equidistance walk based on the current distances."""
         errorcount = 0
         # If you are at a point, where the left rail is not present or the right rail is
@@ -72,7 +72,7 @@ class EquiWalkerHelper:
             logger.warning("Final angle: %.2f", final_angle)
             return final_angle
         else:
-            return None
+            return None # type: ignore
 
     def clamp_angle(self, val):
         """Clamp the value between -MAX_ANGLE and MAX_ANGLE."""

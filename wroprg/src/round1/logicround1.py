@@ -11,7 +11,7 @@ class Walker:
     """This class implements the Challenge 1 Walker for the WRO2025 Robot."""
     # Constants for the walker
     CLOCKWISE_DIRECTION=1
-    DEFAULT_SPEED=100
+    DEFAULT_SPEED=100/3
     ANTI_CLOCKWISE_DIRECTION=2
     FRONTDISTANCE_FOR_COLOR_CHECK=120
     WALLFRONTDISTANCE=30
@@ -113,12 +113,10 @@ class Walker:
 
 
             #Lets start the walk until we reach the front distance,but at slow speed.
-            self.output_inf.drive_forward(self.DEFAULT_SPEED/2)
+            self.output_inf.drive_forward(self.DEFAULT_SPEED)
             #TODO: Revisit if we need to run this loop or start checking color immediately.
-            while (
-                self.output_inf.get_front_distance() > self.FRONTDISTANCE_FOR_COLOR_CHECK
-                or self.output_inf.get_front_distance() < 0
-            ):
+            while self.output_inf.get_front_distance() > self.FRONTDISTANCE_FOR_COLOR_CHECK:
+
                 left_distance = self.output_inf.get_left_distance()
                 right_distance = self.output_inf.get_right_distance()
                 self.output_inf.logdistances()  # Log the distances
@@ -127,10 +125,20 @@ class Walker:
                                     left_distance, right_distance)
 
                 if turn_angle is not None:
+                    if (turn_angle >= 0):
+                        logger.info("Turning right to angle: %.2f", turn_angle)
+                        if (turn_angle > 10):
+                            #lets stop and turn first
+                            self.output_inf.drive_stop()
+                            self.output_inf.turn_steering(turn_angle)
+                            self.output_inf.drive_forward(self.DEFAULT_SPEED)
+                    else:
+                        logger.info("Turning left to angle: %.2f", turn_angle)
+                    # Turn the steering based on the calculated angle
                     self.output_inf.turn_steering(turn_angle)
 
 
-                sleep(0.1)
+                sleep(0.05)
 
             self.output_inf.drive_stop()
             self.output_inf.buzzer_beep()

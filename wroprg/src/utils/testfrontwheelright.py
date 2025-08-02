@@ -24,6 +24,7 @@ def main():
         #Turn steering to right 15 degrees
         pi_inf.turn_steering(15)
         sleep(10)
+        pi_inf.buzzer_beep()
         pi_inf.reset_steering()
 
     except (ImportError, AttributeError, RuntimeError) as e:

@@ -37,6 +37,8 @@ def test_equidistance_walk_func1():
 
     assert angle is not None
     assert angle < 0.0  # Expect a negative angle since right distance is less than default
+    #find angle datatype.
+    print(type(angle))
 
     assert isinstance(angle, float)
 

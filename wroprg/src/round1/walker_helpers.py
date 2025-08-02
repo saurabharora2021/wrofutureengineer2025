@@ -79,10 +79,10 @@ class EquiWalkerHelper:
             self._queue.append(angle)
             final_angle = average(self._queue)
             logger.warning("Final angle: %.2f", final_angle)
-            return final_angle
+            return float(final_angle)
         else:
             return None # type: ignore
 
-    def clamp_angle(self, val):
+    def clamp_angle(self, val)-> float:
         """Clamp the value between -MAX_ANGLE and MAX_ANGLE."""
-        return max(min(val, self.MAX_ANGLE), -self.MAX_ANGLE)
+        return float(max(min(val, self.MAX_ANGLE), -self.MAX_ANGLE))

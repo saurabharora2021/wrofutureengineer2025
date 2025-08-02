@@ -31,14 +31,14 @@ def main():
 
          # Validate the robot's functionality
         robot_validator: RobotValidator = RobotValidator(pi_inf)
-        # if not robot_validator.validate():
-        #     logger.error("Robot validation failed. Exiting.")
-        #     pi_inf.led1_red()
-        #     pi_inf.buzzer_beep()
-        #     raise RuntimeError("Robot validation failed")
-        # else:
-        #     pi_inf.led1_green()
-        #     pi_inf.buzzer_beep()
+        if not robot_validator.validate():
+            logger.error("Robot validation failed. Exiting.")
+            pi_inf.led1_red()
+            pi_inf.buzzer_beep()
+            raise RuntimeError("Robot validation failed")
+        else:
+            pi_inf.led1_green()
+            pi_inf.buzzer_beep()
 
         logger.warning("Test Successful")
         pi_inf.force_flush_messages()

@@ -1,11 +1,10 @@
 """ This modules implements the Challenge 1 Walker for the WRO2025 Robot."""
-from statistics import mean as average
 from time import sleep
 import logging
 from typing import Tuple
-from collections import deque
 from base.mat import mat_color
 from hardware.hardware_interface import HardwareInterface
+from round1.walker_helpers import EquiWalkerHelper
 
 logger = logging.getLogger(__name__)
 class Walker:
@@ -17,7 +16,7 @@ class Walker:
     FRONTDISTANCE_FOR_COLOR_CHECK=120
     WALLFRONTDISTANCE=30
     WALLSIDEDISTANCE=15
-    EQUIWALKMAXDELTA=15
+
     UNKNOWN_DIRECTION=-1
     TURNRIGHT_ANGLE=10
     TURNLEFT_ANGLE=-10
@@ -25,7 +24,6 @@ class Walker:
     D_TARGET = 15  # Desired distance from the wall
     KP = 2.0  # Proportional gain for the controller
     MAX_ANGLE = 10
-    DELTA_DISTANCE_CM = 1.5
 
     output_inf: HardwareInterface
     direction=UNKNOWN_DIRECTION
@@ -33,7 +31,6 @@ class Walker:
 
     def __init__(self, output_inf:HardwareInterface):
         self.output_inf = output_inf
-        self._queue: deque[float] = deque(maxlen=3)  # Initialize a deque to store angles.
 
     def wallunknowndirectioninit(self)-> Tuple[float, callable, bool]:
         """This method is used to initialize the walker when the direction is unknown."""
@@ -50,77 +47,6 @@ class Walker:
             walk_function = self.output_inf.get_right_distance
             isleft = False
         return (distance, walk_function, isleft)
-
-    def equidistance_walk_init(self) -> Tuple[float, float]:
-        """Initialize the equidistance walk with default distances."""
-        logger.info("Initializing equidistance walk.")
-        left_distance = self.output_inf.get_left_distance()
-        right_distance = self.output_inf.get_right_distance()
-        self.output_inf.logdistances()  # Log the distances
-        self._queue.clear()  # Clear the queue for new distances
-
-        return (left_distance, right_distance)
-
-    def equidistance_walk(self, def_distance_left: float,
-                           def_distance_right: float,kp:float = -1) -> Tuple[float, float]:
-        """Walk in a straight line, maintaining equal distance from both walls."""
-        # logger.info("Starting equidistance walk.")
-        errorcount = 0
-        left_distance = self.output_inf.get_left_distance()
-        right_distance = self.output_inf.get_right_distance()
-        self.output_inf.logdistances()  # Log the distances
-
-        #If you are at a point, where the left rail is not present or the right rail is not present,
-        # then we will not adjust the steering.
-        if left_distance >= self.output_inf.get_left_distance_max() or left_distance <= 0:
-            logger.warning("Left distance is not set.")
-            left_distance = def_distance_left
-            errorcount += 1
-
-        if right_distance >= self.output_inf.get_right_distance_max() or right_distance <= 0 :
-            logger.warning("Right distance is not set.")
-            right_distance = def_distance_right
-            errorcount += 1
-
-        #if the left or right distance is less than 10 cm , we need to move to steer away.
-        if left_distance < 10:
-            logger.warning("Left distance is less than 10 cm, steering away.")
-            right_delta = 10 + (10 - left_distance)*2
-            left_delta = 0
-        elif right_distance < 10:
-            logger.warning("Right distance is less than 10 cm, steering away.")
-            left_delta = 10 + (10 - right_distance)*2
-            right_delta = 0
-        else:
-            left_delta = abs(left_distance - def_distance_left)
-            right_delta = abs(right_distance - def_distance_right)
-
-        if (abs(left_delta) > self.DELTA_DISTANCE_CM
-            or abs(right_delta) > self.DELTA_DISTANCE_CM) and errorcount < 2:
-
-            logger.warning("Left Delta: %.2f, Right Delta: %.2f",
-                                left_delta, right_delta)
-            #Handle sudden changes in distance
-            if abs(left_delta) > self.EQUIWALKMAXDELTA:
-                logger.warning("Left distance change is too high: %.2f", left_delta)
-                left_delta = self.EQUIWALKMAXDELTA* (left_delta / abs(left_delta))
-            if abs(right_delta) > self.EQUIWALKMAXDELTA:
-                logger.warning("Right distance change is too high: %.2f", right_delta)
-                right_delta = self.EQUIWALKMAXDELTA * (right_delta / abs(right_delta))
-
-            # Adjust steering based on the difference in distances
-            error = left_delta - right_delta
-            angle = self.clamp(kp * error, -1*self.MAX_ANGLE, self.MAX_ANGLE)
-            logger.warning("angle: %.2f", angle)
-            self._queue.append(angle)
-
-            final_angle = average(self._queue)
-            logger.warning("Final angle: %.2f", final_angle)
-
-            self.output_inf.turn_steering(final_angle)
-
-        return (left_distance, right_distance)
-
 
     def wall_follow_func(self,distance_func,isleft:bool,target_distance:float,
                          kp:float=1.0,speed=DEFAULT_SPEED/2):
@@ -172,9 +98,19 @@ class Walker:
         # Implement the logic for starting a walk
         if self.direction == self.UNKNOWN_DIRECTION:
             logger.info("Direction is unknown, starting the walk with default distances.")
-            default_left_distance, default_right_distance = self.equidistance_walk_init()
-            logger.info("Default Left: %.2f, Right: %.2f",
-                             default_left_distance, default_right_distance)
+            left_distance = self.output_inf.get_left_distance()
+            right_distance = self.output_inf.get_right_distance()
+            left_distance_max = self.output_inf.get_left_distance_max()
+            right_distance_max = self.output_inf.get_right_distance_max()
+
+            helper:EquiWalkerHelper = EquiWalkerHelper(
+                def_distance_left=left_distance,
+                def_distance_right=right_distance,
+                max_left_distance=left_distance_max,
+                max_right_distance=right_distance_max
+            )
+
+
 
             #Lets start the walk until we reach the front distance,but at slow speed.
             self.output_inf.drive_forward(self.DEFAULT_SPEED/2)
@@ -183,10 +119,16 @@ class Walker:
                 self.output_inf.get_front_distance() > self.FRONTDISTANCE_FOR_COLOR_CHECK
                 or self.output_inf.get_front_distance() < 0
             ):
-                current_left, current_right =self.equidistance_walk(default_left_distance,
-                                                                     default_right_distance)
-
+                left_distance = self.output_inf.get_left_distance()
+                right_distance = self.output_inf.get_right_distance()
                 self.output_inf.logdistances()  # Log the distances
+
+                turn_angle = helper.equidistance_walk_func(
+                                    left_distance, right_distance)
+
+                if turn_angle is not None:
+                    self.output_inf.turn_steering(turn_angle)
+
 
                 sleep(0.1)
 

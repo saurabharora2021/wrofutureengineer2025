@@ -8,3 +8,4 @@ adafruit-circuitpython-ssd1306
 fake-rpi
 gpiozero
 buildhat
+pytest

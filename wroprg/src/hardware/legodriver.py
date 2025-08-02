@@ -14,6 +14,7 @@ class BuildHatDriveBase(ShutdownInterface):
     # Negative gear ratio indicates that positive steering input results in a negative motor
     # rotation due to the physical gear setup.
     STEERING_GEAR_RATIO: Final = -2
+    DELTA_ANGLE: float = 1
 
     front_distance_sensor: Optional[DistanceSensor] = None
 
@@ -66,7 +67,7 @@ class BuildHatDriveBase(ShutdownInterface):
 
 
 
-    def turn_steering(self, degrees: float,steering_speed:float=50) -> None:
+    def turn_steering(self, degrees: float,steering_speed:float=50,retry:int=2) -> None:
         """
         Turn the steering to the specified degrees.
         Positive degrees turn right, negative turn left.
@@ -74,17 +75,41 @@ class BuildHatDriveBase(ShutdownInterface):
         """
         # Calculate new target position, considering gear ratio and direction
 
+        if retry <= 0:
+            logger.info("Retry count is zero, cannot turn steering.")
+            return
+
         current_position = self.front_motor.get_position()
         target_position = self.STEERING_GEAR_RATIO * degrees
         # Clamp to allowed range
         target_position = max(min(target_position, self.MAX_STEERING_DEGREE),
                               -self.MAX_STEERING_DEGREE)
-        # Calculate how much to move from current position
-        move_degrees = target_position - current_position
-        logger.info("Turning front motor to %s (move %s degrees) current position %s", target_position,
-                         move_degrees, current_position)
-        self.front_motor.run_for_degrees(move_degrees, speed=steering_speed, blocking=True)
-        logger.info("Front motor position after turn: %s", self.front_motor.get_position())
+        if target_position >= 0:
+            if current_position < target_position:
+                # If the current position is less than target, we need to turn clockwise
+                self.front_motor.run_to_position(target_position, speed=steering_speed,
+                                                 blocking=True, direction='clockwise')
+            elif current_position > target_position:
+                # If the current position is greater than target, we need to turn anticlockwise
+                self.front_motor.run_to_position(target_position, speed=steering_speed,
+                                                 blocking=True, direction='anticlockwise')
+
+        else:
+            #targetposition < 0
+            if current_position < target_position:
+                # If the current position is less than target, we need to turn clockwise
+                self.front_motor.run_to_position(target_position, speed=steering_speed,
+                                                 blocking=True, direction='clockwise')
+            elif current_position > target_position:
+                # If the current position is greater than target, we need to turn counter-clockwise
+                self.front_motor.run_to_position(target_position, speed=steering_speed,
+                                                 blocking=True, direction='anticlockwise')
+
+        final_position = self.front_motor.get_position()
+        if abs(final_position - target_position) >= self.DELTA_ANGLE:
+            logger.warning("Front not correct after turn: %s, expected: %s",
+                           final_position, target_position)
+            self.turn_steering(degrees, steering_speed, retry - 1)
 
     def check_set_steering(self, expected_position: float = 0,min_error:float = 2,
                            retrycount:int = 3,steering_speed:float=10) -> None:

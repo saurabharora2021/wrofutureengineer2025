@@ -1,6 +1,9 @@
+"""This module contains implementations of various statistical functions and filters
+ used in hardware sensor data processing."""
 class KalmanFilter:
     """ Implementation of a Kalman filter for sensor data smoothing. """
-    def __init__(self, process_variance=1e-5, measurement_variance=0.01, estimated_error=1.0, initial_value=0.0):
+    def __init__(self, process_variance=1e-5, measurement_variance=0.01, estimated_error=1.0,
+                 initial_value=0.0):
         self.process_variance = process_variance
         self.measurement_variance = measurement_variance
         self.estimated_error = estimated_error
@@ -18,10 +21,11 @@ class KalmanFilter:
         self.estimated_error = (1 - kalman_gain) * priori_error
 
         return self.posteri_estimate
-    
+
 class DumpKalmanFilter:
     """ A Kalman filter that does not perform any filtering, used for debugging. """
-    def __init__(self, process_variance=1e-5, measurement_variance=0.01, estimated_error=1.0, initial_value=0.0):
+    def __init__(self, process_variance=1e-5, measurement_variance=0.01, estimated_error=1.0,
+                 initial_value=0.0):
         self.process_variance = process_variance
         self.measurement_variance = measurement_variance
         self.estimated_error = estimated_error

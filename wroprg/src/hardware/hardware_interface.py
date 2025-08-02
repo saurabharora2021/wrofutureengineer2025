@@ -9,6 +9,7 @@ from base.shutdown_handling import ShutdownInterface
 from hardware.hardwareconfig import HardwareConfig
 from hardware.legodriver import BuildHatDriveBase
 from hardware.measurements import Measurement, MeasurementsLogger, logger
+from hardware.orientation import OrientationEstimator
 from hardware.rpi_interface import RpiInterface
 from hardware.statsfunctions import DumpKalmanFilter, KalmanFilter
 
@@ -25,8 +26,8 @@ class HardwareInterface(ShutdownInterface):
         self._lego_drive_base: Optional[BuildHatDriveBase] = None
         self._measurements_manager: Optional[MeasurementsManager] = None
         self._front_distance_kf: Optional[KalmanFilter] = None
-        self._kf_accel: Optional[list[KalmanFilter]] = None
-        self._kf_gyro: Optional[list[KalmanFilter]] = None
+
+        self._orientation_estimator = None
 
         ##Setup Kalman Filters for left and right distance sensors
         self._left_distance_kf = DumpKalmanFilter(
@@ -61,9 +62,12 @@ class HardwareInterface(ShutdownInterface):
                     initial_value=self._rpi.get_front_distance()
                       # Or your expected starting distance
                 )
-                # Create Kalman filters for each axis
-                self._kf_accel = [KalmanFilter() for _ in range(3)]
-                self._kf_gyro = [KalmanFilter() for _ in range(3)]
+                self._orientation_estimator = OrientationEstimator(
+                        get_accel=self.get_acceleration,
+                        get_gyro=self.get_gyro,
+                        dt=0.01
+                )
+
             else:
                 raise ValueError("Unsupported chassis version")
 
@@ -102,6 +106,18 @@ class HardwareInterface(ShutdownInterface):
         self._measurements_manager.start_reading()
 
     # --- Raspberry Pi Interface Methods ---
+
+    def pdate_orientation(self):
+        """Update the orientation estimator with latest sensor data."""
+        if self._orientation_estimator is not None:
+            self._orientation_estimator.update()
+
+    def get_orientation(self):
+        """Get the current (roll, pitch, yaw) in degrees."""
+        if self._orientation_estimator is None:
+            raise RuntimeError("Orientation estimator not initialized.")
+        return self._orientation_estimator.get_orientation()
+
     def buzzer_beep(self, timer: float = 0.5) -> None:
         """Turn on the buzzer."""
         self._rpi.buzzer_beep(timer)
@@ -184,16 +200,7 @@ class HardwareInterface(ShutdownInterface):
         if HardwareConfig.CHASSIS_VERSION == 1:
             raise ValueError("not Supported mpu6050")
         if HardwareConfig.CHASSIS_VERSION == 2:
-            accel = self._rpi.get_acceleration()
-            if self._kf_accel is not None:
-                accel_filtered = [
-                    self._kf_accel[0].update(accel[0]),
-                    self._kf_accel[1].update(accel[1]),
-                    self._kf_accel[2].update(accel[2])
-                ]
-                return tuple(accel_filtered)
-            else:
-                raise ValueError("Kalman filters for acceleration not initialized.")
+            return self._rpi.get_acceleration()
         else:
             raise ValueError("Unsupported chassis version for acceleration sensor.")
 
@@ -203,15 +210,7 @@ class HardwareInterface(ShutdownInterface):
             raise ValueError("LEGO Drive Base not initialized. Call full_initialization()" \
                 " first.")
         elif HardwareConfig.CHASSIS_VERSION == 2:
-            gyro = self._rpi.get_gyro()
-            if self._kf_gyro is None:
-                raise ValueError("Kalman filters for gyroscope not initialized.")
-            gyro_filtered = [
-                self._kf_gyro[0].update(gyro[0]),
-                self._kf_gyro[1].update(gyro[1]),
-                self._kf_gyro[2].update(gyro[2])
-            ]
-            return tuple(gyro_filtered)
+            return self._rpi.get_gyro()
         else:
             raise ValueError("Unsupported chassis version for gyroscope sensor.")
 
@@ -310,13 +309,12 @@ class MeasurementsManager(ShutdownInterface):
                 right = self._hardware_interface.get_right_distance()
                 front = self._hardware_interface.get_front_distance()
                 steering_angle = self._hardware_interface.get_steering_angle()
-                accel_x, accel_y, accel_z = self._hardware_interface.get_acceleration()
-                gyro_x, gyro_y, gyro_z = self._hardware_interface.get_gyro()
+                self._hardware_interface.update_orientation()  # Update orientation estimator
+                roll, pitch, yaw = self._hardware_interface.get_orientation()
                 # Create a new measurement with the current timestamp
                 timestamp = time.time()
                 measurement = Measurement(left, right, front, steering_angle,
-                                          accel_x, accel_y, accel_z,
-                                          gyro_x, gyro_y, gyro_z, timestamp)
+                                          roll, pitch, yaw,timestamp)
                 self.add_measurement(measurement)
             time.sleep(0.25)
 

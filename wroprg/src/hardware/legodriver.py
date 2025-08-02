@@ -117,7 +117,8 @@ class BuildHatDriveBase(ShutdownInterface):
         if abs(final_position - target_position) >= self.DELTA_ANGLE and retry > 0:
             logger.warning("Front not correct after turn: %s, expected: %s",
                            final_position, target_position)
-            self.turn_steering(degrees, steering_speed, retry - 1)
+            self.current_position = final_position
+            self.turn_steering(degrees, retry - 1)
         else:
             self.current_position = target_position
 

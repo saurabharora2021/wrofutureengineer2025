@@ -1,43 +1,42 @@
+"""Test script for reading data from the MPU6050 sensor."""
 import time
-import board
-import busio
-import adafruit_mpu6050
-from hardware.statsfunctions import KalmanFilter
+import argparse
+import logging
 
-# Initialize I2C bus
-i2c = busio.I2C(board.SCL, board.SDA)
+from hardware.hardware_interface import HardwareInterface
+from utils.helpers import HelperFunctions
 
-# Initialize MPU6050 sensor
-mpu = adafruit_mpu6050.MPU6050(i2c)
 
-# Create Kalman filters for each axis
-kf_accel = [KalmanFilter() for _ in range(3)]
-kf_gyro = [KalmanFilter() for _ in range(3)]
+def main():
+    """ Main function to run the Wro - raspberry test color Application."""
 
-print("MPU6050 sensor initialized. Reading data with Kalman filter...")
+    parser = argparse.ArgumentParser(description="Wro lego - test color Application")
+    parser.add_argument('--logfile', type=str, default='application.log', help='Path to log file')
+    # Added debug argument
+    parser.add_argument('--debug', action='store_true', help='Enable debug mode')
+    args = parser.parse_args()
 
-while True:
-    # Read accelerometer data (x, y, z)
-    accel = mpu.acceleration
-    accel_filtered = [
-        kf_accel[0].update(accel[0]),
-        kf_accel[1].update(accel[1]),
-        kf_accel[2].update(accel[2])
-    ]
+    helper: HelperFunctions = HelperFunctions(args.logfile, args.debug,stabilize=False)
+    logger = logging.getLogger(__name__)
 
-    # Read gyroscope data (x, y, z)
-    gyro = mpu.gyro
-    gyro_filtered = [
-        kf_gyro[0].update(gyro[0]),
-        kf_gyro[1].update(gyro[1]),
-        kf_gyro[2].update(gyro[2])
-    ]
+    pi_inf: HardwareInterface = helper.get_pi_interface()
+    try:
 
-    # Read temperature
-    temperature = mpu.temperature
+        while True:
+            accel  = pi_inf.get_acceleration()
+            gyro   = pi_inf.get_gyro()
+            print(f"Accel (m/s^2): x={accel[0]:.2f}, y={accel[1]:.2f}, z={accel[2]:.2f}")
+            print(f"Gyro (rad/s):  x={gyro[0]:.2f}, y={gyro[1]:.2f}, z={gyro[2]:.2f}")
+            print("-" * 40)
+            time.sleep(1)
 
-    print(f"Accel (m/s^2): x={accel_filtered[0]:.2f}, y={accel_filtered[1]:.2f}, z={accel_filtered[2]:.2f}")
-    print(f"Gyro (rad/s):  x={gyro_filtered[0]:.2f}, y={gyro_filtered[1]:.2f}, z={gyro_filtered[2]:.2f}")
-    print(f"Temperature:   {temperature:.2f} C")
-    print("-" * 40)
-    time.sleep(1)
+    except (ImportError, AttributeError, RuntimeError) as e:
+        logger.error("Error Running Program")
+        logger.error("Exception: %s",e)
+        pi_inf.led1_red()
+        pi_inf.buzzer_beep()
+    finally:
+        helper.shutdown_all()
+
+if __name__ == "__main__":
+    main()

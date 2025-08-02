@@ -102,12 +102,14 @@ class Walker:
             right_distance = self.output_inf.get_right_distance()
             left_distance_max = self.output_inf.get_left_distance_max()
             right_distance_max = self.output_inf.get_right_distance_max()
+            default_x_angle = self.output_inf.get_default_x_angle()
 
             helper:EquiWalkerHelper = EquiWalkerHelper(
                 def_distance_left=left_distance,
                 def_distance_right=right_distance,
                 max_left_distance=left_distance_max,
-                max_right_distance=right_distance_max
+                max_right_distance=right_distance_max,
+                current_angle=default_x_angle
             )
 
 
@@ -120,14 +122,16 @@ class Walker:
                 left_distance = self.output_inf.get_left_distance()
                 right_distance = self.output_inf.get_right_distance()
                 self.output_inf.logdistances()  # Log the distances
+                gyro = self.output_inf.get_gyro()
+                current_angle = gyro[0]  # Assuming gyro[0] gives the current angle
 
                 turn_angle = helper.equidistance_walk_func(
-                                    left_distance, right_distance)
+                                    left_distance, right_distance, current_angle)
 
                 if turn_angle is not None:
-                    if (turn_angle >= 0):
+                    if turn_angle >= 0:
                         logger.info("Turning right to angle: %.2f", turn_angle)
-                        if (turn_angle > 10):
+                        if turn_angle > 10:
                             #lets stop and turn first
                             self.output_inf.drive_stop()
                             self.output_inf.turn_steering(turn_angle)
@@ -136,7 +140,6 @@ class Walker:
                         logger.info("Turning left to angle: %.2f", turn_angle)
                     # Turn the steering based on the calculated angle
                     self.output_inf.turn_steering(turn_angle)
-
 
                 sleep(0.05)
 

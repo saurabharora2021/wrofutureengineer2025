@@ -71,6 +71,28 @@ class HardwareInterface(ShutdownInterface):
             logger.error("Failed to initialize drive base: %s", e)
             raise RuntimeError(f"Drive base initialization failed: {e}") from e
 
+    def get_default_x_angle(self) -> float:
+        """Get the default X angle for the chassis."""
+        if HardwareConfig.CHASSIS_VERSION == 1:
+            raise ValueError("Not supported for chassis version 1.")
+        elif HardwareConfig.CHASSIS_VERSION == 2:
+            return self.calibrate_imu()  # Calibrate IMU for chassis version 2
+        else:
+            raise ValueError("Unsupported chassis version for default X angle.")
+
+    def calibrate_imu(self,samples=100):
+        """
+        Reads the IMU for a number of samples to find the average resting offset.
+        """
+        print("Calibrating IMU... Place the robot on a perfectly level surface.")
+        total_angle = 0
+        for _ in range(samples):
+            total_angle += self.get_gyro()[0]
+            time.sleep(0.01) # Small delay between readings
+
+        offset = total_angle / samples
+        print(f"Calibration complete. Tilt Offset: {offset:.2f} degrees")
+        return offset
 
     def start_measurement_recording(self) -> None:
         """Start the measurements manager thread."""

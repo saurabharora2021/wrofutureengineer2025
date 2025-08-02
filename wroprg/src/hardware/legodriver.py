@@ -68,7 +68,7 @@ class BuildHatDriveBase(ShutdownInterface):
 
 
 
-    def turn_steering(self, degrees: float,steering_speed:float=50,retry:int=2) -> None:
+    def turn_steering(self, degrees: float,steering_speed:float=10,retry:int=2) -> None:
         """
         Turn the steering to the specified degrees.
         Positive degrees turn right, negative turn left.
@@ -80,12 +80,20 @@ class BuildHatDriveBase(ShutdownInterface):
         # Clamp to allowed range
         target_position = max(min(target_position, self.MAX_STEERING_DEGREE),
                               -self.MAX_STEERING_DEGREE)
+        logger.info("Turning steering target position %s , current position %s",
+                    target_position, self.current_position)
+        if abs(target_position - self.current_position) < self.DELTA_ANGLE:
+            logger.info("Steering already at target position, no need to turn.")
+            return
         if target_position >= 0:
             if self.current_position < target_position:
+                logger.info("moving clockwise to target position")
                 # If the current position is less than target, we need to turn clockwise
                 self.front_motor.run_to_position(target_position, speed=steering_speed,
                                                  blocking=True, direction='clockwise')
             elif self.current_position > target_position:
+                logger.info("moving anticlockwise to target position")
+
                 # If the current position is greater than target, we need to turn anticlockwise
                 self.front_motor.run_to_position(target_position, speed=steering_speed,
                                                  blocking=True, direction='anticlockwise')
@@ -93,10 +101,14 @@ class BuildHatDriveBase(ShutdownInterface):
         else:
             #targetposition < 0
             if self.current_position < target_position:
+                logger.info("moving clockwise to target position")
+
                 # If the current position is less than target, we need to turn clockwise
                 self.front_motor.run_to_position(target_position, speed=steering_speed,
                                                  blocking=True, direction='clockwise')
             elif self.current_position > target_position:
+                logger.info("moving anticlockwise to target position")
+
                 # If the current position is greater than target, we need to turn counter-clockwise
                 self.front_motor.run_to_position(target_position, speed=steering_speed,
                                                  blocking=True, direction='anticlockwise')
@@ -168,5 +180,4 @@ class BuildHatDriveBase(ShutdownInterface):
 
     def get_steering_angle(self) -> float:
         """Get the current steering angle in degrees."""
-        current_position = self.front_motor.get_position()
-        return current_position / self.STEERING_GEAR_RATIO
+        return self.current_position

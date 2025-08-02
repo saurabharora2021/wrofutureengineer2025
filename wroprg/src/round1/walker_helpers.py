@@ -9,27 +9,32 @@ logger = logging.getLogger(__name__)
 class EquiWalkerHelper:
     """Helper class for Round 1 mathetical Function"""
 
-    MAX_ANGLE = 15
+    MAX_ANGLE = 15 # Maximum angle in degrees for steering adjustments
     DELTA_DISTANCE_CM = 1.5
     EQUIWALKMAXDELTA=15
 
     def __init__(self,def_distance_left: float, def_distance_right: float,
-                 max_left_distance: float, max_right_distance: float,current_angle: float) -> None:
-        self._queue = deque(maxlen=2)
+                 max_left_distance: float, max_right_distance: float,
+                 current_angle: float,kp:float) -> None:
+        self._queue = deque(maxlen=1)
         self.def_distance_left = def_distance_left
         self.def_distance_right = def_distance_right
         self.max_left_distance = max_left_distance
         self.max_right_distance = max_right_distance
         self.angle_offset = current_angle
+        if kp is None:
+            self.kp = -2.5
+        else:
+            self.kp = kp
 
-        if def_distance_left < 20:
+        if def_distance_left < 10:
             logger.warning("Left distance is less than 20 cm, reset at least 20 cm.")
-            self.def_distance_left = 20
-            self.def_distance_right= def_distance_right - (20- def_distance_left)
-        elif def_distance_right < 20:
+            self.def_distance_left = 10
+            self.def_distance_right= def_distance_right - (10- def_distance_left)
+        elif def_distance_right < 10:
             logger.warning("Right distance is less than 20 cm, reset at least 20 cm.")
-            self.def_distance_right = 20
-            self.def_distance_left = def_distance_left - (20 - def_distance_right)
+            self.def_distance_right = 10
+            self.def_distance_left = def_distance_left - (10 - def_distance_right)
 
 
         logger.info("Default Left: %.2f, Right: %.2f Angle: %.2f",
@@ -38,7 +43,7 @@ class EquiWalkerHelper:
 
 
     def equidistance_walk_func(self, left_distance: float,
-                               right_distance: float, current_angle:float, kp: float=-4) -> float:
+                               right_distance: float, current_angle:float) -> float:
         """Calculate the angle for equidistance walk based on the current distances."""
         errorcount = 0
         # If you are at a point, where the left rail is not present or the right rail is
@@ -74,7 +79,7 @@ class EquiWalkerHelper:
             if errorcount > 0:
                 # If there was an error in any distance, we double the error
                 error = error * 2
-            angle = self.clamp_angle(kp * error)
+            angle = self.clamp_angle(self.kp * error)
             logger.warning("angle: %.2f", angle)
             self._queue.append(angle)
             final_angle = average(self._queue)

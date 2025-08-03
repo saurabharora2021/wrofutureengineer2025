@@ -21,7 +21,7 @@ class Walker:
     UNKNOWN_DIRECTION=-1
     TURNRIGHT_ANGLE=10
     TURNLEFT_ANGLE=-10
-    WALLFRONTENDDISTANCE=10
+    WALLFRONTENDDISTANCE=30
     D_TARGET = 15  # Desired distance from the wall
     KP = 2.0  # Proportional gain for the controller
     MAX_ANGLE = 10
@@ -123,6 +123,34 @@ class Walker:
             self.output_inf.drive_stop()
             self.output_inf.buzzer_beep()
 
+            logger.info("Time to check color")
+            sleep(0.5)
+
+            # helper:EquiWalkerHelper = self.equidistance_walk_start(use_mpu,kp=-1.5)
+            knowncolor = ["blue", "orange"]
+            color = self.check_bottom_color(knowncolor)
+            
+            self.output_inf.drive_forward(self.WALK_TO_COLOR_SPEED)
+
+            while (color is None and
+                   self.output_inf.get_front_distance() > self.WALLFRONTENDDISTANCE):
+
+                color = self.check_bottom_color(knowncolor)
+                if color is None:
+                    self.equidistance_walk(helper,use_mpu=True,current_steering=self.output_inf.
+                                                                            get_steering_angle())
+                    logger.info("Front Distance:%s",self.output_inf.get_front_distance())
+                    color = self.check_bottom_color(knowncolor)
+                    # self.output_inf.buzzer_beep(timer=0.1)
+                    # sleep(0.001)
+
+            #Lets first stop the base and then check the color.
+            self.output_inf.drive_stop()
+            self.output_inf.buzzer_beep()
+            logger.info("Front Distance:%s",self.output_inf.get_front_distance())
+
+            color2 = self.check_bottom_color(knowncolor)
+
             #can we check.if one of the sides is not present?, that means we are at a corner.
             # and based on which side we can determine the direction.
             (_,left,right) = self.output_inf.logdistances()
@@ -139,28 +167,6 @@ class Walker:
                 direction_hints = self.ANTI_CLOCKWISE_DIRECTION
             else:
                 direction_hints = self.UNKNOWN_DIRECTION
-
-            logger.info("Time to check color")
-
-            # helper:EquiWalkerHelper = self.equidistance_walk_start(use_mpu,kp=-1.5)
-            knowncolor = ["blue", "orange"]
-            color = self.check_bottom_color(knowncolor)
-            self.output_inf.drive_forward(self.WALK_TO_COLOR_SPEED)
-
-            while (color is None and
-                   self.output_inf.get_front_distance() > self.WALLFRONTENDDISTANCE):
-
-                self.equidistance_walk(helper,use_mpu=False,current_steering=self.output_inf.
-                                                                            get_steering_angle())
-                logger.info("Front Distance:%s",self.output_inf.get_front_distance())
-                color = self.check_bottom_color(knowncolor)
-                sleep(0.1)
-
-            #Lets first stop the base and then check the color.
-            self.output_inf.drive_stop()
-            logger.info("Front Distance:%s",self.output_inf.get_front_distance())
-
-            color2 = self.check_bottom_color(knowncolor)
 
 
             if color is None:

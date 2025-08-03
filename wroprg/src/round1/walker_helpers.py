@@ -186,7 +186,7 @@ class GyroWalkerHelper:
             logger.info("Adjusting steering angle from %.2f to %.2f", current_steering_angle, angle)
             return float(angle)
         else:
-            return None
+            return None  # type: ignore
 
     def clamp_angle(self, val)-> float:
         """Clamp the value between -MAX_ANGLE and MAX_ANGLE."""

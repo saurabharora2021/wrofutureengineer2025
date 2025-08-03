@@ -145,8 +145,6 @@ class Walker:
                                                                 get_steering_angle())
 
                     if turn_angle is not None:
-                        self.output_inf.drive_stop()
-                        running = False
                         if turn_angle >= 0:
                             logger.info("Turning right to angle: %.2f", turn_angle)
                         else:
@@ -157,6 +155,7 @@ class Walker:
                     logger.info("Front Distance:%s",self.output_inf.get_front_distance())
                     color = self.check_bottom_color(knowncolor)
                 if not running:
+                    logger.info("color checking walk...")
                     self.output_inf.drive_forward(self.WALK_TO_COLOR_SPEED)
                     running = True
                     # self.output_inf.buzzer_beep(timer=0.1)
@@ -173,13 +172,12 @@ class Walker:
             # and based on which side we can determine the direction.
             (_,left,right) = self.output_inf.logdistances()
 
-            if (left <= self.output_inf.get_left_distance_max() and right > self.output_inf.
-                                                get_right_distance_max()):
+            MAX_DISTANCE = 100
+            if (left > right):
                 logger.info("Left side is present, right side is not present," \
                 "                                            setting direction to clockwise.")
                 direction_hints = self.CLOCKWISE_DIRECTION
-            elif (right <= self.output_inf.get_right_distance_max() and left > self.output_inf.
-                                                                    get_left_distance_max()):
+            elif (right < left):
                 logger.info("Right side is present, left side is not present, " \
                 "                                       setting direction to anti-clockwise.")
                 direction_hints = self.ANTI_CLOCKWISE_DIRECTION

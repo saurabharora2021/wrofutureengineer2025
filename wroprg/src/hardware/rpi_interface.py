@@ -284,7 +284,7 @@ class RpiInterface(ShutdownInterface):
         """Get the state of the jumper pin."""
         if self.jumper_pin is None:
             raise ValueError("Jumper pin is not initialized.")
-        return self.jumper_pin.is_pressed
+        return self.jumper_pin.is_active
 
     def get_acceleration(self) -> Tuple[float, float, float]:
         """Get the acceleration from the MPU6050 sensor."""

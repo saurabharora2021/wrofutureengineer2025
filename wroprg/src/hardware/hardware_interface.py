@@ -30,13 +30,13 @@ class HardwareInterface(ShutdownInterface):
         self._orientation_estimator = None
 
         ##Setup Kalman Filters for left and right distance sensors
-        self._left_distance_kf = DumpKalmanFilter(
+        self._left_distance_kf = KalmanFilter(
                         process_variance=0.2,      # Increased, so filter adapts faster
                         measurement_variance=0.5,   # Moderate, as HC-SR04 is noisy
                         estimated_error=1.0,        # Start with high uncertainty
                         initial_value=self._rpi.get_left_distance()
                         )
-        self._right_distance_kf = DumpKalmanFilter(
+        self._right_distance_kf = KalmanFilter(
                         process_variance=0.2,      # Increased, so filter adapts faster
                         measurement_variance=0.5,   # Moderate, as HC-SR04 is noisy
                         estimated_error=1.0,        # Start with high uncertainty
@@ -229,7 +229,7 @@ class HardwareInterface(ShutdownInterface):
             raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
         self._lego_drive_base.run_front(speed)
 
-    def turn_steering(self, degrees: float,steering_speed:float=10) -> None:
+    def turn_steering(self, degrees: float, steering_speed: float=20) -> None:
         """
         Turn the steering by the specified degrees.
         Positive degrees turn right, negative turn left.

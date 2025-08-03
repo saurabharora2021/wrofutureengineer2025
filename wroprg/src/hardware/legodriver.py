@@ -14,7 +14,7 @@ class BuildHatDriveBase(ShutdownInterface):
     # Negative gear ratio indicates that positive steering input results in a negative motor
     # rotation due to the physical gear setup.
     STEERING_GEAR_RATIO: Final = -2
-    DELTA_ANGLE: float = 1
+    DELTA_ANGLE: float = 0.5
 
     front_distance_sensor: Optional[DistanceSensor] = None
 
@@ -68,7 +68,7 @@ class BuildHatDriveBase(ShutdownInterface):
 
 
 
-    def turn_steering(self, degrees: float, steering_speed: float = 20,retry:int=3) -> None:
+    def turn_steering(self, degrees: float, steering_speed: float, retry:int=3) -> None:
         """
         Turn the steering by the specified degrees.
         Handles outlier motor position readings.
@@ -77,10 +77,11 @@ class BuildHatDriveBase(ShutdownInterface):
         def wrap_angle(angle):
             return ((angle + 180) % 360) - 180
 
-        logger.info("Turning steering by %s degrees at speed %s, retry %s", degrees,
-                    steering_speed, retry)
         # Get current position and sanitize
         current_position = self.front_motor.get_position()
+        logger.info("Turning steering by %s degrees at speed %s, retry %s," \
+                                        " current position: %s", degrees,
+                                        steering_speed, retry, current_position)
         # If the position is out of expected bounds, reset to zero
         if abs(current_position) > 180:
             logger.warning("Front motor position out of bounds: %s. Resetting to 0.",
@@ -107,10 +108,11 @@ class BuildHatDriveBase(ShutdownInterface):
         self.front_motor.run_for_degrees(move_degrees, speed=steering_speed, blocking=True)
 
         final_position = self.front_motor.get_position()
-        if abs(final_position - target_position) >= self.DELTA_ANGLE and retry > 0:
+        if abs(final_position - target_position) >= self.DELTA_ANGLE:
             logger.warning("Front not correct after turn: %s, expected: %s",
                            final_position, target_position)
-            self.turn_steering(degrees, retry=retry - 1)
+            if retry > 0:
+                self.turn_steering(degrees, steering_speed=steering_speed+10, retry=retry - 1)
 
     def check_set_steering(self, expected_position: float = 0,min_error:float = 2,
                            retrycount:int = 3,steering_speed:float=10) -> None:

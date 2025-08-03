@@ -112,16 +112,16 @@ class Walker:
         if self.direction == self.UNKNOWN_DIRECTION:
             logger.info("Direction is unknown, starting the walk with default distances.")
 
-            helper:EquiWalkerHelper = self.equidistance_walk_start(use_mpu=use_mpu)
+            helper:EquiWalkerHelper = self.equidistance_walk_start(use_mpu=True)
 
             #Lets start the walk until we reach the front distance,but at slow speed.
             self.output_inf.drive_forward(self.DEFAULT_SPEED)
 
             while self.output_inf.get_front_distance() > self.FRONTDISTANCE_FOR_COLOR_CHECK:
 
-                self.equidistance_walk(helper,use_mpu=use_mpu,current_steering=self.output_inf
-                                       .get_steering_angle)
-                sleep(0.05)
+                self.equidistance_walk(helper,use_mpu=True,current_steering=self.output_inf
+                                       .get_steering_angle())
+                sleep(0.03)
 
             self.output_inf.drive_stop()
             self.output_inf.buzzer_beep()
@@ -143,6 +143,7 @@ class Walker:
             else:
                 direction_hints = self.UNKNOWN_DIRECTION
 
+            return
             logger.info("Time to check color")
 
             # helper:EquiWalkerHelper = self.equidistance_walk_start(use_mpu,kp=-1.5)
@@ -288,7 +289,7 @@ class Walker:
 
         turn_angle = helper.equidistance_walk_func(
                             left_distance, right_distance, current_angle,
-                            current_steering_angle=self.output_inf.get_steering_angle())
+                            current_steering_angle = self.output_inf.get_steering_angle())
 
         if turn_angle is not None:
             if turn_angle >= 0:

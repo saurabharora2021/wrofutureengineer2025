@@ -26,6 +26,7 @@ def main():
         # rand_int = random.randint(-100, 100)
         # logger.warning("Random Steering Angle: %d", rand_int)
         # drive_base.turn_steering(rand_int)
+        logger.info("steering angle: %.2f", pi_inf.get_steering_angle())
 
 
     except (ImportError, AttributeError, RuntimeError) as e:

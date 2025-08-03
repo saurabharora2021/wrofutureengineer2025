@@ -113,7 +113,6 @@ class Walker:
             logger.info("Direction is unknown, starting the walk with default distances.")
 
             helper:EquiWalkerHelper = self.equidistance_walk_start(use_mpu=True)
-            helper:EquiWalkerHelper = self.equidistance_walk_start(use_mpu=True)
 
             #Lets start the walk until we reach the front distance,but at slow speed.
             self.output_inf.drive_forward(self.DEFAULT_SPEED)

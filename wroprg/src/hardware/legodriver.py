@@ -77,6 +77,8 @@ class BuildHatDriveBase(ShutdownInterface):
         def wrap_angle(angle):
             return ((angle + 180) % 360) - 180
 
+        logger.info("Turning steering by %s degrees at speed %s, retry %s", degrees,
+                    steering_speed, retry)
         # Get current position and sanitize
         current_position = self.front_motor.get_position()
         # If the position is out of expected bounds, reset to zero
@@ -92,7 +94,7 @@ class BuildHatDriveBase(ShutdownInterface):
             current_position = 0
 
         # Calculate new target position, considering gear ratio and direction
-        target_position = current_position + self.STEERING_GEAR_RATIO * degrees
+        target_position = self.STEERING_GEAR_RATIO * degrees
         target_position = wrap_angle(target_position)
 
         # Clamp to allowed range
@@ -108,7 +110,7 @@ class BuildHatDriveBase(ShutdownInterface):
         if abs(final_position - target_position) >= self.DELTA_ANGLE and retry > 0:
             logger.warning("Front not correct after turn: %s, expected: %s",
                            final_position, target_position)
-            self.turn_steering(degrees, retry - 1)
+            self.turn_steering(degrees, retry=retry - 1)
 
     def check_set_steering(self, expected_position: float = 0,min_error:float = 2,
                            retrycount:int = 3,steering_speed:float=10) -> None:

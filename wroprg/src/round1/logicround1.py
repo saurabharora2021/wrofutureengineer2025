@@ -1,6 +1,7 @@
 """ This modules implements the Challenge 1 Walker for the WRO2025 Robot."""
 from time import sleep
 import logging
+from collections import Counter
 from base.mat import mat_color
 from hardware.hardware_interface import HardwareInterface
 from round1.walker_helpers import EquiWalkerHelper
@@ -13,7 +14,7 @@ class Walker:
     DEFAULT_SPEED=100/2
     WALK_TO_COLOR_SPEED= 10
     ANTI_CLOCKWISE_DIRECTION=2
-    FRONTDISTANCE_FOR_COLOR_CHECK=110
+    FRONTDISTANCE_FOR_COLOR_CHECK=120
     WALLFRONTDISTANCE=30
     WALLSIDEDISTANCE=15
 
@@ -31,6 +32,7 @@ class Walker:
 
     def __init__(self, output_inf:HardwareInterface):
         self.output_inf = output_inf
+        self._path = list()  # For storing distances
 
     def clamp(self,val, min_val, max_val):
         """Clamp the value between min_val and max_val."""
@@ -51,7 +53,7 @@ class Walker:
         logger.warning("Distance: %.2f, angle: %.2f", dist, angle)
         sleep(0.1)
 
-    def equidistance_walk_start(self,use_mpu:bool,kp:float=None) -> EquiWalkerHelper:
+    def equidistance_walk_start(self,use_mpu:bool,kp:float=0) -> EquiWalkerHelper:
         """Initialize the EquiWalkerHelper with default distances and angles."""
         default_x_angle = 0
         if use_mpu:
@@ -62,6 +64,7 @@ class Walker:
         right_distance = self.output_inf.get_right_distance()
         left_distance_max = self.output_inf.get_left_distance_max()
         right_distance_max = self.output_inf.get_right_distance_max()
+        self._path.clear()  # Clear the path for new distances
 
         helper:EquiWalkerHelper = EquiWalkerHelper(
             def_distance_left=left_distance,
@@ -73,27 +76,25 @@ class Walker:
         )
         return helper
 
-    def equidistance_walk(self,helper:EquiWalkerHelper,use_mpu:bool)->float:
+    def equidistance_walk(self,helper:EquiWalkerHelper,use_mpu:bool,current_steering)->float:
         """Walk using the equidistance method."""
-        left_distance = self.output_inf.get_left_distance()
-        right_distance = self.output_inf.get_right_distance()
-        self.output_inf.logdistances()  # Log the distances
+
+        # Log the distances
+        (front_distance,left_distance,right_distance) = self.output_inf.logdistances()
+
+        self._path.append((front_distance,left_distance,right_distance))
+
         current_angle = 0
         if use_mpu:
-            gyro = self.output_inf.get_gyro()
-            current_angle = gyro[0]  # Assuming gyro[0] gives the current angle
+            _, _, yaw = self.output_inf.get_orientation()
+            current_angle = yaw # Assuming yaw gives the current angle.
 
         turn_angle = helper.equidistance_walk_func(
-                            left_distance, right_distance, current_angle)
+                            left_distance, right_distance, current_angle,current_steering)
 
         if turn_angle is not None:
             if turn_angle >= 0:
                 logger.info("Turning right to angle: %.2f", turn_angle)
-                # if turn_angle > 10:
-                #     #lets stop and turn first
-                #     self.output_inf.drive_stop()
-                #     self.output_inf.turn_steering(turn_angle)
-                #     self.output_inf.drive_forward(self.DEFAULT_SPEED)
             else:
                 logger.info("Turning left to angle: %.2f", turn_angle)
             # Turn the steering based on the calculated angle
@@ -111,22 +112,40 @@ class Walker:
         if self.direction == self.UNKNOWN_DIRECTION:
             logger.info("Direction is unknown, starting the walk with default distances.")
 
-            helper:EquiWalkerHelper = self.equidistance_walk_start(use_mpu)
+            helper:EquiWalkerHelper = self.equidistance_walk_start(use_mpu=use_mpu)
 
             #Lets start the walk until we reach the front distance,but at slow speed.
             self.output_inf.drive_forward(self.DEFAULT_SPEED)
 
             while self.output_inf.get_front_distance() > self.FRONTDISTANCE_FOR_COLOR_CHECK:
 
-                self.equidistance_walk(helper,use_mpu=use_mpu)
+                self.equidistance_walk(helper,use_mpu=use_mpu,current_steering=self.output_inf
+                                       .get_steering_angle)
                 sleep(0.05)
 
             self.output_inf.drive_stop()
             self.output_inf.buzzer_beep()
 
+            #can we check.if one of the sides is not present?, that means we are at a corner.
+            # and based on which side we can determine the direction.
+            (_,left,right) = self.output_inf.logdistances()
+
+            if (left <= self.output_inf.get_left_distance_max() and right > self.output_inf.
+                                                get_right_distance_max()):
+                logger.info("Left side is present, right side is not present," \
+                "                                            setting direction to clockwise.")
+                direction_hints = self.CLOCKWISE_DIRECTION
+            elif (right <= self.output_inf.get_right_distance_max() and left > self.output_inf.
+                                                                    get_left_distance_max()):
+                logger.info("Right side is present, left side is not present, " \
+                "                                       setting direction to anti-clockwise.")
+                direction_hints = self.ANTI_CLOCKWISE_DIRECTION
+            else:
+                direction_hints = self.UNKNOWN_DIRECTION
+
             logger.info("Time to check color")
 
-            helper:EquiWalkerHelper = self.equidistance_walk_start(use_mpu,kp=-1.5)
+            # helper:EquiWalkerHelper = self.equidistance_walk_start(use_mpu,kp=-1.5)
             knowncolor = ["blue", "orange"]
             color = self.check_bottom_color(knowncolor)
             self.output_inf.drive_forward(self.WALK_TO_COLOR_SPEED)
@@ -134,7 +153,8 @@ class Walker:
             while (color is None and
                    self.output_inf.get_front_distance() > self.WALLFRONTENDDISTANCE):
 
-                self.equidistance_walk(helper,use_mpu=use_mpu)
+                self.equidistance_walk(helper,use_mpu=use_mpu,current_steering=self.output_inf.
+                                                                            get_steering_angle())
                 logger.info("Front Distance:%s",self.output_inf.get_front_distance())
                 color = self.check_bottom_color(knowncolor)
                 sleep(0.1)
@@ -143,7 +163,8 @@ class Walker:
             self.output_inf.drive_stop()
             logger.info("Front Distance:%s",self.output_inf.get_front_distance())
 
-            color = self.check_bottom_color(knowncolor)
+            color2 = self.check_bottom_color(knowncolor)
+
 
             if color is None:
                 ##FixMe, can we do this in a better way, can we still walk?
@@ -152,10 +173,35 @@ class Walker:
                 self.output_inf.led1_red()
                 self.output_inf.force_flush_messages()
                 return
-            if color == "blue":
-                self.direction = self.ANTI_CLOCKWISE_DIRECTION
-            elif color == "orange":
-                self.direction = self.CLOCKWISE_DIRECTION
+            self.direction = self._color_to_direction(color)
+
+
+            if (self.direction == direction_hints and self.direction== self.UNKNOWN_DIRECTION):
+                #we have not been able to determine the direction.
+                #Lets walk upto 25cm front, till you seen side distances as max.
+                logger.warning("Direction is unknown, walking until side distances are max.")
+                self._handle_no_direction_walk(use_mpu,helper)
+            elif (self.direction != direction_hints and self.direction != self.UNKNOWN_DIRECTION):
+                #we have been able to determine the direction.
+                # But hints and color don't match, lets look at color2 if it helps.
+                tmp_direction = self._color_to_direction(color2)
+                #Majority voting of directions.
+                direction_list = [self.direction, tmp_direction, direction_hints]
+                direction_counter = Counter(direction_list)
+
+                logger.info("Direction Freq: %s", direction_counter)
+                if direction_counter[self.direction] >= 2:
+                    logger.warning("Direction is %s, setting direction to %s",
+                                   self.directiontostr(self.direction), self.direction)
+                elif direction_counter[direction_hints] >= 2:
+                    logger.warning("Direction is %s, setting direction to %s",
+                                   self.directiontostr(direction_hints), direction_hints)
+                    self.direction = direction_hints
+                else:
+                    logger.warning("Direction is unknown, setting direction to %s",
+                                   self.directiontostr(self.UNKNOWN_DIRECTION))
+                    self.direction = self.UNKNOWN_DIRECTION
+                    self._handle_no_direction_walk(use_mpu,helper)
 
             self.corner = True
             corner_counter= 1
@@ -164,6 +210,7 @@ class Walker:
             logger.warning("color: %s", color)
             self.output_inf.drive_stop()
             self.output_inf.force_flush_messages()
+            return
 
         totalcorners = nooflaps * 4  # Each turn is 90 degrees, so 4 turns make a full circle
 
@@ -198,6 +245,20 @@ class Walker:
             else:
                 self.follow_wall_until(self.WALLFRONTENDDISTANCE)
 
+    def _handle_no_direction_walk(self,use_mpu:bool,helper:EquiWalkerHelper):
+        #TODO: Implement the logic to handle the case when direction is unknown.
+        self.output_inf.buzzer_beep()
+        return
+
+    def _color_to_direction(self,color)-> int:
+        if color == "blue":
+            return self.ANTI_CLOCKWISE_DIRECTION
+        elif color == "orange":
+            return self.CLOCKWISE_DIRECTION
+        else:
+            return self.UNKNOWN_DIRECTION
+
+
     def directiontostr(self,direction):
         """Convert direction to string."""
         if direction == self.CLOCKWISE_DIRECTION:
@@ -226,7 +287,8 @@ class Walker:
             current_angle = gyro[0]  # Assuming gyro[0] gives the current angle
 
         turn_angle = helper.equidistance_walk_func(
-                            left_distance, right_distance, current_angle)
+                            left_distance, right_distance, current_angle,
+                            current_steering_angle=self.output_inf.get_steering_angle())
 
         if turn_angle is not None:
             if turn_angle >= 0:
@@ -238,11 +300,14 @@ class Walker:
         return turn_angle
 
 
-    def handle_corner_start(self,use_mpu:bool,direction:int,kp:float=None) -> EquiWalkerHelper:
+    def handle_corner_start(self,use_mpu:bool,direction:int,kp:float=0) -> EquiWalkerHelper:
         """Initialize the EquiWalkerHelper with default distances and angles."""
         default_x_angle = 0
         if use_mpu:
             default_x_angle = self.output_inf.get_default_x_angle()
+
+        left_distance = 0
+        right_distance = 0
 
         if direction == self.CLOCKWISE_DIRECTION:
             logger.info("Clockwise direction, using right wall, set other to max")

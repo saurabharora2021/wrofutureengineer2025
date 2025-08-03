@@ -10,8 +10,11 @@ class EquiWalkerHelper:
     """Helper class for Round 1 mathetical Function"""
 
     MAX_ANGLE = 15 # Maximum angle in degrees for steering adjustments
-    DELTA_DISTANCE_CM = 1.5
+    DELTA_DISTANCE_CM = 1
     EQUIWALKMAXDELTA=15
+    MAX_GYRO_DELTA = 0.1
+    MIN_WALL_DISTANCE = 10  # Minimum distance to consider a wall present
+    DELTA_CHANGE_ANGLE = 5  # Angle change when adjusting steering for delta
 
     def __init__(self,def_distance_left: float, def_distance_right: float,
                  max_left_distance: float, max_right_distance: float,
@@ -22,19 +25,21 @@ class EquiWalkerHelper:
         self.max_left_distance = max_left_distance
         self.max_right_distance = max_right_distance
         self.angle_offset = current_angle
-        if kp is None:
-            self.kp = -2.5
+        if kp == 0:
+            self.kp = -2
         else:
             self.kp = kp
 
-        if def_distance_left < 10:
-            logger.warning("Left distance is less than 20 cm, reset at least 20 cm.")
-            self.def_distance_left = 10
-            self.def_distance_right= def_distance_right - (10- def_distance_left)
-        elif def_distance_right < 10:
-            logger.warning("Right distance is less than 20 cm, reset at least 20 cm.")
-            self.def_distance_right = 10
-            self.def_distance_left = def_distance_left - (10 - def_distance_right)
+        if def_distance_left < self.MIN_WALL_DISTANCE:
+            logger.warning("Left distance is less than 10 cm, reset at least 10 cm.")
+            self.def_distance_left = self.MIN_WALL_DISTANCE
+            self.def_distance_right= def_distance_right - (self.MIN_WALL_DISTANCE
+                                                            - def_distance_left)
+        elif def_distance_right < self.MIN_WALL_DISTANCE:
+            logger.warning("Right distance is less than 10 cm, reset at least 10 cm.")
+            self.def_distance_right = self.MIN_WALL_DISTANCE
+            self.def_distance_left = def_distance_left - (self.MIN_WALL_DISTANCE
+                                                           - def_distance_right)
 
 
         logger.info("Default Left: %.2f, Right: %.2f Angle: %.2f",
@@ -42,8 +47,8 @@ class EquiWalkerHelper:
 
 
 
-    def equidistance_walk_func(self, left_distance: float,
-                               right_distance: float, current_angle:float) -> float:
+    def equidistance_walk_func(self, left_distance: float,right_distance: float,
+                            current_angle:float,current_steering_angle:float) -> float:
         """Calculate the angle for equidistance walk based on the current distances."""
         errorcount = 0
         # If you are at a point, where the left rail is not present or the right rail is
@@ -53,6 +58,19 @@ class EquiWalkerHelper:
         relative_angle_radians = math.radians(relative_angle)
         left_distance = left_distance * math.cos(relative_angle_radians)
         right_distance = right_distance * math.cos(relative_angle_radians)
+
+        delta_angle = current_angle - self.angle_offset
+
+        if abs(delta_angle) >= self.MAX_GYRO_DELTA:
+            logger.warning("Delta angle is too high: %.2f, reducing angles now", delta_angle)
+            if current_steering_angle >= 0:
+                #We are turning right,we can change delta assuming left wall is far.
+                if left_distance > self.MIN_WALL_DISTANCE:
+                    return current_steering_angle - self.DELTA_DISTANCE_CM
+            else:
+                #We are turning left, we can change delta assuming right wall is far.
+                if right_distance > self.MIN_WALL_DISTANCE:
+                    return current_steering_angle + self.DELTA_CHANGE_ANGLE
 
 
         if left_distance >= self.max_left_distance or left_distance <= 0:

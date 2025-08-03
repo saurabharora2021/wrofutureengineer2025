@@ -107,7 +107,7 @@ class HardwareInterface(ShutdownInterface):
 
     # --- Raspberry Pi Interface Methods ---
 
-    def pdate_orientation(self):
+    def update_orientation(self):
         """Update the orientation estimator with latest sensor data."""
         if self._orientation_estimator is not None:
             self._orientation_estimator.update()
@@ -161,6 +161,14 @@ class HardwareInterface(ShutdownInterface):
     def get_left_distance_max(self) -> float:
         """Get the maximum distance from the left distance sensor."""
         return self._rpi.get_left_distance_max()
+    def get_front_distance_max(self) -> float:
+        """Get the maximum distance from the front distance sensor."""
+        if HardwareConfig.CHASSIS_VERSION == 1:
+            raise ValueError("Chassis 1 doesnt support this function")
+        elif HardwareConfig.CHASSIS_VERSION == 2:
+            return self._rpi.get_front_distance_max()
+        else:
+            raise ValueError("Unsupported chassis version for front distance sensor.")
 
     def display_message(self, message: str, forceflush: bool = False) -> None:
         """
@@ -271,13 +279,15 @@ class HardwareInterface(ShutdownInterface):
 
     ## End of LEGO Driver Methods
 
-    def logdistances(self) -> None:
-        """Log the current distances from all sensors."""
+    def logdistances(self) -> tuple[float, float, float]:
+        """Log the current distances from all sensors.
+        And return them as a tuple(front_distance, left_distance, right_distance)"""
         left_distance = self.get_left_distance()
         right_distance = self.get_right_distance()
         front_distance = self.get_front_distance()
         logger.warning("L:%.1f, R:%.1f, F:%.1f",
                        left_distance, right_distance, front_distance)
+        return front_distance, left_distance, right_distance
 
 class MeasurementsManager(ShutdownInterface):
     """Class to read and store measurements from hardware sensors in a separate thread."""

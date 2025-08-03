@@ -43,6 +43,13 @@ class RobotValidator:
             logger.error("Invalid distances: Left=%s, Right=%s.",
                               left_distance, right_distance)
             return False
+        #Mat Logic, at starting point , size of mat is 100cm. so left and right distance should
+        # not be greater than 100cm, since bot also has some width.
+        if left_distance + right_distance > 100:
+            logger.error("Invalid distances: Left=%s, Right=%s. Total distance is greater" \
+                        " than 100cm.", left_distance, right_distance)
+            return False
+
         # Lets check if Raspberry Pi is not throttling
         # We need to check if the Raspberry Pi is throttling, which can happen due to overheating
         # or power issues.This needs to be done after the logger is set up, so we can log the

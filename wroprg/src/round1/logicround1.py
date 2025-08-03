@@ -140,7 +140,6 @@ class Walker:
             else:
                 direction_hints = self.UNKNOWN_DIRECTION
 
-            return
             logger.info("Time to check color")
 
             # helper:EquiWalkerHelper = self.equidistance_walk_start(use_mpu,kp=-1.5)
@@ -208,7 +207,16 @@ class Walker:
             logger.warning("color: %s", color)
             self.output_inf.drive_stop()
             self.output_inf.force_flush_messages()
+
             return
+
+            #TODO: we cannot determin direction, beep and stop.
+            if (self.direction == self.UNKNOWN_DIRECTION):
+                logger.warning("Direction is unknown, stopping the walk.")
+                self.output_inf.buzzer_beep()
+                self.output_inf.led1_red()
+                self.output_inf.force_flush_messages()
+                return
 
         totalcorners = nooflaps * 4  # Each turn is 90 degrees, so 4 turns make a full circle
 
@@ -247,6 +255,7 @@ class Walker:
     def _handle_no_direction_walk(self,use_mpu:bool,helper:EquiWalkerHelper):
         #TODO: Implement the logic to handle the case when direction is unknown.
         self.output_inf.buzzer_beep()
+        self.output_inf.led1_red()
         return
 
     def _color_to_direction(self,color)-> int:

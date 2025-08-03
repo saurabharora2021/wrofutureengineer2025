@@ -102,7 +102,7 @@ class Walker:
         return turn_angle
 
 
-    def start_walk(self,nooflaps:int=4,use_mpu:bool=False):
+    def start_walk(self,nooflaps:int=4):
         """Start the walk based on the current direction which is unknown and number of laps."""
         logger.info("Starting to walk...")
         logger.warning("Direction:%s", self.directiontostr(self.direction))
@@ -112,6 +112,7 @@ class Walker:
         if self.direction == self.UNKNOWN_DIRECTION:
             logger.info("Direction is unknown, starting the walk with default distances.")
 
+            helper:EquiWalkerHelper = self.equidistance_walk_start(use_mpu=True)
             helper:EquiWalkerHelper = self.equidistance_walk_start(use_mpu=True)
 
             #Lets start the walk until we reach the front distance,but at slow speed.
@@ -154,7 +155,7 @@ class Walker:
             while (color is None and
                    self.output_inf.get_front_distance() > self.WALLFRONTENDDISTANCE):
 
-                self.equidistance_walk(helper,use_mpu=use_mpu,current_steering=self.output_inf.
+                self.equidistance_walk(helper,use_mpu=False,current_steering=self.output_inf.
                                                                             get_steering_angle())
                 logger.info("Front Distance:%s",self.output_inf.get_front_distance())
                 color = self.check_bottom_color(knowncolor)
@@ -181,7 +182,7 @@ class Walker:
                 #we have not been able to determine the direction.
                 #Lets walk upto 25cm front, till you seen side distances as max.
                 logger.warning("Direction is unknown, walking until side distances are max.")
-                self._handle_no_direction_walk(use_mpu,helper)
+                self._handle_no_direction_walk(use_mpu=False,helper=helper)
             elif (self.direction != direction_hints and self.direction != self.UNKNOWN_DIRECTION):
                 #we have been able to determine the direction.
                 # But hints and color don't match, lets look at color2 if it helps.
@@ -202,7 +203,7 @@ class Walker:
                     logger.warning("Direction is unknown, setting direction to %s",
                                    self.directiontostr(self.UNKNOWN_DIRECTION))
                     self.direction = self.UNKNOWN_DIRECTION
-                    self._handle_no_direction_walk(use_mpu,helper)
+                    self._handle_no_direction_walk(use_mpu=False,helper=helper)
 
             self.corner = True
             corner_counter= 1
@@ -218,7 +219,8 @@ class Walker:
         # We will walk until we reach the end of the section or complete the required number of
         while corner_counter < totalcorners:
             if self.corner:
-                helper:EquiWalkerHelper = self.handle_corner_start(use_mpu,self.direction)
+                helper:EquiWalkerHelper = self.handle_corner_start(use_mpu=False,
+                                                                    direction=self.direction)
 
                 if self.direction == self.CLOCKWISE_DIRECTION:
                     turn_angle = self.TURNRIGHT_ANGLE
@@ -231,7 +233,7 @@ class Walker:
                 while (self.output_inf.get_front_distance() > self.WALLFRONTDISTANCE and
                        self.output_inf.get_front_distance()
                             < self.output_inf.get_front_distance_max()):
-                    self.handle_corner_walk(use_mpu,self.direction,helper)
+                    self.handle_corner_walk(use_mpu=False,direction=self.direction,helper=helper)
                     sleep(0.1)
                 ##Turned the corner, lets stop the base.
                 self.output_inf.drive_stop()

@@ -11,6 +11,7 @@ class SimpleKalmanFilter:
         self.x = initial_value  # value
 
     def update(self, measurement):
+        """Update the Kalman filter with a new measurement."""
         # Prediction update
         self.p += self.q
         # Measurement update

@@ -11,7 +11,7 @@ from hardware.legodriver import BuildHatDriveBase
 from hardware.measurements import Measurement, MeasurementsLogger, logger
 from hardware.orientation import OrientationEstimator
 from hardware.rpi_interface import RpiInterface
-from hardware.statsfunctions import KalmanFilter
+from hardware.statsfunctions import DumpKalmanFilter
 
 logger = logging.getLogger(__name__)
 
@@ -25,25 +25,10 @@ class HardwareInterface(ShutdownInterface):
         self._rpi = RpiInterface(stabilize)
         self._lego_drive_base: Optional[BuildHatDriveBase] = None
         self._measurements_manager: Optional[MeasurementsManager] = None
-        self._front_distance_kf: Optional[KalmanFilter] = None
+        self._front_distance_kf: Optional[DumpKalmanFilter] = None
 
         self._orientation_estimator = None
 
-        ##Setup Kalman Filters for left and right distance sensors
-        self._left_distance_kf = KalmanFilter(
-                        process_variance=0.2,      # Increased, so filter adapts faster
-                        measurement_variance=0.5,   # Moderate, as HC-SR04 is noisy
-                        estimated_error=1.0,        # Start with high uncertainty
-                        initial_value=self._rpi.get_left_distance(),
-                        max_value=self._rpi.get_left_distance_max()
-                        )
-        self._right_distance_kf = KalmanFilter(
-                        process_variance=0.2,      # Increased, so filter adapts faster
-                        measurement_variance=0.5,   # Moderate, as HC-SR04 is noisy
-                        estimated_error=1.0,        # Start with high uncertainty
-                        initial_value=self._rpi.get_right_distance(),
-                        max_value=self._rpi.get_right_distance_max()
-                        )
 
     def full_initialization(self) -> None:
         """Initialize all hardware components."""
@@ -57,7 +42,7 @@ class HardwareInterface(ShutdownInterface):
                                                bottom_color_sensor_port='C',
                                                front_distance_sensor_port=None)
                 self._measurements_manager = MeasurementsManager(self)
-                self._front_distance_kf = KalmanFilter(
+                self._front_distance_kf = DumpKalmanFilter(
                     process_variance=1e-2,      # Larger, as distance changes faster
                     measurement_variance=0.5,   # Moderate, as HC-SR04 is noisy
                     estimated_error=1.0,        # Start with high uncertainty
@@ -160,7 +145,7 @@ class HardwareInterface(ShutdownInterface):
 
     def get_right_distance(self) -> float:
         """Get the distance from the right distance sensor."""
-        return self._right_distance_kf.update(self._rpi.get_right_distance())
+        return self._rpi.get_right_distance()
 
     def get_right_distance_max(self) -> float:
         """Get the maximum distance from the right distance sensor."""
@@ -168,7 +153,7 @@ class HardwareInterface(ShutdownInterface):
 
     def get_left_distance(self) -> float:
         """Get the distance from the left distance sensor."""
-        return self._left_distance_kf.update(self._rpi.get_left_distance())
+        return self._rpi.get_left_distance()
 
     def get_left_distance_max(self) -> float:
         """Get the maximum distance from the left distance sensor."""

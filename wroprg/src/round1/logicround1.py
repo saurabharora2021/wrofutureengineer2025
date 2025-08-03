@@ -55,10 +55,8 @@ class Walker:
 
     def equidistance_walk_start(self,use_mpu:bool,kp:float=0) -> EquiWalkerHelper:
         """Initialize the EquiWalkerHelper with default distances and angles."""
-        default_x_angle = 0
         if use_mpu:
-            default_x_angle = self.output_inf.get_default_x_angle()
-
+            self.output_inf.reset_yaw()  # Reset yaw to zero
 
         left_distance = self.output_inf.get_left_distance()
         right_distance = self.output_inf.get_right_distance()
@@ -71,7 +69,6 @@ class Walker:
             def_distance_right=right_distance,
             max_left_distance=left_distance_max,
             max_right_distance=right_distance_max,
-            current_angle=default_x_angle,
             kp=kp
         )
         return helper
@@ -304,9 +301,8 @@ class Walker:
 
     def handle_corner_start(self,use_mpu:bool,direction:int,kp:float=0) -> EquiWalkerHelper:
         """Initialize the EquiWalkerHelper with default distances and angles."""
-        default_x_angle = 0
         if use_mpu:
-            default_x_angle = self.output_inf.get_default_x_angle()
+            self.output_inf.reset_yaw()  # Reset yaw to zero
 
         left_distance = 0
         right_distance = 0
@@ -328,7 +324,6 @@ class Walker:
             def_distance_right=right_distance,
             max_left_distance=left_distance_max,
             max_right_distance=right_distance_max,
-            current_angle=default_x_angle,
             kp=kp
         )
         return helper

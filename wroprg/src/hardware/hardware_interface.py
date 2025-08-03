@@ -4,14 +4,14 @@ from collections import deque
 import threading
 import logging
 import time
-from typing import Optional
+from typing import Optional, Tuple
 from base.shutdown_handling import ShutdownInterface
 from hardware.hardwareconfig import HardwareConfig
 from hardware.legodriver import BuildHatDriveBase
 from hardware.measurements import Measurement, MeasurementsLogger, logger
 from hardware.orientation import OrientationEstimator
 from hardware.rpi_interface import RpiInterface
-from hardware.statsfunctions import DumpKalmanFilter, KalmanFilter
+from hardware.statsfunctions import KalmanFilter
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +34,15 @@ class HardwareInterface(ShutdownInterface):
                         process_variance=0.2,      # Increased, so filter adapts faster
                         measurement_variance=0.5,   # Moderate, as HC-SR04 is noisy
                         estimated_error=1.0,        # Start with high uncertainty
-                        initial_value=self._rpi.get_left_distance()
+                        initial_value=self._rpi.get_left_distance(),
+                        max_value=self._rpi.get_left_distance_max()
                         )
         self._right_distance_kf = KalmanFilter(
                         process_variance=0.2,      # Increased, so filter adapts faster
                         measurement_variance=0.5,   # Moderate, as HC-SR04 is noisy
                         estimated_error=1.0,        # Start with high uncertainty
-                        initial_value=self._rpi.get_right_distance()
+                        initial_value=self._rpi.get_right_distance(),
+                        max_value=self._rpi.get_right_distance_max()
                         )
 
     def full_initialization(self) -> None:
@@ -59,7 +61,8 @@ class HardwareInterface(ShutdownInterface):
                     process_variance=1e-2,      # Larger, as distance changes faster
                     measurement_variance=0.5,   # Moderate, as HC-SR04 is noisy
                     estimated_error=1.0,        # Start with high uncertainty
-                    initial_value=self._rpi.get_front_distance()
+                    initial_value=self._rpi.get_front_distance(),
+                    max_value=self._rpi.get_front_distance_max()
                       # Or your expected starting distance
                 )
                 self._orientation_estimator = OrientationEstimator(
@@ -75,8 +78,8 @@ class HardwareInterface(ShutdownInterface):
             logger.error("Failed to initialize drive base: %s", e)
             raise RuntimeError(f"Drive base initialization failed: {e}") from e
 
-    def get_default_x_angle(self) -> float:
-        """Get the default X angle for the chassis."""
+    def get_default_angle(self) -> Tuple[float, float, float]:
+        """Get the default angles for the chassis."""
         if HardwareConfig.CHASSIS_VERSION == 1:
             raise ValueError("Not supported for chassis version 1.")
         elif HardwareConfig.CHASSIS_VERSION == 2:
@@ -84,19 +87,28 @@ class HardwareInterface(ShutdownInterface):
         else:
             raise ValueError("Unsupported chassis version for default X angle.")
 
-    def calibrate_imu(self,samples=100):
+    def calibrate_imu(self,samples=100)-> Tuple[float, float, float]:
         """
         Reads the IMU for a number of samples to find the average resting offset.
         """
         print("Calibrating IMU... Place the robot on a perfectly level surface.")
-        total_angle = 0
+        total_angle_x = 0
+        total_angle_y = 0
+        total_angle_z = 0
         for _ in range(samples):
-            total_angle += self.get_gyro()[0]
+            gyro_x, gyro_y, gyro_z = self.get_gyro()
+            total_angle_x += gyro_x
+            total_angle_y += gyro_y
+            total_angle_z += gyro_z
             time.sleep(0.01) # Small delay between readings
 
-        offset = total_angle / samples
-        print(f"Calibration complete. Tilt Offset: {offset:.2f} degrees")
-        return offset
+        offset_x = total_angle_x / samples
+        offset_y = total_angle_y / samples
+        offset_z = total_angle_z / samples
+        logger.info("Calibration complete. Tilt Offsets: X: %.2f, Y: %.2f, Z: %.2f degrees",
+                    offset_x, offset_y, offset_z)
+
+        return offset_x, offset_y, offset_z
 
     def start_measurement_recording(self) -> None:
         """Start the measurements manager thread."""
@@ -221,6 +233,13 @@ class HardwareInterface(ShutdownInterface):
             return self._rpi.get_gyro()
         else:
             raise ValueError("Unsupported chassis version for gyroscope sensor.")
+
+    def reset_yaw(self)-> None:
+        """Reset the yaw angle to zero."""
+        if self._orientation_estimator is not None:
+            self._orientation_estimator.reset_yaw()
+        else:
+            raise RuntimeError("Orientation estimator not initialized.")
 
     # --- LEGO Driver Methods ---
     def drive_forward(self, speed: float) -> None:

@@ -21,12 +21,18 @@ def main():
     try:
 
         pi_inf.force_flush_messages()
+        pi_inf.start_measurement_recording()
+        sleep(2)
+        pi_inf.reset_yaw()
+        default_yaw = pi_inf.get_orientation()[2]
+        logger.warning("Default Yaw: %.2f", default_yaw)
         while True:
             # Read orientation data
             orientation = pi_inf.get_orientation()
             if orientation is not None:
-                logger.info("Orientation: %s", orientation)
-                print(f"Orientation: {orientation}")
+                delta_yaw = orientation[2] - default_yaw
+                logger.warning("Yaw delta: %.2f ", delta_yaw)
+                print("Orientation: %s", orientation)
             else:
                 logger.warning("Orientation data not available")
                 print("Orientation data not available")

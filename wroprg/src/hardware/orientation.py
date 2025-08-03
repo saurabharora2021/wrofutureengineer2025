@@ -1,7 +1,9 @@
 """ Orientation estimation using MPU6050 data with Kalman filters."""
 import math
 import time
+import logging
 
+logger = logging.getLogger(__name__)
 class SimpleKalmanFilter:
     """A simple 1D Kalman filter for demonstration."""
     def __init__(self, q=0.01, r=0.1, p=1.0, initial_value=0.0):
@@ -34,7 +36,10 @@ class OrientationEstimator:
         self.pitch = 0.0
         self.yaw = 0.0
         self.yaw_bias = 0.0  # For bias correction
-        self.stationary_threshold = 0.01  # rad/s, adjust as needed
+        self.stationary_threshold = 0.05  # rad/s, adjust as needed
+        self.yaw_drift_accum = 0.0  # For yaw drift correction
+        self.yaw_drift_time = 0  # Count of samples for drift correction
+        self.yaw_drift_per_sec = 0.0
         # Kalman filters for roll and pitch
         self.kalman_roll = SimpleKalmanFilter()
         self.kalman_pitch = SimpleKalmanFilter()
@@ -54,10 +59,30 @@ class OrientationEstimator:
         accel_roll = math.degrees(math.atan2(accel_y, accel_z))
         accel_pitch = math.degrees(math.atan2(-accel_x, math.sqrt(accel_y**2 + accel_z**2)))
 
+        # logger.info("gyro_z: %.2f", gyro_z)
         # Integrate gyroscope data for yaw, with bias correction
         if abs(gyro_z) < self.stationary_threshold:
             # If robot is stationary, slowly correct yaw bias
+            # logger.info("Robot is stationary, correcting yaw bias.")
             self.yaw_bias += 0.001 * (-gyro_z - self.yaw_bias)
+            #--- Yaw drift computation when stationary
+            self.yaw_drift_accum += gyro_z * dt
+            self.yaw_drift_time += dt
+            if self.yaw_drift_time > 0:
+                self.yaw_drift_per_sec = self.yaw_drift_accum / self.yaw_drift_time
+            else:
+                self.yaw_drift_per_sec = 0.0
+            # logger.info("Yaw bias corrected: %.2f", self.yaw_bias)
+            # logger.info("Yaw drift per second: %.2f", self.yaw_drift_per_sec)
+            # Reset yaw drift accumulation if stationary for too long
+            self.yaw -= math.degrees(self.yaw_drift_per_sec * dt)
+
+        else:
+            #Reset drift accumulation when moving
+            self.yaw_drift_accum = 0.0
+            self.yaw_drift_time = 0
+            self.yaw_drift_per_sec = 0.0
+
         corrected_gyro_z = gyro_z + self.yaw_bias
 
         self.roll += math.degrees(gyro_x * dt)

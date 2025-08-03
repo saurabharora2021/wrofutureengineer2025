@@ -1,6 +1,7 @@
 """ This script is used to test the color using the BuildHatDriveBase class."""
 import logging
 import argparse
+import time
 from base.mat import mat_color
 from hardware.hardware_interface import HardwareInterface
 from utils.helpers import HelperFunctions
@@ -20,6 +21,11 @@ def main():
     pi_inf: HardwareInterface = helper.get_pi_interface()
     try:
 
+        logger.info("sleep 1 seconds before starting")
+        pi_inf.buzzer_beep()
+        time.sleep(1)
+        pi_inf.buzzer_beep()
+        logger.info("Starting color sensor test...")
         r, g, b, i ,*other = pi_inf.get_bottom_color_rgbi()
 
         logger.info("Bottom Color RGBI: R=%d, G=%d, B=%d, I=%d", r, g, b, i)

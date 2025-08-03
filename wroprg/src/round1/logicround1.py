@@ -4,7 +4,7 @@ import logging
 from collections import Counter
 from base.mat import mat_color
 from hardware.hardware_interface import HardwareInterface
-from round1.walker_helpers import EquiWalkerHelper
+from round1.walker_helpers import EquiWalkerHelper, GyroWalkerHelper
 
 logger = logging.getLogger(__name__)
 class Walker:
@@ -129,18 +129,36 @@ class Walker:
             # helper:EquiWalkerHelper = self.equidistance_walk_start(use_mpu,kp=-1.5)
             knowncolor = ["blue", "orange"]
             color = self.check_bottom_color(knowncolor)
-            
-            self.output_inf.drive_forward(self.WALK_TO_COLOR_SPEED)
+
+            gyrohelper:GyroWalkerHelper = GyroWalkerHelper()
+            self.output_inf.reset_yaw()  # Reset yaw to zero
+
+            running = False
 
             while (color is None and
                    self.output_inf.get_front_distance() > self.WALLFRONTENDDISTANCE):
 
                 color = self.check_bottom_color(knowncolor)
                 if color is None:
-                    self.equidistance_walk(helper,use_mpu=True,current_steering=self.output_inf.
-                                                                            get_steering_angle())
+                    _, _, yaw = self.output_inf.get_orientation()
+                    turn_angle = gyrohelper.walk_func(yaw,self.output_inf.
+                                                                get_steering_angle())
+
+                    if turn_angle is not None:
+                        self.output_inf.drive_stop()
+                        running = False
+                        if turn_angle >= 0:
+                            logger.info("Turning right to angle: %.2f", turn_angle)
+                        else:
+                            logger.info("Turning left to angle: %.2f", turn_angle)
+                        # Turn the steering based on the calculated angle
+                        self.output_inf.turn_steering(turn_angle)
+
                     logger.info("Front Distance:%s",self.output_inf.get_front_distance())
                     color = self.check_bottom_color(knowncolor)
+                if not running:
+                    self.output_inf.drive_forward(self.WALK_TO_COLOR_SPEED)
+                    running = True
                     # self.output_inf.buzzer_beep(timer=0.1)
                     # sleep(0.001)
 

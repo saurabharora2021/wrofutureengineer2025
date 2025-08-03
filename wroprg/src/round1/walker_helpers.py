@@ -1,7 +1,6 @@
 """Helper functions for Walker logic in WRO2025."""
 import logging
 from statistics import mean as average
-import math
 from collections import deque
 
 logger = logging.getLogger(__name__)
@@ -9,7 +8,6 @@ logger = logging.getLogger(__name__)
 class EquiWalkerHelper:
     """Helper class for Round 1 mathetical Function"""
 
-    MAX_ANGLE = 15 # Maximum angle in degrees for steering adjustments
     DELTA_DISTANCE_CM = 1
     EQUIWALKMAXDELTA=13
     MAX_GYRO_DELTA = 0.5 # Maximum gyro delta angle in degrees
@@ -18,6 +16,7 @@ class EquiWalkerHelper:
     # this is multiplied with the delta gyro value, which is quite small
     K_GYRO = 5
     K_DISTANCE = -2
+    MAX_ANGLE = 15 # Maximum angle in degrees for steering adjustments
 
     def __init__(self,def_distance_left: float, def_distance_right: float,
                  max_left_distance: float, max_right_distance: float,
@@ -47,6 +46,10 @@ class EquiWalkerHelper:
 
         logger.info("Default Left: %.2f, Right: %.2f, Kp: %.2f",
                      def_distance_left, def_distance_right,self.kp)
+
+    def clamp_angle(self, val)-> float:
+        """Clamp the value between -MAX_ANGLE and MAX_ANGLE."""
+        return float(max(min(val, self.MAX_ANGLE), -self.MAX_ANGLE))
 
 
 
@@ -151,6 +154,39 @@ class EquiWalkerHelper:
             return float(final_angle)
         else:
             return None # type: ignore
+
+class GyroWalkerHelper:
+    """Helper class for Gyro Walker logic in WRO2025."""
+    MAX_ANGLE = 15 # Maximum angle in degrees for steering adjustments
+    MAX_GYRO_DELTA = 0.5 # Maximum gyro delta angle in degrees
+    K_GYRO = 5
+    def __init__(self, kgyro: float=0) -> None:
+        self.kgyro = kgyro if kgyro != 0 else self.K_GYRO
+        logger.info("Gyro Walker Helper initialized with Kgyro: %.2f", self.kgyro)
+
+    def walk_func(self, delta_angle:float, current_steering_angle:float) -> float:
+        """Calculate the angle for gyro walk based on the current delta angle."""
+
+        logger.info("Gyro angle : %.2f", delta_angle)
+        logger.info("current steering angle: %.2f", current_steering_angle)
+
+        gyro_correction =0
+
+        if abs(delta_angle) >= self.MAX_GYRO_DELTA:
+            logger.warning("Delta angle is too high: %.2f, reducing angles now", delta_angle)
+            if delta_angle > 0:
+                logger.info("Drifting left, adjusting right gyro correction")
+                gyro_correction = self.K_GYRO * abs(delta_angle)
+            else:
+                logger.info("Drifting right, adjusting left gyro correction")
+                gyro_correction = -self.K_GYRO * abs(delta_angle)
+
+        angle = self.clamp_angle(self.kgyro*gyro_correction)
+        if current_steering_angle != angle:
+            logger.info("Adjusting steering angle from %.2f to %.2f", current_steering_angle, angle)
+            return float(angle)
+        else:
+            return None
 
     def clamp_angle(self, val)-> float:
         """Clamp the value between -MAX_ANGLE and MAX_ANGLE."""

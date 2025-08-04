@@ -4,6 +4,7 @@ import logging
 from collections import Counter
 from base.mat import mat_color
 from hardware.hardware_interface import HardwareInterface
+from round1.threadingfunctions import ConditionCheckerThread
 from round1.walker_helpers import EquiWalkerHelper, GyroWalkerHelper
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,7 @@ class Walker:
     def __init__(self, output_inf:HardwareInterface):
         self.output_inf = output_inf
         self._path = list()  # For storing distances
+        self._line_color: str = None
 
     def clamp(self,val, min_val, max_val):
         """Clamp the value between min_val and max_val."""
@@ -131,15 +133,29 @@ class Walker:
             color = self.check_bottom_color(knowncolor)
 
             gyrohelper:GyroWalkerHelper = GyroWalkerHelper()
-            self.output_inf.reset_yaw()  # Reset yaw to zero
+            # self.output_inf.reset_yaw()  # Reset yaw to zero
 
             running = False
 
-            while (color is None and
-                   self.output_inf.get_front_distance() > self.WALLFRONTENDDISTANCE):
+            if color is None:
 
-                color = self.check_bottom_color(knowncolor)
-                if color is None:
+                def set_line_color(c):
+                    self._line_color = c
+
+                def value_check_func():
+                    return self.check_bottom_color(knowncolor)
+
+                colorchecker: ConditionCheckerThread = ConditionCheckerThread(
+                    value_check_func=value_check_func,
+                    callback_func=set_line_color,
+                    interval_ms=100
+                )
+
+                colorchecker.start()
+
+                while (self.output_inf.get_front_distance() > self.WALLFRONTENDDISTANCE
+                    and self._line_color is None):
+
                     _, _, yaw = self.output_inf.get_orientation()
                     turn_angle = gyrohelper.walk_func(yaw,self.output_inf.
                                                                 get_steering_angle())
@@ -153,18 +169,24 @@ class Walker:
                         self.output_inf.turn_steering(turn_angle)
 
                     logger.info("Front Distance:%s",self.output_inf.get_front_distance())
-                    color = self.check_bottom_color(knowncolor)
-                if not running:
-                    logger.info("color checking walk...")
-                    self.output_inf.drive_forward(self.WALK_TO_COLOR_SPEED)
-                    running = True
-                    # self.output_inf.buzzer_beep(timer=0.1)
-                    # sleep(0.001)
+
+
+                    if not running:
+                        logger.info("color checking walk...")
+                        self.output_inf.drive_forward(self.WALK_TO_COLOR_SPEED)
+                        running = True
+                        # self.output_inf.buzzer_beep(timer=0.1)
+                        # sleep(0.001)
+
+                if colorchecker.is_running():
+                    logger.info("Stopping color checker thread, not found color yet.")
+                    colorchecker.stop()
 
             #Lets first stop the base and then check the color.
             self.output_inf.drive_stop()
             self.output_inf.buzzer_beep()
             logger.info("Front Distance:%s",self.output_inf.get_front_distance())
+            color = self._line_color
 
             color2 = self.check_bottom_color(knowncolor)
 
@@ -173,11 +195,11 @@ class Walker:
             (_,left,right) = self.output_inf.logdistances()
 
             MAX_DISTANCE = 100
-            if (left > right):
+            if left > right:
                 logger.info("Left side is present, right side is not present," \
                 "                                            setting direction to clockwise.")
                 direction_hints = self.CLOCKWISE_DIRECTION
-            elif (right < left):
+            elif right < left:
                 logger.info("Right side is present, left side is not present, " \
                 "                                       setting direction to anti-clockwise.")
                 direction_hints = self.ANTI_CLOCKWISE_DIRECTION
@@ -233,7 +255,7 @@ class Walker:
             return
 
             #TODO: we cannot determin direction, beep and stop.
-            if (self.direction == self.UNKNOWN_DIRECTION):
+            if self.direction == self.UNKNOWN_DIRECTION:
                 logger.warning("Direction is unknown, stopping the walk.")
                 self.output_inf.buzzer_beep()
                 self.output_inf.led1_red()
@@ -273,6 +295,7 @@ class Walker:
                     return
             else:
                 self.follow_wall_until(self.WALLFRONTENDDISTANCE)
+
 
     def _handle_no_direction_walk(self,use_mpu:bool,helper:EquiWalkerHelper):
         #TODO: Implement the logic to handle the case when direction is unknown.
@@ -366,7 +389,7 @@ class Walker:
             sleep(0.1)
         self.corner = True
 
-    def check_bottom_color(self,colors):
+    def check_bottom_color(self,colors)->str|None:
         """Read the bottom color and return it if it matches the specified colors."""
         r, g, b, _ = self.output_inf.get_bottom_color_rgbi()
         color = mat_color(r, g, b)

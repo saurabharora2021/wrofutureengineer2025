@@ -12,10 +12,10 @@ def mat_color( r, g, b)-> str:
     :rtype: str
     """
     table = [("black", (0, 0, 0)),
-                ("orange", (121, 72, 72)), #r to 145 , g to 85, b to 82 based on test color.
-                ("blue", (21, 28, 47)),  #changed blue to 77 based on test color.
+                ("orange", (121, 60, 60)), #r to 145 , g to 85, b to 82 based on test color.
+                ("blue", (25, 25, 60)),  #changed blue to 77 based on test color.
                 ("white", (138, 152, 165)),
-                ("line", (109, 120, 128))
+              #  ("line", (109, 120, 128))
                 ]
     near = ""
     euc = math.inf

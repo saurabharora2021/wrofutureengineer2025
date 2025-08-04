@@ -17,7 +17,7 @@ class Walker:
     ANTI_CLOCKWISE_DIRECTION=2
     FRONTDISTANCE_FOR_COLOR_CHECK=120
     WALLFRONTDISTANCE=30
-    WALLSIDEDISTANCE=15
+    WALLSIDEDISTANCE=20
 
     UNKNOWN_DIRECTION=-1
     TURNRIGHT_ANGLE=10
@@ -34,7 +34,7 @@ class Walker:
     def __init__(self, output_inf:HardwareInterface):
         self.output_inf = output_inf
         self._path = list()  # For storing distances
-        self._line_color: str = None
+        self._line_color: str|None = None
 
     def clamp(self,val, min_val, max_val):
         """Clamp the value between min_val and max_val."""
@@ -122,11 +122,13 @@ class Walker:
                                        .get_steering_angle())
                 sleep(0.03)
 
-            self.output_inf.drive_stop()
-            self.output_inf.buzzer_beep()
+            # self.output_inf.drive_stop()
+            self.output_inf.drive_forward(self.WALK_TO_COLOR_SPEED)
+
+            # self.output_inf.buzzer_beep()
 
             logger.info("Time to check color")
-            sleep(0.5)
+            # sleep(0.5)
 
             # helper:EquiWalkerHelper = self.equidistance_walk_start(use_mpu,kp=-1.5)
             knowncolor = ["blue", "orange"]
@@ -141,6 +143,7 @@ class Walker:
 
                 def set_line_color(c):
                     self._line_color = c
+                    self.output_inf.drive_stop()
 
                 def value_check_func():
                     return self.check_bottom_color(knowncolor)
@@ -196,13 +199,13 @@ class Walker:
 
             MAX_DISTANCE = 100
             if left > right:
-                logger.info("Left side is present, right side is not present," \
-                "                                            setting direction to clockwise.")
-                direction_hints = self.CLOCKWISE_DIRECTION
-            elif right < left:
-                logger.info("Right side is present, left side is not present, " \
-                "                                       setting direction to anti-clockwise.")
+                logger.info("Left side is not present, right side is present," \
+                "                                            setting direction to anitclockwise.")
                 direction_hints = self.ANTI_CLOCKWISE_DIRECTION
+            elif right < left:
+                logger.info("left side is present, right side is not present, " \
+                "                                       setting direction to clockwise.")
+                direction_hints = self.CLOCKWISE_DIRECTION
             else:
                 direction_hints = self.UNKNOWN_DIRECTION
 
@@ -248,13 +251,14 @@ class Walker:
             corner_counter= 1
 
             self.output_inf.buzzer_beep()
-            logger.warning("color: %s", color)
+            logger.warning("running color: %s", color)
+            logger.warning("later color: %s", color2)
+            logger.warning("Hints direction: %s", self.directiontostr(direction_hints))
+            logger.warning("Final direction: %s", self.directiontostr(self.direction))
             self.output_inf.drive_stop()
             self.output_inf.force_flush_messages()
 
-            return
-
-            #TODO: we cannot determin direction, beep and stop.
+            #TODO: we cannot determine direction, beep and stop.
             if self.direction == self.UNKNOWN_DIRECTION:
                 logger.warning("Direction is unknown, stopping the walk.")
                 self.output_inf.buzzer_beep()
@@ -270,19 +274,18 @@ class Walker:
                 helper:EquiWalkerHelper = self.handle_corner_start(use_mpu=False,
                                                                     direction=self.direction)
 
-                if self.direction == self.CLOCKWISE_DIRECTION:
-                    turn_angle = self.TURNRIGHT_ANGLE
-                else:
-                    turn_angle = self.TURNLEFT_ANGLE
+                # if self.direction == self.CLOCKWISE_DIRECTION:
+                #     turn_angle = self.TURNRIGHT_ANGLE
+                # else:
+                #     turn_angle = self.TURNLEFT_ANGLE
 
-                self.output_inf.turn_steering(turn_angle)
+                # self.output_inf.turn_steering(turn_angle)
                 self.output_inf.drive_forward(self.DEFAULT_SPEED)
+                sleep(0.3)
 
-                while (self.output_inf.get_front_distance() > self.WALLFRONTDISTANCE and
-                       self.output_inf.get_front_distance()
-                            < self.output_inf.get_front_distance_max()):
+                while (self.output_inf.get_front_distance() > self.WALLFRONTDISTANCE):
                     self.handle_corner_walk(use_mpu=False,direction=self.direction,helper=helper)
-                    sleep(0.1)
+                    sleep(0.01)
                 ##Turned the corner, lets stop the base.
                 self.output_inf.drive_stop()
                 self.corner= False
@@ -323,6 +326,7 @@ class Walker:
 
     def handle_corner_walk(self,use_mpu:bool,direction:int,helper:EquiWalkerHelper,) -> float:
         """Walk using the equidistance method for corner handling"""
+        logger.info("Handling corner walk with direction: %s", self.directiontostr(direction))
         left_distance = self.output_inf.get_left_distance()
         right_distance = self.output_inf.get_right_distance()
 
@@ -344,6 +348,7 @@ class Walker:
                             current_steering_angle = self.output_inf.get_steering_angle())
 
         if turn_angle is not None:
+            turn_angle = self.clamp(turn_angle, -self.MAX_ANGLE, self.MAX_ANGLE)
             if turn_angle >= 0:
                 logger.info("Turning right to angle: %.2f", turn_angle)
             else:
@@ -355,6 +360,8 @@ class Walker:
 
     def handle_corner_start(self,use_mpu:bool,direction:int,kp:float=0) -> EquiWalkerHelper:
         """Initialize the EquiWalkerHelper with default distances and angles."""
+        logger.info("Handling corner start with direction: %s", self.directiontostr(direction))
+        # Reset the yaw if using MPU
         if use_mpu:
             self.output_inf.reset_yaw()  # Reset yaw to zero
 
@@ -364,11 +371,11 @@ class Walker:
         if direction == self.CLOCKWISE_DIRECTION:
             logger.info("Clockwise direction, using right wall, set other to max")
             left_distance = self.output_inf.get_left_distance_max()
-            right_distance = self.output_inf.get_right_distance()
+            right_distance = self.WALLSIDEDISTANCE
         elif direction == self.ANTI_CLOCKWISE_DIRECTION:
             logger.info("Anti-clockwise direction, using left wall, set other to max")
             right_distance = self.output_inf.get_right_distance_max()
-            left_distance = self.output_inf.get_left_distance()
+            left_distance = self.WALLSIDEDISTANCE
 
         left_distance_max = self.output_inf.get_left_distance_max()
         right_distance_max = self.output_inf.get_right_distance_max()

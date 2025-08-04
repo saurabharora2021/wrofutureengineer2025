@@ -157,9 +157,9 @@ class EquiWalkerHelper:
 
 class GyroWalkerHelper:
     """Helper class for Gyro Walker logic in WRO2025."""
-    MAX_ANGLE = 15 # Maximum angle in degrees for steering adjustments
+    MAX_ANGLE = 13 # Maximum angle in degrees for steering adjustments
     MAX_GYRO_DELTA = 0.5 # Maximum gyro delta angle in degrees
-    K_GYRO = 5
+    K_GYRO = 4
     def __init__(self, kgyro: float=0) -> None:
         self.kgyro = kgyro if kgyro != 0 else self.K_GYRO
         logger.info("Gyro Walker Helper initialized with Kgyro: %.2f", self.kgyro)

@@ -6,5 +6,10 @@
     "editor.indentSize": 4,
     "editor.formatOnSave": true,
     "editor.insertSpaces": true,
-    "editor.detectIndentation": true
+    "editor.detectIndentation": true,
+    "python.testing.pytestArgs": [
+        "src"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
 }

@@ -4,7 +4,7 @@ import logging
 from typing import List
 # Define Interface for shutdown control
 
-
+logger = logging.getLogger(__name__)
 class ShutdownInterface(ABC):
     """ Interface for Define Shutdown callback."""
     @abstractmethod
@@ -15,7 +15,6 @@ class ShutdownInterface(ABC):
 class ShutdownInterfaceManager:
     """ This class implements the Shutdown Manager, where all classes
     would use to register callback."""
-    logger: logging.Logger = logging.getLogger(__name__)
 
     def __init__(self) -> None:
         """
@@ -36,9 +35,9 @@ class ShutdownInterfaceManager:
         Call the shutdown method on all registered interfaces.
         """
 
-        self.logger.info("Shutting down all interfaces...")
+        logger.info("Shutting down all interfaces...")
         for interface in reversed(self.interfaces):
             try:
                 interface.shutdown()
             except Exception as e: # pylint: disable=broad-except
-                self.logger.error("Error shutting down %s",e)
+                logger.error("Error shutting down %s",e)

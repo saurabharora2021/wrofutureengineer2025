@@ -1,7 +1,6 @@
 """ This script is used to test distance sensor using the BuildHatDriveBase class."""
 import logging
 import argparse
-from hardware.validator import RobotValidator
 from hardware.hardware_interface import HardwareInterface
 from utils.helpers import HelperFunctions
 
@@ -14,17 +13,15 @@ def main():
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     args = parser.parse_args()
 
-    helper: HelperFunctions = HelperFunctions(args.logfile, args.debug)
+    helper: HelperFunctions = HelperFunctions(args.logfile, args.debug,stabilize=False)
     logger = logging.getLogger(__name__)
 
     pi_inf: HardwareInterface = helper.get_pi_interface()
 
     try:
 
-        robot_validator:RobotValidator =  RobotValidator(pi_inf)
-        robot_validator.validate()  # Validate the robot's functionality
-
-        pi_inf.logdistances()  # Log the distances
+        front_distance = pi_inf.get_front_distance()
+        logger.warning("Front Distance: %d cm", front_distance)
 
         pi_inf.force_flush_messages()
 

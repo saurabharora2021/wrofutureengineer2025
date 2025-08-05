@@ -1,14 +1,14 @@
-""" This script is used to test distance sensor using the BuildHatDriveBase class."""
+""" This script is used to reset the back wheel of a robot using the BuildHatDriveBase class."""
 import logging
 import argparse
-from hardware.validator import RobotValidator
+from time import sleep
 from hardware.hardware_interface import HardwareInterface
 from utils.helpers import HelperFunctions
 
 def main():
-    """ Main function to run the Wro - raspberry test distance sensor Application."""
+    """ Main function to run the Wro - raspberry back wheel Application."""
 
-    parser = argparse.ArgumentParser(description="Wro lego - test distance sensor Application")
+    parser = argparse.ArgumentParser(description="Wro lego - back wheel Application")
     parser.add_argument('--logfile', type=str, default='application.log', help='Path to log file')
     # Added debug argument
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
@@ -21,12 +21,17 @@ def main():
 
     try:
 
-        robot_validator:RobotValidator =  RobotValidator(pi_inf)
-        robot_validator.validate()  # Validate the robot's functionality
+        logger.info("Drive Base Initialized")
+        pi_inf.start_measurement_recording()
 
-        pi_inf.logdistances()  # Log the distances
+        pi_inf.drive_forward(100)
+
+        sleep(10)  # Allow the motor to run for a while
+
+        pi_inf.drive_stop()
 
         pi_inf.force_flush_messages()
+        pi_inf.get_bottom_color()
 
     except (ImportError, AttributeError, RuntimeError) as e:
         logger.error("Error Running Program")

@@ -112,7 +112,7 @@ class BuildHatDriveBase(ShutdownInterface):
             logger.warning("Front not correct after turn: %s, expected: %s",
                            final_position, target_position)
             if retry > 0:
-                self.turn_steering(degrees, steering_speed=steering_speed+10, retry=retry - 1)
+                self.turn_steering(degrees, steering_speed=steering_speed+15, retry=retry - 1)
 
     def check_set_steering(self, expected_position: float = 0,min_error:float = 2,
                            retrycount:int = 3,steering_speed:float=10) -> None:

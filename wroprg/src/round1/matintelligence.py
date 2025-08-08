@@ -103,6 +103,10 @@ class MatIntelligence(ShutdownInterface):
             MATLOCATION.CORNER_4: (self.WALLFRONTDISTANCE,self.WALLSIDEDISTANCE,-1),
         }
 
+        self._default_distances_unknown = {
+            MATLOCATION.SIDE_1: (self.FRONTDISTANCE_FOR_COLOR_CHECK,-1,-1),
+        }
+
         # Default distances for clockwise equidistance walking
         # No values for corners.
         self._default_distances_clockwise = {
@@ -118,6 +122,7 @@ class MatIntelligence(ShutdownInterface):
         }
 
         self._learned_distances = {}
+        self._current_min_distances = (0,0)
         self._current_min_distances = self.DEFAULT_DISTANCE  # (left, right)
 
         self._callback: Callable[[float,float],None] | None = None
@@ -186,7 +191,8 @@ class MatIntelligence(ShutdownInterface):
         #change in location to corner 1
         self._location = MATLOCATION.CORNER_1
 
-        self._learned_distances[MATLOCATION.SIDE_1] = (100,self._current_min_distances[0],
+        if self._current_min_distances is not None:
+            self._learned_distances[MATLOCATION.SIDE_1] = (100,self._current_min_distances[0],
                                                           self._current_min_distances[1])
     def _wait_for_readings(self, timeout: float = 5.0) -> None:
         """Wait for readings to be processed."""
@@ -201,6 +207,8 @@ class MatIntelligence(ShutdownInterface):
                 return self._default_distances_anticlockwise[self._location]
             elif self._direction == MATDIRECTION.CLOCKWISE_DIRECTION:
                 return self._default_distances_clockwise[self._location]
+            else:
+                return self._default_distances_unknown[self._location]
         elif self._roundno > self._roundcount and self._location == MATLOCATION.SIDE_1:
             # In last round, we need to return to the same square we started.
             return self._mem_initial_start
@@ -216,13 +224,15 @@ class MatIntelligence(ShutdownInterface):
         self._wait_for_readings()
         if location_to_genericlocation(self._location) == MATGENERICLOCATION.SIDE:
             # We are at a side, so we can learn the distances.
-            self._learned_distances[self._location] = (100,
+            if self._current_min_distances is not None:
+                self._learned_distances[self._location] = (100,
                                                         self._current_min_distances[0],
                                                         self._current_min_distances[1])
         else:
             #We are at a corner , so we learned the distance for the next side.
             next_location = self._next_location()
-            self._learned_distances[next_location] = (100,
+            if self._current_min_distances is not None:
+                self._learned_distances[next_location] = (100,
                                                         self._current_min_distances[0],
                                                         self._current_min_distances[1])
 
@@ -230,7 +240,11 @@ class MatIntelligence(ShutdownInterface):
             self._roundno += 1
         self._location = self._next_location()
         #reset the min locations.
-        self._current_min_distances = self._learned_distances.get(self._location)
+        if self._learned_distances.get(self._location) is not None:
+            self._current_min_distances = self._learned_distances.get(self._location)
+        else:
+            logger.error("Cannot find current min for location: %s", self._location)
+        return self._location
 
     def _next_location(self) -> MATLOCATION:
         """Get the next location in the sequence."""
@@ -283,7 +297,10 @@ class MatIntelligence(ShutdownInterface):
 
         # Update the current minimum distances
         total_distance = left_distance + right_distance
-        current_total_distance= self._current_min_distances[0] + self._current_min_distances[1]
+        current_total_distance = total_distance
+
+        if self._current_min_distances is not None:
+            current_total_distance= self._current_min_distances[0] + self._current_min_distances[1]
 
         if total_distance < current_total_distance:
             left_distance = total_distance / 2
@@ -295,7 +312,7 @@ class MatIntelligence(ShutdownInterface):
             if total_distance < self.MAX_WALL2WALL_DISTANCE:
                 # If the total distance is less than the minimum wall-to-wall distance,
                 # time to send the distances to the walker helper.
-                if self._callback is None:
+                if self._callback is not None:
                     logger.warning("reset distance left: %.2f, right: %.2f",
                                    left_distance, right_distance)
                     self._callback(left_distance,right_distance)

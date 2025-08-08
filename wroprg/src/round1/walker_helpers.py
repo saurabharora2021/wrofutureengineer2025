@@ -131,10 +131,12 @@ class EquiWalkerHelper:
         if left_distance >= self.max_left_distance or left_distance <= 0:
             logger.warning("Left distance is not set.")
             left_distance = self.def_distance_left
+            left_delta = 0
             errorcount += 1
         if right_distance >= self.max_right_distance or right_distance <= 0:
             logger.warning("Right distance is not set.")
             right_distance = self.def_distance_right
+            right_delta = 0
             errorcount += 1
 
         logger.warning("Left Delta: %.2f, Right Delta: %.2f , gyro correction: %.2f",
@@ -152,6 +154,8 @@ class EquiWalkerHelper:
                 # If there was an error in any distance, we double the error
                 error = error * 2
             angle = self.clamp_angle(self.kp * error+gyro_correction)
+            logger.info("error %.2f , Kp %.2f", error, self.kp)
+
             logger.warning("angle after gyro %.2f", angle)
             self._queue.append(angle)
             final_angle = average(self._queue)

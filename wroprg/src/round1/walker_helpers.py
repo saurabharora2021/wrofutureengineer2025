@@ -15,7 +15,7 @@ class EquiWalkerHelper:
     # Gyro correction factor,
     # this is multiplied with the delta gyro value, which is quite small
     K_GYRO = 5
-    K_DISTANCE = -2
+    K_DISTANCE = -2.5
     MAX_ANGLE = 15 # Maximum angle in degrees for steering adjustments
 
     def __init__(self,def_distance_left: float, def_distance_right: float,

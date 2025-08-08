@@ -20,8 +20,8 @@ class Walker:
     WALLSIDEDISTANCE=20
 
     WALLFRONTENDDISTANCE=30
-    D_TARGET = 15  # Desired distance from the wall
-    MAX_ANGLE = 11
+    MAX_ANGLE = 15
+    DELTA_ANGLE = 5
 
     output_inf: HardwareInterface
 
@@ -368,6 +368,14 @@ class Walker:
     def _turn_steering_with_logging(self,turn_angle):
         if turn_angle is not None:
             turn_angle = self.clamp(turn_angle, -self.MAX_ANGLE, self.MAX_ANGLE)
+            current_steering_angle = self.output_inf.get_steering_angle()
+            #we should restrict the delta angle to DELTA_ANGLE
+            delta = turn_angle - current_steering_angle
+            if abs(delta) > self.DELTA_ANGLE:
+                logger.info("Restricting turn angle to DELTA_ANGLE: %.2f", self.DELTA_ANGLE)
+                turn_angle = current_steering_angle + \
+                            (self.DELTA_ANGLE if delta > 0 else -self.DELTA_ANGLE)
+
             if turn_angle >= 0:
                 logger.info("Turning right to angle: %.2f", turn_angle)
             else:

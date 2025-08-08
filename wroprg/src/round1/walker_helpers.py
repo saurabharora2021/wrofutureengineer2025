@@ -51,7 +51,12 @@ class EquiWalkerHelper:
         """Clamp the value between -MAX_ANGLE and MAX_ANGLE."""
         return float(max(min(val, self.MAX_ANGLE), -self.MAX_ANGLE))
 
-
+    def reset_walk_distances(self, def_distance_left: float, def_distance_right: float) -> None:
+        """Reset the default distances for equidistance walking."""
+        self.def_distance_left = def_distance_left
+        self.def_distance_right = def_distance_right
+        logger.info("Reset default distances to Left: %.2f, Right: %.2f",
+                     def_distance_left, def_distance_right)
 
     def equidistance_walk_func(self, left_distance: float,right_distance: float,
                             current_angle:float,current_steering_angle:float) -> float:

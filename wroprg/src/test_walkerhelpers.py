@@ -14,7 +14,7 @@ def test_equidistance_walk_func1():
     max_right_distance = 200.0
 
     walker = EquiWalkerHelper(def_distance_left, def_distance_right,
-                               max_left_distance, max_right_distance, 0, kp=None)
+                               max_left_distance, max_right_distance, 0)
 
     left_distance = def_distance_left
     right_distance = def_distance_right
@@ -58,7 +58,7 @@ def test_equidistance_walk_func2():
     max_right_distance = 200.0
 
     walker = EquiWalkerHelper(def_distance_left, def_distance_right,
-                               max_left_distance, max_right_distance, 0, kp=None)
+                               max_left_distance, max_right_distance, 0)
 
 
     angle = walker.equidistance_walk_func(def_distance_left,def_distance_right, 0,
@@ -99,7 +99,7 @@ def test_equidistance_walk_func3():
     max_right_distance = 200.0
 
     walker = EquiWalkerHelper(def_distance_left, def_distance_right,
-                               max_left_distance, max_right_distance, 0, kp=None)
+                               max_left_distance, max_right_distance, 0)
 
 
     angle = walker.equidistance_walk_func(def_distance_left,def_distance_right, 0,

@@ -33,6 +33,15 @@ class MATGENERICLOCATION(Enum):
     CORNER = auto()
 
 
+def color_to_direction(color)-> MATDIRECTION:
+    """Convert Mat line color to direction."""
+    if color == "blue":
+        return MATDIRECTION.ANTICLOCKWISE_DIRECTION
+    elif color == "orange":
+        return MATDIRECTION.CLOCKWISE_DIRECTION
+    else:
+        return MATDIRECTION.UNKNOWN_DIRECTION
+
 def location_to_genericlocation(location: MATLOCATION) -> MATGENERICLOCATION:
     """Convert current location to generic location."""
     if location in (MATLOCATION.SIDE_1, MATLOCATION.SIDE_2,

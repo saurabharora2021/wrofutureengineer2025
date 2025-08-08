@@ -4,7 +4,7 @@ import logging
 from base.mat import mat_color
 from hardware.hardware_interface import HardwareInterface
 from round1.matintelligence import MATDIRECTION, MATGENERICLOCATION, MatIntelligence
-from round1.matintelligence import vote_directions
+from round1.matintelligence import vote_directions, color_to_direction
 from round1.threadingfunctions import ConditionCheckerThread
 from round1.walker_helpers import EquiWalkerHelper, GyroWalkerHelper
 from round1.utilityfunctions import clamp_angle, directiontostr
@@ -17,7 +17,6 @@ class Walker:
     WALK_TO_CORNER_SPEED = 30
     WALK_TO_COLOR_SPEED= 15
 
-    WALLSIDEDISTANCE=20
     WALLFRONTENDDISTANCE=30
 
     MAX_ANGLE = 15
@@ -157,8 +156,8 @@ class Walker:
 
             #Now i should have three direction readings , from color, color2 and direction_hints
 
-            directioncolor = self._color_to_direction(color)
-            directioncolor2 = self._color_to_direction(color2)
+            directioncolor = color_to_direction(color)
+            directioncolor2 = color_to_direction(color2)
             direction = vote_directions([directioncolor, directioncolor2,
                                                       direction_hints])
 
@@ -188,24 +187,11 @@ class Walker:
         else:
             #Color is not None in starting itself.
             logger.warning("running color: %s", color)
-            direction = self._color_to_direction(color)
+            direction = color_to_direction(color)
             intelligence.report_direction_side1(direction)
             logger.warning("Direction:%s", directiontostr(direction))
 
         self.output_inf.force_flush_messages()
-
-        #Can we walk back a little
-        # if intelligence.get_direction() == MATDIRECTION.ANTICLOCKWISE_DIRECTION and \
-        #     self.output_inf.get_left_distance() > self.WALLSIDEDISTANCE:
-        #     self.output_inf.drive_backward(self.DEFAULT_SPEED)
-        #     sleep(0.5)
-        #     self.output_inf.drive_stop()
-
-        # elif intelligence.get_direction() == MATDIRECTION.CLOCKWISE_DIRECTION and \
-        #     self.output_inf.get_right_distance() > self.WALLSIDEDISTANCE:
-        #     self.output_inf.drive_backward(self.DEFAULT_SPEED)
-        #     sleep(0.5)
-        #     self.output_inf.drive_stop()
 
     def start_walk(self,nooflaps:int=4):
         """Start the walk based on the current direction which is unknown and number of laps."""
@@ -339,16 +325,6 @@ class Walker:
                 self.output_inf.drive_stop()
                 return
 
-    def _color_to_direction(self,color)-> MATDIRECTION:
-        if color == "blue":
-            return MATDIRECTION.ANTICLOCKWISE_DIRECTION
-        elif color == "orange":
-            return MATDIRECTION.CLOCKWISE_DIRECTION
-        else:
-            return MATDIRECTION.UNKNOWN_DIRECTION
-
-
-
     def handle_walk(self,helper:EquiWalkerHelper,intelligence:MatIntelligence,use_mpu=False,
                     is_unknown_direction:bool=False,is_corner:bool = False) -> float:
         """Handle walk using helper""" 
@@ -356,10 +332,7 @@ class Walker:
         logger.info("Handling walk with direction: %s",
                         directiontostr(intelligence.get_direction()))
 
-        (front,left_distance,right_distance) = self.output_inf.logdistances()
-
-
-        intelligence.add_readings(front,left_distance,right_distance)
+        (_,left_distance,right_distance) = self.read_log_distances(intelligence)
 
         if not is_unknown_direction:
             (_,left_def,right_def) = intelligence.get_learned_distances()

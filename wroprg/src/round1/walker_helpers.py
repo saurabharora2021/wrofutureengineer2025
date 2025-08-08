@@ -2,6 +2,7 @@
 import logging
 from statistics import mean as average
 from collections import deque
+from round1.utilityfunctions import clamp_angle
 
 logger = logging.getLogger(__name__)
 
@@ -47,10 +48,6 @@ class EquiWalkerHelper:
         logger.info("Default Left: %.2f, Right: %.2f, Kp: %.2f",
                      def_distance_left, def_distance_right,self.kp)
 
-    def clamp_angle(self, val)-> float:
-        """Clamp the value between -MAX_ANGLE and MAX_ANGLE."""
-        return float(max(min(val, self.MAX_ANGLE), -self.MAX_ANGLE))
-
     def reset_walk_distances(self, def_distance_left: float, def_distance_right: float) -> None:
         """Reset the default distances for equidistance walking."""
         self.def_distance_left = def_distance_left
@@ -84,49 +81,6 @@ class EquiWalkerHelper:
             else:
                 logger.info("Drifting right, adjusting left gyro correction")
                 gyro_correction = -self.K_GYRO * abs(delta_angle)
-            # if left_delta > right_delta:
-            #     #we are drifting toward right.go left
-            #     if left_delta < 15:
-            #         logger.info("Drifting right, adjusting left gyro correction")
-            #         gyro_correction = -self.K_GYRO*abs(delta_angle)
-            #     else:
-            #         # check if left delta is not max
-            #         if left_distance == self.max_left_distance:
-            #             #left wall is not present or tilt too high
-            #             # we can only look at right delta.
-            #             if right_delta > 0:
-            #                 logger.info("Drifting right, adjusting left gyro correction")
-            #                 gyro_correction = -self.K_GYRO*abs(delta_angle)
-            #             else:
-            #                 logger.info("Drifting left, adjusting right gyro correction")
-            #                 gyro_correction = self.K_GYRO*abs(delta_angle)
-            #         else:
-            #             logger.info("Drifting left, adjusting right gyro correction")
-            #             gyro_correction = self.K_GYRO*abs(delta_angle)
-            #             left_delta = 15
-            # elif left_delta < right_delta:
-            #     #we are drifting toward left.go right
-            #     if right_delta < 15:
-            #         logger.info("Drifting left, adjusting right gyro correction")
-            #         gyro_correction = self.K_GYRO*abs(delta_angle)
-            #     else:
-            #         if right_distance == self.max_right_distance:
-            #             #right wall is not present or tilt too high
-            #             # we can only look at left delta.
-            #             if left_delta > 0:
-            #                 logger.info("Drifting left, adjusting right gyro correction")
-            #                 gyro_correction = self.K_GYRO*abs(delta_angle)
-            #             else:
-            #                 logger.info("Drifting right, adjusting left gyro correction")
-            #                 gyro_correction = -self.K_GYRO*abs(delta_angle)
-            #         else:
-            #             logger.info("Drifting left, adjusting right gyro correction")
-            #             gyro_correction = self.K_GYRO*abs(delta_angle)
-            #             left_delta = 15
-
-            #         logger.info("Drifting right, adjusting left gyro correction")
-            #         gyro_correction = -self.K_GYRO*abs(delta_angle)
-            #         right_delta = 15
 
         if left_distance >= self.max_left_distance or left_distance <= 0:
             logger.warning("Left distance is not set.")
@@ -153,7 +107,7 @@ class EquiWalkerHelper:
             if errorcount > 0:
                 # If there was an error in any distance, we double the error
                 error = error * 2
-            angle = self.clamp_angle(self.kp * error+gyro_correction)
+            angle = clamp_angle(self.kp * error+gyro_correction, self.MAX_ANGLE)
             logger.info("error %.2f , Kp %.2f", error, self.kp)
 
             logger.warning("angle after gyro %.2f", angle)
@@ -190,13 +144,9 @@ class GyroWalkerHelper:
                 logger.info("Drifting right, adjusting left gyro correction")
                 gyro_correction = -self.K_GYRO * abs(delta_angle)
 
-        angle = self.clamp_angle(self.kgyro*gyro_correction)
+        angle = clamp_angle(self.kgyro*gyro_correction, self.MAX_ANGLE)
         if current_steering_angle != angle:
             logger.info("Adjusting steering angle from %.2f to %.2f", current_steering_angle, angle)
             return float(angle)
         else:
             return None  # type: ignore
-
-    def clamp_angle(self, val)-> float:
-        """Clamp the value between -MAX_ANGLE and MAX_ANGLE."""
-        return float(max(min(val, self.MAX_ANGLE), -self.MAX_ANGLE))

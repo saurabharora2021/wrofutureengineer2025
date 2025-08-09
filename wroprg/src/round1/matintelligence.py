@@ -213,6 +213,12 @@ class MatIntelligence(ShutdownInterface):
         while len(self._deque) > 0 and (time.time() - start_time) < timeout:
             time.sleep(0.1)
 
+    def reset_current_distance(self):
+        self._current_min_distances = self.DEFAULT_DISTANCE
+    
+    def get_initial_readings(self):
+        return self._mem_initial_start
+
     def get_learned_distances(self) -> tuple[float, float, float]:
         """Get the learned distances."""
         learned_distance = self._learned_distances.get(self._location,None)
@@ -315,6 +321,10 @@ class MatIntelligence(ShutdownInterface):
 
         if self._readings_counter == 1:
             # This is the first reading, set the starting distances
+            #TODO: lets try to middle the bot.
+            total= left_distance + right_distance
+            left_distance = total/2
+            right_distance = total/2
             self._mem_initial_start = (front_distance, left_distance, right_distance)
             logger.info("Storing First distances: front=%s, left=%s, right=%s",
                         self._mem_initial_start[0], self._mem_initial_start[1],

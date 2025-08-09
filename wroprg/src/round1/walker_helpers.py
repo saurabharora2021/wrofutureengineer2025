@@ -21,13 +21,15 @@ class EquiWalkerHelper:
 
     def __init__(self,def_distance_left: float, def_distance_right: float,
                  max_left_distance: float, max_right_distance: float,
-                 kp:float) -> None:
+                 kp:float, def_turn_angle:float=0.0
+                 ) -> None:
         self._queue = deque(maxlen=2)
         self._queue.append(0.0)  # Initialize with a default value
         self.def_distance_left = def_distance_left
         self.def_distance_right = def_distance_right
         self.max_left_distance = max_left_distance
         self.max_right_distance = max_right_distance
+        self.def_turn_angle = def_turn_angle
         if kp == 0:
             self.kp = self.K_DISTANCE
         else:
@@ -62,7 +64,7 @@ class EquiWalkerHelper:
         # If you are at a point, where the left rail is not present or the right rail is
         # not present, then we will not adjust the steering.
 
-        delta_angle = current_angle
+        delta_angle = current_angle - self.def_turn_angle
 
         logger.info("Gyro angle : %.2f", delta_angle)
         logger.info("current steering angle: %.2f", current_steering_angle)
@@ -156,9 +158,9 @@ class GyroWalkerHelper:
 
 class GyroWalkerwithMinDistanceHelper:
     """Helper class for Gyro Walker logic with distance."""
-    MAX_ANGLE = 13 # Maximum angle in degrees for steering adjustments
+    MAX_ANGLE = 20 # Maximum angle in degrees for steering adjustments
     MAX_GYRO_DELTA = 0.5 # Maximum gyro delta angle in degrees
-    K_GYRO = 4
+    K_GYRO = 20
     K_DISTANCE = -3.5
     def __init__(self, kgyro: float=0,kdistance:float=0, walk_angle: float=0,
                                             min_left:float=-1,min_right:float=-1) -> None:

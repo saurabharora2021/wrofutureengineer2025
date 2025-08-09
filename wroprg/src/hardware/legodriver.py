@@ -66,7 +66,17 @@ class BuildHatDriveBase(ShutdownInterface):
 
         logger.warning("After TurnPosition front wheel:%s", self.front_motor.get_position())
 
+    def camera_on(self) -> None:
+        """Turn on the camera."""
+        if self.bottom_color_sensor is None:
+            raise RuntimeError("Bottom color sensor not initialized.")
+        self.bottom_color_sensor.on()
 
+    def camera_off(self) -> None:
+        """Turn off the camera."""
+        if self.bottom_color_sensor is None:
+            raise RuntimeError("Bottom color sensor not initialized.")
+        self.bottom_color_sensor.off()
 
     def turn_steering(self, degrees: float, steering_speed: float, retry:int=3) -> None:
         """

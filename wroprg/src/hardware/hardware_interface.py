@@ -227,6 +227,19 @@ class HardwareInterface(ShutdownInterface):
             raise RuntimeError("Orientation estimator not initialized.")
 
     # --- LEGO Driver Methods ---
+
+    def camera_off(self) -> None:
+        """Turn off the camera."""
+        if self._lego_drive_base is None:
+            raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
+        self._lego_drive_base.camera_off()
+
+    def camera_on(self) -> None:
+        """Turn on the camera."""
+        if self._lego_drive_base is None:
+            raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
+        self._lego_drive_base.camera_on()
+
     def drive_forward(self, speed: float) -> None:
         """Run the drive base forward at the specified speed."""
         if self._lego_drive_base is None:

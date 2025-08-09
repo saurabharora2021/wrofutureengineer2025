@@ -58,7 +58,7 @@ class Walker:
 
             self.handle_walk(helper,use_mpu=True,intelligence=intelligence,
                              is_unknown_direction=True)
-            sleep(0.01)
+            # sleep(0.01)
             if self.output_inf.get_front_distance() < 150:
                 self.output_inf.drive_forward(self.WALK_TO_COLOR_SPEED)
             else:
@@ -201,6 +201,8 @@ class Walker:
 
         #this should set the direction
         self.handle_unknowndirection_walk(intelligence)
+        #we don't need camera Now
+        self.output_inf.camera_off()
         self.output_inf.reset_yaw()
 
         #TODO: we cannot determine direction, beep and stop.
@@ -267,7 +269,7 @@ class Walker:
                 while self.output_inf.get_front_distance() > maxfront and \
                      self._current_distance == (0, 0):
                     self.handle_walk(helper=helper, intelligence=intelligence,is_corner=True)
-                    sleep(0.01)
+                    # sleep(0.01)
 
                 intelligence.location_complete()
                 intelligence.unregister_callback()

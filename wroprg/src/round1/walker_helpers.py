@@ -15,8 +15,8 @@ class EquiWalkerHelper:
     MIN_WALL_DISTANCE = 10  # Minimum distance to consider a wall present
     # Gyro correction factor,
     # this is multiplied with the delta gyro value, which is quite small
-    K_GYRO = 5
-    K_DISTANCE = -2.5
+    K_GYRO = 5.5
+    K_DISTANCE = -3.5
     MAX_ANGLE = 15 # Maximum angle in degrees for steering adjustments
 
     def __init__(self,def_distance_left: float, def_distance_right: float,
@@ -123,16 +123,18 @@ class GyroWalkerHelper:
     MAX_ANGLE = 13 # Maximum angle in degrees for steering adjustments
     MAX_GYRO_DELTA = 0.5 # Maximum gyro delta angle in degrees
     K_GYRO = 4
-    def __init__(self, kgyro: float=0) -> None:
+    def __init__(self, kgyro: float=0, walk_angle: float=0) -> None:
         self.kgyro = kgyro if kgyro != 0 else self.K_GYRO
+        self.walk_angle = walk_angle
         logger.info("Gyro Walker Helper initialized with Kgyro: %.2f", self.kgyro)
 
-    def walk_func(self, delta_angle:float, current_steering_angle:float) -> float:
+    def walk_func(self, current_angle:float, current_steering_angle:float) -> float:
         """Calculate the angle for gyro walk based on the current delta angle."""
 
-        logger.info("Gyro angle : %.2f", delta_angle)
+        logger.info("Gyro angle : %.2f", current_angle)
         logger.info("current steering angle: %.2f", current_steering_angle)
 
+        delta_angle = current_angle - self.walk_angle
         gyro_correction =0
 
         if abs(delta_angle) >= self.MAX_GYRO_DELTA:
@@ -145,6 +147,7 @@ class GyroWalkerHelper:
                 gyro_correction = -self.K_GYRO * abs(delta_angle)
 
         angle = clamp_angle(self.kgyro*gyro_correction, self.MAX_ANGLE)
+        logger.info("clamp gyro steering angle: %.2f", angle)
         if current_steering_angle != angle:
             logger.info("Adjusting steering angle from %.2f to %.2f", current_steering_angle, angle)
             return float(angle)

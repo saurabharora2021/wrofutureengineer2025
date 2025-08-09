@@ -127,7 +127,7 @@ class Walker:
 
             #can we check.if one of the sides is not present?, that means we are at a corner.
             # and based on which side we can determine the direction.
-            (_,left,right) = self.read_log_distances(intelligence)
+            (front,left,right) = self.read_log_distances(intelligence)
 
             if left + right < 150:
                 logger.info("Both sides are present , we have not reached the corner")
@@ -136,12 +136,16 @@ class Walker:
                                  left_distance=left,
                                  right_distance=right,
                                  use_mpu=False)
-                while self.output_inf.get_front_distance() < self.WALLFRONTENDDISTANCE \
+                self.output_inf.drive_forward(self.WALK_TO_COLOR_SPEED)
+                while front > self.WALLFRONTENDDISTANCE \
                                         and (left + right < 150):
                     self.handle_walk(helper=helper, intelligence=intelligence,
                                      is_unknown_direction=True)
-                    (_,left,right) = self.read_log_distances(intelligence)
-                    sleep(0.01)
+                    (front,left,right) = self.read_log_distances(intelligence)
+                    # sleep(0.01)
+
+                logger.info("Both side present walk, left %s,right %s front %s", left, right, front)
+                self.output_inf.drive_stop()
 
             if left > right:
                 logger.info("Left side is not present, right side is present," \
@@ -421,3 +425,23 @@ class Walker:
 
         intelligence.add_readings(front_distance, left_distance, right_distance)
         return (front_distance, left_distance, right_distance)
+
+    def gyro_corner_walk(self,intel:MatIntelligence,turn_angle:float):
+        """Handle the gyro corner walking logic."""
+        logger.info("Gyro corner walk initiated with turn angle: %.2f", turn_angle)
+        # Implement the gyro corner walking logic here
+        self.output_inf.reset_yaw()
+        gyrohelper: GyroWalkerHelper = GyroWalkerHelper(walk_angle=turn_angle)
+
+        (def_front, def_left, def_right) = intel.get_learned_distances()
+        (front, left, right) = self.read_log_distances(intel)
+
+        self.output_inf.drive_forward(self.WALK_TO_COLOR_SPEED)
+        while front > def_front:
+            _, _, yaw = self.output_inf.get_orientation()
+            logger.info("Current Yaw: %.2f", yaw)
+            turn_angle = gyrohelper.walk_func(yaw,self.output_inf.
+                                                            get_steering_angle())
+
+            self._turn_steering_with_logging(turn_angle)
+        self.output_inf.drive_stop()

@@ -113,7 +113,10 @@ class MatIntelligence(ShutdownInterface):
         }
 
         self._default_distances_unknown = {
-            MATLOCATION.SIDE_1: (self.FRONTDISTANCE_FOR_COLOR_CHECK,-1,-1),
+            #TEMP change to check gyro walk
+            # MATLOCATION.SIDE_1: (self.FRONTDISTANCE_FOR_COLOR_CHECK,-1,-1),
+            MATLOCATION.SIDE_1: (30,-1,-1),
+
         }
 
         # Default distances for clockwise equidistance walking

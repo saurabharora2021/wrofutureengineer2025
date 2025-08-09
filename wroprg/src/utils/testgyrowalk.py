@@ -1,10 +1,10 @@
 """ This script is used to test distance sensor using the BuildHatDriveBase class."""
 import logging
 import argparse
-from hardware.validator import RobotValidator
+import threading
 from hardware.hardware_interface import HardwareInterface
 from round1.logicround1 import Walker
-from round1.matintelligence import MatIntelligence
+from round1.matintelligence import MATDIRECTION, MatIntelligence
 from utils.helpers import HelperFunctions
 
 def main():
@@ -26,13 +26,28 @@ def main():
         pi_inf.force_flush_messages()
 
         challenge1walker = Walker(pi_inf)
+        intel: MatIntelligence = MatIntelligence()
         pi_inf.start_measurement_recording()
 
         #action button.
-        # pi_inf.wait_for_action()
+        pi_inf.wait_for_action()
 
-        intel: MatIntelligence = MatIntelligence()
-        challenge1walker.gyro_corner_walk(intel,turn_angle=60)
+        def run_gyro_walk():
+
+            #lets assume this is AntiClockwise and side1 is complete, we have reached corner1
+            intel.report_direction_side1(MATDIRECTION.ANTICLOCKWISE_DIRECTION)
+
+            challenge1walker.gyro_corner_walk(intel, turn_angle=60)
+
+        # Start gyro walk in a separate thread
+        gyro_thread = threading.Thread(target=run_gyro_walk)
+        gyro_thread.start()
+
+        # In main thread, call wait_for_action()
+        pi_inf.wait_for_action()
+
+        # Optionally, wait for the gyro walk thread to finish
+        # gyro_thread.join()
 
     except (ImportError, AttributeError, RuntimeError) as e:
         logger.error("Error Running Program")

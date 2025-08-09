@@ -7,6 +7,7 @@ from round1.matintelligence import MATDIRECTION, MATGENERICLOCATION, MatIntellig
 from round1.matintelligence import vote_directions, color_to_direction
 from round1.threadingfunctions import ConditionCheckerThread
 from round1.walker_helpers import EquiWalkerHelper, GyroWalkerHelper
+from round1.walker_helpers import GyroWalkerwithMinDistanceHelper
 from round1.utilityfunctions import clamp_angle, directiontostr
 
 logger = logging.getLogger(__name__)
@@ -429,19 +430,34 @@ class Walker:
     def gyro_corner_walk(self,intel:MatIntelligence,turn_angle:float):
         """Handle the gyro corner walking logic."""
         logger.info("Gyro corner walk initiated with turn angle: %.2f", turn_angle)
+
+        self._current_distance = (0, 0)
+        def report_distances_corner(left: float, right: float):
+            logger.info("corner Report. Left: %.2f, Right: %.2f", left, right)
+            self._current_distance = (left, right)
+            self.output_inf.drive_stop()
+
+        intel.register_callback(report_distances_corner)
+
         # Implement the gyro corner walking logic here
         self.output_inf.reset_yaw()
-        gyrohelper: GyroWalkerHelper = GyroWalkerHelper(walk_angle=turn_angle)
+        gyrohelper: GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper(
+            walk_angle=turn_angle, min_left=10, min_right=10)
 
-        (def_front, def_left, def_right) = intel.get_learned_distances()
+        (def_front, _, _) = intel.get_learned_distances()
         (front, left, right) = self.read_log_distances(intel)
 
         self.output_inf.drive_forward(self.WALK_TO_COLOR_SPEED)
-        while front > def_front:
+        while front > def_front and \
+                     self._current_distance == (0, 0):
+
             _, _, yaw = self.output_inf.get_orientation()
             logger.info("Current Yaw: %.2f", yaw)
-            turn_angle = gyrohelper.walk_func(yaw,self.output_inf.
-                                                            get_steering_angle())
+            turn_angle = gyrohelper.walk_func(yaw, self.output_inf.get_steering_angle(),
+                                              left, right)
 
             self._turn_steering_with_logging(turn_angle)
+
         self.output_inf.drive_stop()
+        intel.location_complete()
+        intel.unregister_callback()

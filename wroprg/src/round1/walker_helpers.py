@@ -153,3 +153,56 @@ class GyroWalkerHelper:
             return float(angle)
         else:
             return None  # type: ignore
+
+class GyroWalkerwithMinDistanceHelper:
+    """Helper class for Gyro Walker logic with distance."""
+    MAX_ANGLE = 13 # Maximum angle in degrees for steering adjustments
+    MAX_GYRO_DELTA = 0.5 # Maximum gyro delta angle in degrees
+    K_GYRO = 4
+    K_DISTANCE = -3.5
+    def __init__(self, kgyro: float=0,kdistance:float=0, walk_angle: float=0,
+                                            min_left:float=-1,min_right:float=-1) -> None:
+        self.kgyro = kgyro if kgyro != 0 else self.K_GYRO
+        self.kdistance = kdistance if kdistance != 0 else self.K_DISTANCE
+        self.walk_angle = walk_angle
+        self.min_left = min_left
+        self.min_right = min_right
+        logger.info("GWMD Kgyro: %.2f , Kdistance: %.2f", self.kgyro, self.kdistance)
+        logger.info("GWMD walk_angle: %.2f", self.walk_angle)
+        logger.info("GWMD min_left: %.2f", self.min_left)
+        logger.info("GWMD min_right: %.2f", self.min_right)
+
+    def walk_func(self, current_angle:float, current_steering_angle:float,
+                                                current_left:float,current_right:float) -> float:
+        """Calculate the angle for gyro walk based on the current delta angle."""
+
+        logger.info("Gyro angle : %.2f", current_angle)
+        logger.info("current steering angle: %.2f", current_steering_angle)
+
+        delta_angle = current_angle - self.walk_angle
+        gyro_correction =0
+        distance_angle_correction = 0
+
+        if abs(delta_angle) >= self.MAX_GYRO_DELTA:
+            logger.warning("Delta angle is too high: %.2f, reducing angles now", delta_angle)
+            if delta_angle > 0:
+                logger.info("Drifting left, adjusting right gyro correction")
+                gyro_correction = self.kgyro * abs(delta_angle)
+            else:
+                logger.info("Drifting right, adjusting left gyro correction")
+                gyro_correction = -self.kgyro * abs(delta_angle)
+
+        if self.min_left != -1 and current_left < self.min_left:
+            logger.info("Gyro min distance walk:left is less %f",current_left)
+            distance_angle_correction += self.kdistance * (self.min_left - current_left)
+        if self.min_right != -1 and current_right < self.min_right:
+            logger.info("Gyro min distance walk:right is less %f",current_right)
+            distance_angle_correction += self.kdistance * (self.min_right - current_right)
+
+        angle = clamp_angle(gyro_correction + distance_angle_correction, self.MAX_ANGLE)
+        logger.info("clamp gyro steering angle: %.2f", angle)
+        if current_steering_angle != angle:
+            logger.info("Adjusting steering angle from %.2f to %.2f", current_steering_angle, angle)
+            return float(angle)
+        else:
+            return None  # type: ignore

@@ -5,7 +5,7 @@ from base.mat import mat_color
 from hardware.hardware_interface import HardwareInterface
 from round1.matintelligence import MATDIRECTION, MATGENERICLOCATION, MatIntelligence
 from round1.matintelligence import vote_directions, color_to_direction
-from round1.threadingfunctions import ConditionCheckerThread
+from utils.threadingfunctions import ConditionCheckerThread
 from round1.walker_helpers import EquiWalkerHelper, GyroWalkerHelper
 from round1.walker_helpers import GyroWalkerwithMinDistanceHelper
 from round1.utilityfunctions import clamp_angle, directiontostr

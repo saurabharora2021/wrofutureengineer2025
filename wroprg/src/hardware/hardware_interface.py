@@ -4,7 +4,7 @@ from collections import deque
 import threading
 import logging
 import time
-from typing import Optional, Tuple
+from typing import Optional
 from base.shutdown_handling import ShutdownInterface
 from hardware.hardwareconfig import HardwareConfig
 from hardware.legodriver import BuildHatDriveBase
@@ -69,51 +69,15 @@ class HardwareInterface(ShutdownInterface):
             logger.error("Failed to initialize drive base: %s", e)
             raise RuntimeError(f"Drive base initialization failed: {e}") from e
 
-    def get_default_angle(self) -> Tuple[float, float, float]:
-        """Get the default angles for the chassis."""
-        if HardwareConfig.CHASSIS_VERSION == 1:
-            raise ValueError("Not supported for chassis version 1.")
-        elif HardwareConfig.CHASSIS_VERSION == 2:
-            return self.calibrate_imu()  # Calibrate IMU for chassis version 2
-        else:
-            raise ValueError("Unsupported chassis version for default X angle.")
-
-    def calibrate_imu(self,samples=100)-> Tuple[float, float, float]:
-        """
-        Reads the IMU for a number of samples to find the average resting offset.
-        """
-        print("Calibrating IMU... Place the robot on a perfectly level surface.")
-        total_angle_x = 0
-        total_angle_y = 0
-        total_angle_z = 0
-        for _ in range(samples):
-            gyro_x, gyro_y, gyro_z = self.get_gyro()
-            total_angle_x += gyro_x
-            total_angle_y += gyro_y
-            total_angle_z += gyro_z
-            time.sleep(0.01) # Small delay between readings
-
-        offset_x = total_angle_x / samples
-        offset_y = total_angle_y / samples
-        offset_z = total_angle_z / samples
-        logger.info("Calibration complete. Tilt Offsets: X: %.2f, Y: %.2f, Z: %.2f degrees",
-                    offset_x, offset_y, offset_z)
-
-        return offset_x, offset_y, offset_z
-
     def start_measurement_recording(self) -> None:
         """Start the measurements manager thread."""
         if self._measurements_manager is None:
             raise RuntimeError("Measurements manager not initialized. Call" \
                     " full_initialization() first.")
+        self._orientation_estimator.start_readings()
         self._measurements_manager.start_reading()
 
     # --- Raspberry Pi Interface Methods ---
-
-    def update_orientation(self):
-        """Update the orientation estimator with latest sensor data."""
-        if self._orientation_estimator is not None:
-            self._orientation_estimator.update()
 
     def get_orientation(self):
         """Get the current (roll, pitch, yaw) in degrees."""
@@ -197,6 +161,7 @@ class HardwareInterface(ShutdownInterface):
             self._lego_drive_base.shutdown()
 
         self._rpi.shutdown()
+        self._orientation_estimator.shutdown()
         if self._measurements_manager is not None:
             self._measurements_manager.shutdown()
 
@@ -225,10 +190,10 @@ class HardwareInterface(ShutdownInterface):
         else:
             raise ValueError("Unsupported chassis version for gyroscope sensor.")
 
-    def reset_yaw(self)-> None:
+    def reset_gyro(self)-> None:
         """Reset the yaw angle to zero."""
         if self._orientation_estimator is not None:
-            self._orientation_estimator.reset_yaw()
+            self._orientation_estimator.reset()
         else:
             raise RuntimeError("Orientation estimator not initialized.")
 
@@ -356,7 +321,6 @@ class MeasurementsManager(ShutdownInterface):
                 right = self._hardware_interface.get_right_distance()
                 front = self._hardware_interface.get_front_distance()
                 steering_angle = self._hardware_interface.get_steering_angle()
-                self._hardware_interface.update_orientation()  # Update orientation estimator
                 roll, pitch, yaw = self._hardware_interface.get_orientation()
                 # Create a new measurement with the current timestamp
                 timestamp = time.time()

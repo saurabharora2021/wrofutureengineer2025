@@ -16,7 +16,7 @@ class Walker:
     # Constants for the walker
     DEFAULT_SPEED=40
     WALK_TO_CORNER_SPEED = 30
-    WALK_TO_COLOR_SPEED= 15
+    MIN_SPEED= 15
 
     WALLFRONTENDDISTANCE=30
 
@@ -64,28 +64,12 @@ class Walker:
 
         logger.info("Max front distance: %.2f", maxfront)
 
-        helper: EquiWalkerHelper = self._handle_walk_start(
-                                 left_distance=start_left_distance,
-                                 right_distance=start_right_distance,
-                                 use_mpu=True,
-                                 def_turn_angle=gyrodefault
-                                 )
+        self.handle_straight_walk_to_distance(maxfront,start_left_distance,start_right_distance,
+                                              gyrodefault,self.MIN_SPEED,speedcheck=True)
 
-        # Lets start the walk until we reach the front distance, but at slow speed.
-        # if self.output_inf.get_front_distance() < 150:
-        #     _start_walking(self.WALK_TO_COLOR_SPEED)
-        # else:
-        #     _start_walking(self.DEFAULT_SPEED)
-        self._start_walking(self.WALK_TO_COLOR_SPEED)
-
-        while self.output_inf.get_front_distance() > maxfront:
-
-            self.handle_walk(helper,use_mpu=True,is_unknown_direction=True,speedcheck=True)
-
-        self.output_inf.buzzer_beep()
         #self._stop_walking()
         #return
-        self._start_walking(self.WALK_TO_COLOR_SPEED)
+        self._start_walking(self.MIN_SPEED)
 
         logger.info("Time to check color")
 
@@ -147,7 +131,7 @@ class Walker:
                                  left_distance=left,
                                  right_distance=right,
                                  use_mpu=False)
-                self._start_walking(self.WALK_TO_COLOR_SPEED)
+                self._start_walking(self.MIN_SPEED)
                 while front > self.WALLFRONTENDDISTANCE \
                                         and (left + right < 150):
                     self.handle_walk(helper=helper,is_unknown_direction=True)
@@ -391,7 +375,7 @@ class Walker:
                 logger.info("Turning left to angle: %.2f", turn_angle)
             # Turn the steering based on the calculated angle
             if (speedcheck and abs(max_delta_angle) >= self.DELTA_ANGLE):
-                self._start_walking(self.WALK_TO_COLOR_SPEED)
+                self._start_walking(self.MIN_SPEED)
             self.output_inf.turn_steering(turn_angle)
 
     def _handle_walk_start(self,left_distance:float,
@@ -454,7 +438,7 @@ class Walker:
         (def_front, _, _) = self._intelligence.get_learned_distances()
         (front, left, right) = self.read_log_distances()
 
-        self._start_walking(self.WALK_TO_COLOR_SPEED)
+        self._start_walking(self.MIN_SPEED)
         turned = False
         while front > def_front and \
                      self._current_distance == (0, 0):
@@ -502,7 +486,7 @@ class Walker:
         (def_front, _, _) = self._intelligence.get_learned_distances()
         (front, left, right) = self.read_log_distances()
 
-        self._start_walking(self.WALK_TO_COLOR_SPEED)
+        self._start_walking(self.MIN_SPEED)
         turned = False
         while front > def_front and \
                      self._current_distance == (0, 0):
@@ -523,10 +507,11 @@ class Walker:
         self._intelligence.location_complete()
         self._intelligence.unregister_callback()
     def handle_straight_walk_to_distance(self,min_front:float,min_left:float,min_right:float,
-                                         gyrodefault:float)->None:
+                                         gyrodefault:float,defaultspeed:float,speedcheck:bool=True)->None:
         """Handle the straight walking logic."""
         logger.info("Straight walk initiated with min distances - Front: %.2f, Left: %.2f,\
-                     Right: %.2f",min_front, min_left, min_right)
+                     Right: %.2f, Gyro: %.2f",min_front, min_left, min_right, gyrodefault)
+
         helper: EquiWalkerHelper = self._handle_walk_start(
                                  left_distance=min_left,
                                  right_distance=min_right,
@@ -534,15 +519,10 @@ class Walker:
                                  def_turn_angle=gyrodefault
                                  )
 
-        # Lets start the walk until we reach the front distance, but at slow speed.
-        # if self.output_inf.get_front_distance() < 150:
-        #     _start_walking(self.WALK_TO_COLOR_SPEED)
-        # else:
-        #     _start_walking(self.DEFAULT_SPEED)
-        self._start_walking(self.WALK_TO_COLOR_SPEED)
+        self._start_walking(defaultspeed)
 
         while self.output_inf.get_front_distance() > min_front:
 
-            self.handle_walk(helper,use_mpu=True,is_unknown_direction=True,speedcheck=True)
+            self.handle_walk(helper,use_mpu=True,is_unknown_direction=True,speedcheck=speedcheck)
 
         self.output_inf.buzzer_beep()

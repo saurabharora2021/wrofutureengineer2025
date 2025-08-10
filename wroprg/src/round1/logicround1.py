@@ -369,6 +369,7 @@ class Walker:
                 turn_angle = current_steering_angle + \
                             (max_delta_angle if delta > 0 else -max_delta_angle)
             logger.info("turn angle after delta: %.2f", turn_angle)
+            turn_angle = clamp_angle(turn_angle, self.MAX_ANGLE)
             if turn_angle >= 0:
                 logger.info("Turning right to angle: %.2f", turn_angle)
             else:
@@ -507,7 +508,8 @@ class Walker:
         self._intelligence.location_complete()
         self._intelligence.unregister_callback()
     def handle_straight_walk_to_distance(self,min_front:float,min_left:float,min_right:float,
-                                         gyrodefault:float,defaultspeed:float,speedcheck:bool=True)->None:
+                                         gyrodefault:float,defaultspeed:float,
+                                         speedcheck:bool=True)->None:
         """Handle the straight walking logic."""
         logger.info("Straight walk initiated with min distances - Front: %.2f, Left: %.2f,\
                      Right: %.2f, Gyro: %.2f",min_front, min_left, min_right, gyrodefault)
@@ -518,6 +520,7 @@ class Walker:
                                  use_mpu=True,
                                  def_turn_angle=gyrodefault
                                  )
+        self.output_inf.reset_yaw()  # Reset yaw to zero
 
         self._start_walking(defaultspeed)
 

@@ -29,6 +29,13 @@ class HardwareInterface(ShutdownInterface):
 
         self._orientation_estimator = None
 
+    def clear_messages(self) -> None:
+        """clear display messages"""
+        if self._rpi is None:
+            raise RuntimeError("Raspberry Pi interface not initialized." \
+            " Call full_initialization() first.")
+        else:
+            return self._rpi.clear_messages()
 
     def full_initialization(self) -> None:
         """Initialize all hardware components."""
@@ -52,8 +59,7 @@ class HardwareInterface(ShutdownInterface):
                 )
                 self._orientation_estimator = OrientationEstimator(
                         get_accel=self.get_acceleration,
-                        get_gyro=self.get_gyro,
-                        dt=0.01
+                        get_gyro=self.get_gyro
                 )
 
             else:
@@ -225,6 +231,14 @@ class HardwareInterface(ShutdownInterface):
             self._orientation_estimator.reset_yaw()
         else:
             raise RuntimeError("Orientation estimator not initialized.")
+
+    def is_button_pressed(self):
+        """Check if the action button is pressed."""
+        if self._rpi is None:
+            raise RuntimeError("Raspberry Pi interface not initialized.\
+                                Call full_initialization() first.")
+        else:
+            return self._rpi.action_button.is_active
 
     # --- LEGO Driver Methods ---
 

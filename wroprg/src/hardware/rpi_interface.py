@@ -274,6 +274,9 @@ class RpiInterface(ShutdownInterface):
         self.oled.show()
         self._last_oled_update = now
 
+    def clear_messages(self) -> None:
+        """Clear all messages from the display."""
+        self.messages.clear()
     def force_flush_messages(self) -> None:
         """Force the OLED to update immediately."""
         if self.pendingmessage:

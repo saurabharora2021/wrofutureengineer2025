@@ -2,9 +2,10 @@
 import logging
 import argparse
 import threading
+from time import sleep
 from hardware.hardware_interface import HardwareInterface
+from hardware.validator import RobotValidator
 from round1.logicround1 import Walker
-from round1.matintelligence import MATDIRECTION, MatIntelligence
 from utils.helpers import HelperFunctions
 
 def main():
@@ -24,12 +25,25 @@ def main():
     try:
 
         pi_inf.force_flush_messages()
+        #action button.
+        pi_inf.wait_for_action()
+
+        # Validate the robot's functionality
+        robot_validator: RobotValidator = RobotValidator(pi_inf)
+        if not robot_validator.validate():
+            logger.error("Robot validation failed. Exiting.")
+            pi_inf.led1_red()
+            pi_inf.buzzer_beep()
+            raise RuntimeError("Robot validation failed")
+        else:
+            pi_inf.led1_green()
+            pi_inf.buzzer_beep()
 
         challenge1walker = Walker(pi_inf)
-        intel: MatIntelligence = MatIntelligence()
         pi_inf.start_measurement_recording()
         # Log the distances
-        (_, start_left_distance, start_right_distance) = pi_inf.read_log_distances()
+        start_left_distance = pi_inf.get_left_distance()
+        start_right_distance = pi_inf.get_right_distance()
 
         gyrodefault = 0
 
@@ -37,25 +51,20 @@ def main():
 
         logger.info("Max front distance: %.2f", maxfront)
 
-
-        #action button.
-        pi_inf.wait_for_action()
-
         def run_gyro_walk():
-
-            #lets assume this is AntiClockwise and side1 is complete, we have reached corner1
-            intel.report_direction_side1(MATDIRECTION.ANTICLOCKWISE_DIRECTION)
 
             challenge1walker.handle_straight_walk_to_distance(maxfront,start_left_distance,
                                                               start_right_distance,
                                               gyrodefault,Walker.MIN_SPEED,speedcheck=True)
+            pi_inf.drive_stop()
 
         # Start gyro walk in a separate thread
         gyro_thread = threading.Thread(target=run_gyro_walk)
         gyro_thread.start()
 
         # In main thread, call wait_for_action()
-        pi_inf.wait_for_action()
+        while (pi_inf.is_button_pressed() is False and gyro_thread.is_alive()):
+            sleep(0.01)
 
         # Optionally, wait for the gyro walk thread to finish
         # gyro_thread.join()

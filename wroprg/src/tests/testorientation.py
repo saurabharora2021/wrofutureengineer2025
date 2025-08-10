@@ -19,7 +19,7 @@ def main():
 
     pi_inf: HardwareInterface = helper.get_pi_interface()
     try:
-
+        pi_inf.buzzer_beep()
         pi_inf.force_flush_messages()
         pi_inf.start_measurement_recording()
         sleep(2)
@@ -30,9 +30,17 @@ def main():
             # Read orientation data
             orientation = pi_inf.get_orientation()
             if orientation is not None:
+                pi_inf.clear_messages()
                 delta_yaw = orientation[2] - default_yaw
-                logger.warning("Yaw delta: %.2f ", delta_yaw)
-                print("Orientation: %s", orientation)
+                # logger.warning("Yaw delta: %.2f ", delta_yaw)
+                # logger.warning("roll: %0.2f", orientation[0])
+                # logger.warning("pitch: %0.2f", orientation[1])
+                # logger.warning("yaw: %0.2f", delta_yaw)
+                pi_inf.display_message(f"Roll: {orientation[0]:.2f}")
+                pi_inf.display_message(f"Pitch: {orientation[1]:.2f}")
+                pi_inf.display_message(f"Yaw: {delta_yaw:.2f}",forceflush=True)
+                pi_inf.force_flush_messages()
+                # print("Orientation: %s", orientation)
             else:
                 logger.warning("Orientation data not available")
                 print("Orientation data not available")

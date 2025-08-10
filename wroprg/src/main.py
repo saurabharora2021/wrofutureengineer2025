@@ -29,7 +29,7 @@ def main():
 
         pi_inf.force_flush_messages()
 
-         # Validate the robot's functionality
+        # Validate the robot's functionality
         robot_validator: RobotValidator = RobotValidator(pi_inf)
         if not robot_validator.validate():
             logger.error("Robot validation failed. Exiting.")
@@ -43,13 +43,13 @@ def main():
         logger.warning("Test Successful")
         pi_inf.force_flush_messages()
 
-        challenge1walker = Walker(pi_inf)
+        challenge1walker = Walker(pi_inf,nooflaps=1)
         pi_inf.start_measurement_recording()
 
         #action button.
         # pi_inf.wait_for_action()
 
-        challenge1walker.start_walk(nooflaps=1)
+        challenge1walker.start_walk()
 
     except (ImportError, AttributeError, RuntimeError) as e:
         logger.error("Error Running Program")

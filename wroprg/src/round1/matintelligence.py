@@ -214,9 +214,11 @@ class MatIntelligence(ShutdownInterface):
             time.sleep(0.1)
 
     def reset_current_distance(self):
+        """Reset the current distance readings."""
         self._current_min_distances = self.DEFAULT_DISTANCE
-    
+
     def get_initial_readings(self):
+        """Get the initial readings stored in memory."""
         return self._mem_initial_start
 
     def get_learned_distances(self) -> tuple[float, float, float]:

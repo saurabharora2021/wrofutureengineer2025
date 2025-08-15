@@ -26,7 +26,9 @@ def main():
 
         pi_inf.force_flush_messages()
         #action button.
-        pi_inf.wait_for_action()
+        pi_inf.buzzer_beep()
+        # pi_inf.wait_for_action()
+        sleep(1)
 
         # Validate the robot's functionality
         robot_validator: RobotValidator = RobotValidator(pi_inf)
@@ -47,7 +49,7 @@ def main():
 
         gyrodefault = 0
 
-        maxfront = 100
+        maxfront = 120
 
         logger.info("Max front distance: %.2f", maxfront)
 

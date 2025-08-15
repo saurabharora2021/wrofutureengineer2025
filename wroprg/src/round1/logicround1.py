@@ -74,32 +74,10 @@ class Walker:
         #Complete walk to corner , now lets find the color for direction.
         (color,color2) = self.walk_read_mat_color()
 
+        #ensure we have reached corner.
+        self.walk_to_corner()
 
-        #can we check.if one of the sides is not present?, that means we are at a corner.
-        # and based on which side we can determine the direction.
         (front,left,right) = self.read_log_distances()
-
-        if left + right < 150:
-            logger.info("Both sides are present , we have not reached the corner")
-
-            #Lets walk start some more time
-
-            def cond1(_front, _left, _right, _yaw):
-                return _left + _right < 150
-
-            self.handle_straight_walk_to_distance(min_front=self.WALLFRONTENDDISTANCE,
-                                                    min_left=left,
-                                                    min_right=right,
-                                                    gyrodefault=yaw,
-                                                    defaultspeed=self.MIN_SPEED,
-                                                    precondition=cond1,
-                                                    use_mpu=False)
-
-            #TODO: should we stop walk now.
-            self._stop_walking()
-            (front,left,right) = self.read_log_distances()
-            logger.info("Both side present walk, left %s,right %s front %s", left, right, front)
-
 
         if left > right:
             logger.info("Left side is not present, right side is present," \
@@ -169,111 +147,83 @@ class Walker:
 
             if self._intelligence.get_generic_location() == MATGENERICLOCATION.CORNER:
                 # Handle corner.
-                self._current_distance = (0, 0)
-
-                #TODO: if the inside is still visible we need to walk ahead and handle it first
-                # before turning.
-
-                def report_distances_corner(left: float, right: float):
-                    logger.info("corner Report. Left: %.2f, Right: %.2f", left, right)
-                    self._current_distance = (left, right)
-                    self._stop_walking()
-
-                self._intelligence.register_callback(report_distances_corner)
-                (maxfront,left_def,right_def) = self._intelligence.get_learned_distances()
-
-                (x,c_left,c_right) = self.read_log_distances()
-                self._intelligence.add_readings(x,c_left,c_right)
-
-                logger.info("Corner Walk with front %.2f ,left %.2f,right %.2f", maxfront,
-                            left_def,right_def)
-
-                helper:EquiWalkerHelper =  self._handle_walk_start(left_distance=left_def,
-                                                                   right_distance=right_def)
-
-                #add some angle in the direction.
-                turn_angle = 0
-                if self._intelligence.get_direction() ==MATDIRECTION.CLOCKWISE_DIRECTION:
-                    #Turn Right a light
-                    turn_angle = 5
-                    if c_left < 40:
-                        #No turn
-                        turn_angle = 0
-                    elif c_right < 40:
-                        turn_angle = 10
-                else:
-                    #Turn left a light
-                    #Based on location determine the turn angle
-                    turn_angle = -5
-                    if c_left < 40:
-                          #No turn
-                        turn_angle = 0
-                    elif c_right < 40:
-                        turn_angle = -10
-                self._turn_steering_with_logging(turn_angle=turn_angle)
-
-                self._start_walking(self.WALK_TO_CORNER_SPEED)
-
-                while self.output_inf.get_front_distance() > maxfront and \
-                     self._current_distance == (0, 0):
-                    self.handle_walk(helper=helper,is_corner=True)
-                    # sleep(0.01)
-
-                self._intelligence.location_complete()
-                self._intelligence.unregister_callback()
-
-
-                #TODO: Turned the corner, lets stop the base.
-                self._stop_walking()
-                self.output_inf.buzzer_beep()
-                self.output_inf.reset_steering()
-                self.output_inf.reset_gyro()
-                return
+                self.handle_corner()
             else:
                 #handle SIDE
-                # we are planning to straight the robot and then do a gyro walk.
-                # Log the distances
-                self.read_log_distances()
+                self.handle_side()
+               
 
-                self._current_distance = (0, 0)
+    def handle_side(self):
+        """Handle side walk"""
 
-                def report_distances_side(left: float, right: float):
-                    logger.info("side Report. Left: %.2f, Right: %.2f", left, right)
-                    self._current_distance = (left, right)
-                    self._stop_walking()
+        # we are planning to straight the robot and then do a gyro walk.
+        # Log the distances
+        self.read_log_distances()
 
-                self._intelligence.register_callback(report_distances_side)
-                (maxfront,left_def,right_def) = self._intelligence.get_learned_distances()
+        self._current_distance = (0, 0)
 
-                helper:EquiWalkerHelper = self._handle_walk_start(left_distance=left_def,
-                                                                   right_distance=right_def)
+        def report_distances_side(left: float, right: float):
+            logger.info("side Report. Left: %.2f, Right: %.2f", left, right)
+            self._current_distance = (left, right)
+            self._stop_walking()
 
+        self._intelligence.register_callback(report_distances_side)
+        (maxfront,left_def,right_def) = self._intelligence.get_learned_distances()
+
+        helper:EquiWalkerHelper = self._handle_walk_start(left_distance=left_def,
+                                                            right_distance=right_def)
+
+        self._start_walking(self.WALK_TO_CORNER_SPEED)
+        # sleep(0.1)
+
+        while self.output_inf.get_front_distance() > maxfront:
+            while self.output_inf.get_front_distance() > maxfront \
+                                    and self._current_distance == (0, 0):
+                self._handle_walk(helper=helper)
+                sleep(0.01)
+
+            if self._current_distance != (0, 0):
+                #somehow we have found a smaller point.
+                #reset the helper
+                helper = self._handle_walk_start(left_distance=left_def,
+                                                    right_distance=right_def)
                 self._start_walking(self.WALK_TO_CORNER_SPEED)
-                # sleep(0.1)
-
-                while self.output_inf.get_front_distance() > maxfront:
-                    while self.output_inf.get_front_distance() > maxfront \
-                                            and self._current_distance == (0, 0):
-                        self.handle_walk(helper=helper)
-                        sleep(0.01)
-
-                    if self._current_distance != (0, 0):
-                        #somehow we have found a smaller point.
-                        #reset the helper
-                        helper = self._handle_walk_start(left_distance=left_def,
-                                                         right_distance=right_def)
-                        self._start_walking(self.WALK_TO_CORNER_SPEED)
 
 
-                self._intelligence.location_complete()
-                self._intelligence.unregister_callback()
+        self._intelligence.location_complete()
+        self._intelligence.unregister_callback()
 
 
-                #TODO: Lets stop the base.
-                self._stop_walking()
-                return
+        #TODO: Lets stop the base.
+        self._stop_walking()
+        return
+    def handle_corner(self):
+        """Handle corner walk"""
+        self._current_distance = (0, 0)
 
-    def handle_walk(self,helper:EquiWalkerHelper,use_mpu=False,
+        self.walk_to_corner()
+        current_direction = self._intelligence.get_direction()
+
+        if self._intelligence.get_round_number() == 1:
+            def_turn_angle = 0
+            if current_direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
+                # lets assume this is AntiClockwise and side1 is complete,
+                # we have reached corner1
+                def_turn_angle=60
+            else:
+                def_turn_angle=-60
+            self.gyro_corner_walk(def_turn_angle=def_turn_angle)
+        else:
+            raise NotImplementedError("Gyro corner walk is not implemented for round 2.")
+
+        #TODO: Turned the corner, lets stop the base.
+        self._stop_walking()
+        self.output_inf.buzzer_beep()
+        self.output_inf.reset_steering()
+        self.output_inf.reset_gyro()
+        return
+
+    def _handle_walk(self,helper:EquiWalkerHelper,use_mpu=False,
                     is_unknown_direction:bool=False,is_corner:bool = False,
                     speedcheck=False) -> float:
         """Handle walk using helper""" 
@@ -382,6 +332,8 @@ class Walker:
 
         self._start_walking(self.MIN_SPEED)
         turned = False
+
+        turn_max_angle = abs(def_turn_angle/2)
         while front > def_front and \
                      self._current_distance == (0, 0):
 
@@ -389,13 +341,15 @@ class Walker:
             logger.info("Current Yaw: %.2f", yaw)
             turn_angle = gyrohelper.walk_func(yaw, self.output_inf.get_steering_angle(),
                                               left, right)
-            if not turned and yaw < def_turn_angle/2:
-                logger.info("Turned achieve lets check distance")
+            if not turned and abs(yaw) < turn_max_angle :
+                logger.info("Turned achieve lets check distance=====")
                 turned = True
                 self._intelligence.reset_current_distance()
                 self._intelligence.register_callback(report_distances_corner)
 
             self._turn_steering_with_logging(turn_angle,delta_angle=10)
+            (front, left, right) = self.read_log_distances()
+
 
         self._stop_walking()
         self._intelligence.location_complete()
@@ -411,43 +365,6 @@ class Walker:
         self._walking = False
         self.output_inf.drive_stop()
 
-    def gyro_color_walk(self,def_turn_angle:float):
-        """Handle the gyro corner walking logic."""
-        logger.info("Gyro corner walk initiated with turn angle: %.2f", def_turn_angle)
-
-        self._current_distance = (0, 0)
-        def report_distances_corner(left: float, right: float):
-            logger.info("corner Report. Left: %.2f, Right: %.2f", left, right)
-            self._current_distance = (left, right)
-
-        # Implement the gyro corner walking logic here
-        self.output_inf.reset_gyro()
-        gyrohelper: GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper(
-            walk_angle=def_turn_angle, min_left=15, min_right=15)
-
-        (def_front, _, _) = self._intelligence.get_learned_distances()
-        (front, left, right) = self.read_log_distances()
-
-        self._start_walking(self.MIN_SPEED)
-        turned = False
-        while front > def_front and \
-                     self._current_distance == (0, 0):
-
-            _, _, yaw = self.output_inf.get_orientation()
-            logger.info("Current Yaw: %.2f", yaw)
-            turn_angle = gyrohelper.walk_func(yaw, self.output_inf.get_steering_angle(),
-                                              left, right)
-            if not turned and yaw < def_turn_angle/2:
-                logger.info("Turned achieve lets check distance")
-                turned = True
-                self._intelligence.reset_current_distance()
-                self._intelligence.register_callback(report_distances_corner)
-
-            self._turn_steering_with_logging(turn_angle,delta_angle=10)
-
-        self._stop_walking()
-        self._intelligence.location_complete()
-        self._intelligence.unregister_callback()
     def handle_straight_walk_to_distance(self,min_front:float,min_left:float,min_right:float,
                                          gyrodefault:float,defaultspeed:float,speedcheck:bool=True,
                                          precondition:Optional[Callable[[float,float,float,float],
@@ -480,7 +397,7 @@ class Walker:
         while self.output_inf.get_front_distance() > min_front and \
                         precondition(front,left,right,yaw) is True:
 
-            self.handle_walk(helper,use_mpu=use_mpu,is_unknown_direction=True,speedcheck=speedcheck)
+            self._handle_walk(helper,use_mpu=use_mpu,is_unknown_direction=True,speedcheck=speedcheck)
             (front, left, right) = self.read_log_distances()
             yaw = self.output_inf.get_orientation()[2]
 
@@ -541,3 +458,31 @@ class Walker:
         color2 = check_bottom_color(self.output_inf, knowncolor)
 
         return (color,color2)
+
+    def walk_to_corner(self):
+        """Walk to the corner based on the current direction.
+        This is used if we have completed our calculation but still not reached corner."""
+
+        #can we check.if one of the sides is not present?, that means we are at a corner.
+        (front,left,right) = self.read_log_distances()
+
+        if left + right < 150:
+            logger.info("Both sides are present , we have not reached the corner")
+
+            #Lets walk start some more time
+
+            def cond1(_front, _left, _right, _yaw):
+                return _left + _right < 150
+
+            self.handle_straight_walk_to_distance(min_front=self.WALLFRONTENDDISTANCE,
+                                                    min_left=left,
+                                                    min_right=right,
+                                                    gyrodefault=0,
+                                                    defaultspeed=self.MIN_SPEED,
+                                                    precondition=cond1,
+                                                    use_mpu=False)
+
+            (front,left,right) = self.read_log_distances()
+            logger.info("Both side present walk, left %s,right %s front %s", left, right, front)
+        else:
+            logger.info("Both sides are not present, we have reached the corner.")

@@ -37,7 +37,7 @@ def main():
             #lets assume this is AntiClockwise and side1 is complete, we have reached corner1
             intel.report_direction_side1(MATDIRECTION.ANTICLOCKWISE_DIRECTION)
 
-            challenge1walker.gyro_corner_walk(intel, def_turn_angle=60)
+            challenge1walker.gyro_corner_walk(def_turn_angle=60)
 
         # Start gyro walk in a separate thread
         gyro_thread = threading.Thread(target=run_gyro_walk)

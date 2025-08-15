@@ -73,7 +73,7 @@ class MatIntelligence(ShutdownInterface):
     DELTA_ERROR = 10 # Maximum error in cm for distance measurements
     FRONTDISTANCE_FOR_COLOR_CHECK=130
     MAX_DISTANCE_READING = 200 # Maximum distance reading in cm
-    WALLFRONTDISTANCE=30 # while corner walking , maximum distance from the wall in front
+    WALLFRONTDISTANCE=15 # while corner walking , maximum distance from the wall in front
     WALLSIDEDISTANCE=20 # while corner walking , maximum distance from the wall on the side
 
     def __init__(self,roundcount:int = 1) -> None:

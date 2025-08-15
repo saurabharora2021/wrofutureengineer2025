@@ -15,8 +15,8 @@ class EquiWalkerHelper:
     MIN_WALL_DISTANCE = 10  # Minimum distance to consider a wall present
     # Gyro correction factor,
     # this is multiplied with the delta gyro value, which is quite small
-    K_GYRO = 5.5
-    K_DISTANCE = -3.5
+    K_GYRO = 10
+    K_DISTANCE = -4
     MAX_ANGLE = 15 # Maximum angle in degrees for steering adjustments
 
     def __init__(self,def_distance_left: float, def_distance_right: float,

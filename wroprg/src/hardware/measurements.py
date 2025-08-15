@@ -112,6 +112,12 @@ class MeasurementsLogger:
             self._file.write(line)
             self._file.flush()
 
+    def write_comment(self, comment: str) -> None:
+        """Write a comment to the measurements file."""
+        if self._file is not None:
+            self._file.write(f"# {comment}\n")
+            self._file.flush()
+
     def close_file(self) -> None:
         """Close the file."""
         if self._file is not None:

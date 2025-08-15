@@ -2,11 +2,12 @@
 import logging
 from collections import Counter, deque
 from enum import Enum,auto
-from typing import Callable
+from typing import Callable, Optional
 import threading
 import time
 
 from base.shutdown_handling import ShutdownInterface
+from hardware.hardware_interface import HardwareInterface
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,7 @@ class MatIntelligence(ShutdownInterface):
     WALLFRONTDISTANCE=15 # while corner walking , maximum distance from the wall in front
     WALLSIDEDISTANCE=20 # while corner walking , maximum distance from the wall on the side
 
-    def __init__(self,roundcount:int = 1) -> None:
+    def __init__(self,roundcount:int = 1, hardware_interface: HardwareInterface=None) -> None:
         """Initialize the MatIntelligence class."""
         self._deque = deque()
         self._direction = MATDIRECTION.UNKNOWN_DIRECTION
@@ -84,6 +85,7 @@ class MatIntelligence(ShutdownInterface):
         self._roundno = 1
         self._roundcount = roundcount
         self._readings_counter = 0
+        self._hardware_interface: Optional[HardwareInterface] = hardware_interface
 
         # Reading for the start location, for starting position
         self._mem_initial_start = (0,0,0)
@@ -278,6 +280,8 @@ class MatIntelligence(ShutdownInterface):
                 self._current_min_distances = self.DEFAULT_DISTANCE
             else:
                 logger.error("Cannot find current min for location: %s", self._location)
+        if self._hardware_interface is not None:
+            self._hardware_interface.add_comment(f"New Location : {self._location}")
         return self._location
 
     def _next_location(self) -> MATLOCATION:

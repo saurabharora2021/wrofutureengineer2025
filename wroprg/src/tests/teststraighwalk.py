@@ -54,7 +54,7 @@ def main():
         logger.info("Max front distance: %.2f", maxfront)
 
         def run_gyro_walk():
-            
+
             pi_inf.reset_gyro()  # Reset gyro to zero
 
             challenge1walker.handle_straight_walk_to_distance(maxfront,start_left_distance,

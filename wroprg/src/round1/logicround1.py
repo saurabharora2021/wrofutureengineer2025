@@ -35,7 +35,8 @@ class Walker:
         self._current_yaw = 0
 
         self._nooflaps = nooflaps
-        self._intelligence: MatIntelligence = MatIntelligence(roundcount=nooflaps)
+        self._intelligence: MatIntelligence = MatIntelligence(roundcount=nooflaps,
+                                                              hardware_interface=output_inf)
 
         self._walking:bool = False
 
@@ -179,18 +180,19 @@ class Walker:
         self._start_walking(self.WALK_TO_CORNER_SPEED)
         # sleep(0.1)
 
-        while self.output_inf.get_front_distance() > maxfront:
-            while self.output_inf.get_front_distance() > maxfront \
-                                    and self._current_distance == (0, 0):
-                self._handle_walk(helper=helper)
-                sleep(0.01)
+        (front,_,_) = self.read_log_distances()
 
-            if self._current_distance != (0, 0):
-                #somehow we have found a smaller point.
-                #reset the helper
-                helper = self._handle_walk_start(left_distance=left_def,
-                                                    right_distance=right_def)
-                self._start_walking(self.WALK_TO_CORNER_SPEED)
+        while front > maxfront and self._current_distance == (0, 0):
+            self._handle_walk(helper=helper)
+            sleep(0.01)
+            (front,_,_) = self.read_log_distances()
+
+        if self._current_distance != (0, 0):
+            #somehow we have found a smaller point.
+            #reset the helper
+            helper = self._handle_walk_start(left_distance=left_def,
+                                                right_distance=right_def)
+            self._start_walking(self.WALK_TO_CORNER_SPEED)
 
 
         self._intelligence.location_complete()
@@ -407,7 +409,7 @@ class Walker:
 
             precondition = noopcond
 
-        while self.output_inf.get_front_distance() > min_front and \
+        while front > min_front and \
                         precondition(front,left,right,yaw) is True:
 
             self._handle_walk(helper,use_mpu=use_mpu,is_unknown_direction=True,
@@ -446,18 +448,22 @@ class Walker:
                 interval_ms=50
             )
 
+            (front,_,_) = self.read_log_distances()
             colorchecker.start()
 
-            while (self.output_inf.get_front_distance() > self.WALLFRONTENDDISTANCE
+            while (front > self.WALLFRONTENDDISTANCE
                 and self._line_color is None):
 
                 _, _, yaw = self.output_inf.get_orientation()
+
                 turn_angle = gyrohelper.walk_func(yaw,self.output_inf.
                                                             get_steering_angle())
 
                 self._turn_steering_with_logging(turn_angle)
 
-                logger.info("Front Distance:%s",self.output_inf.get_front_distance())
+                (front,_,_) = self.read_log_distances()
+
+                logger.info("Front Distance:%0.2f",front)
 
             #Lets first stop the base and then check the color.
             self._stop_walking()
@@ -466,7 +472,6 @@ class Walker:
                 colorchecker.stop()
 
             self.output_inf.buzzer_beep()
-            logger.info("Front Distance:%s",self.output_inf.get_front_distance())
             color = self._line_color
 
         color2 = check_bottom_color(self.output_inf, knowncolor)

@@ -14,6 +14,7 @@ from PIL import Image, ImageDraw, ImageFont
 from hardware.pin_config import PinConfig
 from hardware.hardwareconfig import HardwareConfig
 from base.shutdown_handling import ShutdownInterface
+from hardware.screenlogger import ScreenLogger
 
 logger: logging.Logger = logging.getLogger(__name__)
 class RpiInterface(ShutdownInterface):
@@ -113,6 +114,8 @@ class RpiInterface(ShutdownInterface):
                                                         PinConfig.FRONT_DISTANCE_MAX_DISTANCE)
             self.jumper_pin = Button(PinConfig.JUMPER_PIN, hold_time=1)
 
+        self.screenlogger = ScreenLogger(self)
+        self.display_logger = True
 
         logger.info("RpiInterface initialized successfully.")
 
@@ -140,6 +143,17 @@ class RpiInterface(ShutdownInterface):
                     time.sleep(1)
                 counter += 1
 
+    def get_screen_logger(self) -> ScreenLogger:
+        """Get the logger for the RpiInterface."""
+        return self.screenlogger
+
+    def disable_logger(self) -> None:
+        """Disable the screen logger."""
+        self.display_logger = False
+
+    def enable_logger(self) -> None:
+        """Enable the screen logger."""
+        self.display_logger = True
 
     def buzzer_beep(self, timer: float = 1) -> None:
         """Turn on the buzzer."""
@@ -265,14 +279,20 @@ class RpiInterface(ShutdownInterface):
     def flush_pending_messages(self) -> None:
         """Flush the pending messages to the OLED display."""
         now = time.time()
-        self.draw.rectangle((0, 0, PinConfig.SCREEN_WIDTH, PinConfig.SCREEN_HEIGHT),
-                            outline=0, fill=0)
-        for i, msg in enumerate(self.messages):
-            # Use constant for line height spacing
-            self.draw.text((0, i * RpiInterface.LINE_HEIGHT), msg, font=self.font, fill=255)
-        self.oled.image(self.image)
-        self.oled.show()
+        if self.display_logger:
+            self.draw.rectangle((0, 0, PinConfig.SCREEN_WIDTH, PinConfig.SCREEN_HEIGHT),
+                                outline=0, fill=0)
+            for i, msg in enumerate(self.messages):
+                # Use constant for line height spacing
+                self.draw.text((0, i * RpiInterface.LINE_HEIGHT), msg, font=self.font, fill=255)
+            self.oled.image(self.image)
+            self.oled.show()
         self._last_oled_update = now
+
+    def paint_display(self, img: Image.Image) -> None:
+        """Paint the display with the given image."""
+        self.oled.image(img)
+        self.oled.show()
 
     def clear_messages(self) -> None:
         """Clear all messages from the display."""

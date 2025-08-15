@@ -1,14 +1,14 @@
 """ This modules implements the Challenge 1 Walker for the WRO2025 Robot."""
 from time import sleep
 import logging
-from base.mat import mat_color
+from typing import Callable, Optional, Tuple
 from hardware.hardware_interface import HardwareInterface
 from round1.matintelligence import MATDIRECTION, MATGENERICLOCATION, MatIntelligence
 from round1.matintelligence import vote_directions, color_to_direction
-from utils.threadingfunctions import ConditionCheckerThread
 from round1.walker_helpers import EquiWalkerHelper, GyroWalkerHelper
 from round1.walker_helpers import GyroWalkerwithMinDistanceHelper
-from round1.utilityfunctions import clamp_angle, directiontostr
+from round1.utilityfunctions import clamp_angle, directiontostr, check_bottom_color
+from utils.threadingfunctions import ConditionCheckerThread
 
 logger = logging.getLogger(__name__)
 class Walker:
@@ -64,130 +64,83 @@ class Walker:
 
         logger.info("Max front distance: %.2f", maxfront)
 
+        self.output_inf.reset_gyro()  # Reset gyro to zero
+
         self.handle_straight_walk_to_distance(maxfront,start_left_distance,start_right_distance,
                                               gyrodefault,self.MIN_SPEED,speedcheck=True)
 
         #self._stop_walking()
         #return
-        self._start_walking(self.MIN_SPEED)
+        #Complete walk to corner , now lets find the color for direction.
+        (color,color2) = self.walk_read_mat_color()
 
-        logger.info("Time to check color")
 
-        knowncolor = ["blue", "orange"]
-        color = self.check_bottom_color(knowncolor)
+        #can we check.if one of the sides is not present?, that means we are at a corner.
+        # and based on which side we can determine the direction.
+        (front,left,right) = self.read_log_distances()
 
-        gyrohelper:GyroWalkerHelper = GyroWalkerHelper()
+        if left + right < 150:
+            logger.info("Both sides are present , we have not reached the corner")
 
-        # running = False
+            #Lets walk start some more time
 
-        if color is None:
+            def cond1(_front, _left, _right, _yaw):
+                return _left + _right < 150
 
-            def set_line_color(c):
-                self._line_color = c
-                self._stop_walking()
+            self.handle_straight_walk_to_distance(min_front=self.WALLFRONTENDDISTANCE,
+                                                    min_left=left,
+                                                    min_right=right,
+                                                    gyrodefault=yaw,
+                                                    defaultspeed=self.MIN_SPEED,
+                                                    precondition=cond1,
+                                                    use_mpu=False)
 
-            def value_check_func():
-                return self.check_bottom_color(knowncolor)
-
-            colorchecker: ConditionCheckerThread = ConditionCheckerThread(
-                value_check_func=value_check_func,
-                callback_func=set_line_color,
-                interval_ms=50
-            )
-
-            colorchecker.start()
-
-            while (self.output_inf.get_front_distance() > self.WALLFRONTENDDISTANCE
-                and self._line_color is None):
-
-                _, _, yaw = self.output_inf.get_orientation()
-                turn_angle = gyrohelper.walk_func(yaw,self.output_inf.
-                                                            get_steering_angle())
-
-                self._turn_steering_with_logging(turn_angle)
-
-                logger.info("Front Distance:%s",self.output_inf.get_front_distance())
-
-            #Lets first stop the base and then check the color.
+            #TODO: should we stop walk now.
             self._stop_walking()
-            if colorchecker.is_running():
-                logger.info("Stopping color checker thread, not found color yet.")
-                colorchecker.stop()
-
-            self.output_inf.buzzer_beep()
-            logger.info("Front Distance:%s",self.output_inf.get_front_distance())
-            color = self._line_color
-
-            color2 = self.check_bottom_color(knowncolor)
-
-            #can we check.if one of the sides is not present?, that means we are at a corner.
-            # and based on which side we can determine the direction.
             (front,left,right) = self.read_log_distances()
+            logger.info("Both side present walk, left %s,right %s front %s", left, right, front)
 
-            if left + right < 150:
-                logger.info("Both sides are present , we have not reached the corner")
 
-                helper: EquiWalkerHelper = self._handle_walk_start(
-                                 left_distance=left,
-                                 right_distance=right,
-                                 use_mpu=False)
-                self._start_walking(self.MIN_SPEED)
-                while front > self.WALLFRONTENDDISTANCE \
-                                        and (left + right < 150):
-                    self.handle_walk(helper=helper,is_unknown_direction=True)
-                    (front,left,right) = self.read_log_distances()
-                    # sleep(0.01)
-
-                logger.info("Both side present walk, left %s,right %s front %s", left, right, front)
-                self._stop_walking()
-
-            if left > right:
-                logger.info("Left side is not present, right side is present," \
-                "                                            setting direction to anitclockwise.")
-                direction_hints = MATDIRECTION.ANTICLOCKWISE_DIRECTION
-            elif right < left:
-                logger.info("left side is present, right side is not present, " \
-                "                                       setting direction to clockwise.")
-                direction_hints = MATDIRECTION.CLOCKWISE_DIRECTION
-            else:
-                direction_hints = MATDIRECTION.UNKNOWN_DIRECTION
-
-            #Now i should have three direction readings , from color, color2 and direction_hints
-
-            directioncolor = color_to_direction(color)
-            directioncolor2 = color_to_direction(color2)
-            direction = vote_directions([directioncolor, directioncolor2,
-                                                      direction_hints])
-
-            if direction != MATDIRECTION.UNKNOWN_DIRECTION:
-                self._intelligence.report_direction_side1(direction)
-            else:
-
-                #This means we cannot determine direction with proper voting.
-
-                if directioncolor != direction_hints:
-                    # we would give presidence to hints if this not unknown
-                    if direction_hints != MATDIRECTION.UNKNOWN_DIRECTION:
-                        self._intelligence.report_direction_side1(direction_hints)
-                        return
-                    elif directioncolor != MATDIRECTION.UNKNOWN_DIRECTION:
-                        self._intelligence.report_direction_side1(directioncolor)
-                    else:
-                        #TODO: handle case we cannot handle direction.
-                        return
-
-            self.output_inf.buzzer_beep()
-            logger.warning("running color: %s", color)
-            logger.warning("later color: %s", color2)
-            logger.warning("Hints direction: %s", directiontostr(direction_hints))
-            logger.warning("Final direction: %s", directiontostr(direction))
-
+        if left > right:
+            logger.info("Left side is not present, right side is present," \
+            "                                            setting direction to anitclockwise.")
+            direction_hints = MATDIRECTION.ANTICLOCKWISE_DIRECTION
+        elif right < left:
+            logger.info("left side is present, right side is not present, " \
+            "                                       setting direction to clockwise.")
+            direction_hints = MATDIRECTION.CLOCKWISE_DIRECTION
         else:
-            #Color is not None in starting itself.
-            logger.warning("running color: %s", color)
-            direction = color_to_direction(color)
+            direction_hints = MATDIRECTION.UNKNOWN_DIRECTION
+
+        #Now i should have three direction readings , from color, color2 and direction_hints
+
+        directioncolor = color_to_direction(color)
+        directioncolor2 = color_to_direction(color2)
+        direction = vote_directions([directioncolor, directioncolor2,
+                                                    direction_hints])
+
+        if direction != MATDIRECTION.UNKNOWN_DIRECTION:
             self._intelligence.report_direction_side1(direction)
-            logger.warning("Direction:%s", directiontostr(direction))
+        else:
+
+            #This means we cannot determine direction with proper voting.
+
+            if directioncolor != direction_hints:
+                # we would give presidence to hints if this not unknown
+                if direction_hints != MATDIRECTION.UNKNOWN_DIRECTION:
+                    self._intelligence.report_direction_side1(direction_hints)
+                    return
+                elif directioncolor != MATDIRECTION.UNKNOWN_DIRECTION:
+                    self._intelligence.report_direction_side1(directioncolor)
+                else:
+                    #TODO: handle case we cannot handle direction.
+                    return
+
+        self.output_inf.buzzer_beep()
+        logger.warning("running color: %s", color)
+        logger.warning("later color: %s", color2)
+        logger.warning("Hints direction: %s", directiontostr(direction_hints))
+        logger.warning("Final direction: %s", directiontostr(direction))
 
         self.output_inf.force_flush_messages()
 
@@ -199,7 +152,7 @@ class Walker:
         self.handle_unknowndirection_walk()
         #we don't need camera Now
         self.output_inf.camera_off()
-        self.output_inf.reset_yaw()
+        self.output_inf.reset_gyro()
 
         #TODO: we cannot determine direction, beep and stop.
         if self._intelligence.get_direction() == MATDIRECTION.UNKNOWN_DIRECTION:
@@ -274,7 +227,7 @@ class Walker:
                 self._stop_walking()
                 self.output_inf.buzzer_beep()
                 self.output_inf.reset_steering()
-                self.output_inf.reset_yaw()
+                self.output_inf.reset_gyro()
                 return
             else:
                 #handle SIDE
@@ -330,6 +283,7 @@ class Walker:
 
         (_,left_distance,right_distance) = self.read_log_distances()
 
+        #TODO: Handle somewhere else.
         if not is_unknown_direction:
             (_,left_def,right_def) = self._intelligence.get_learned_distances()
 
@@ -387,7 +341,7 @@ class Walker:
         logger.info("Handling walk start with direction: %s",
                      directiontostr(self._intelligence.get_direction()))
         if use_mpu:
-            self.output_inf.reset_yaw()  # Reset yaw to zero
+            self.output_inf.reset_gyro()  # Reset yaw to zero
 
         left_distance_max = self.output_inf.get_left_distance_max()
         right_distance_max = self.output_inf.get_right_distance_max()
@@ -401,19 +355,6 @@ class Walker:
             def_turn_angle=def_turn_angle
         )
         return helper
-
-    def check_bottom_color(self,colors)->str|None:
-        """Read the bottom color and return it if it matches the specified colors."""
-        r, g, b, _ = self.output_inf.get_bottom_color_rgbi()
-        color = mat_color(r, g, b)
-        logger.info("Current rgb: R=%d, G=%d, B=%d", r, g, b)
-        logger.info("Waiting for color: %s, current color: %s", colors, color)
-        if color in colors:
-            logger.info("Detected color: %s", color)
-            return color
-        else:
-            logger.info("Color not detected, current color: %s", color)
-            return None
 
     def read_log_distances(self)->tuple[float, float, float]:
         """Read the distances from the log."""
@@ -432,7 +373,7 @@ class Walker:
             self._current_distance = (left, right)
 
         # Implement the gyro corner walking logic here
-        self.output_inf.reset_yaw()
+        self.output_inf.reset_gyro()
         gyrohelper: GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper(
             walk_angle=def_turn_angle, min_left=15, min_right=15)
 
@@ -480,7 +421,7 @@ class Walker:
             self._current_distance = (left, right)
 
         # Implement the gyro corner walking logic here
-        self.output_inf.reset_yaw()
+        self.output_inf.reset_gyro()
         gyrohelper: GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper(
             walk_angle=def_turn_angle, min_left=15, min_right=15)
 
@@ -508,24 +449,95 @@ class Walker:
         self._intelligence.location_complete()
         self._intelligence.unregister_callback()
     def handle_straight_walk_to_distance(self,min_front:float,min_left:float,min_right:float,
-                                         gyrodefault:float,defaultspeed:float,
-                                         speedcheck:bool=True)->None:
-        """Handle the straight walking logic."""
+                                         gyrodefault:float,defaultspeed:float,speedcheck:bool=True,
+                                         precondition:Optional[Callable[[float,float,float,float],
+                                                                            bool]]=None,
+                                                                            use_mpu=True)->None:
+        """Handle the straight walking logic.
+           precondition: Callable Function with argument as (front,left,right),yaw
+        """
         logger.info("Straight walk initiated with min distances - Front: %.2f, Left: %.2f,\
                      Right: %.2f, Gyro: %.2f",min_front, min_left, min_right, gyrodefault)
 
         helper: EquiWalkerHelper = self._handle_walk_start(
                                  left_distance=min_left,
                                  right_distance=min_right,
-                                 use_mpu=True,
+                                 use_mpu=use_mpu,
                                  def_turn_angle=gyrodefault
                                  )
-        self.output_inf.reset_yaw()  # Reset yaw to zero
 
         self._start_walking(defaultspeed)
 
-        while self.output_inf.get_front_distance() > min_front:
+        (front, left, right) = self.read_log_distances()
+        yaw = self.output_inf.get_orientation()[2]
 
-            self.handle_walk(helper,use_mpu=True,is_unknown_direction=True,speedcheck=speedcheck)
+        if precondition is None:
+            def noopcond(_front: float, _left: float, _right: float, _yaw: float) -> bool:
+                return True
+
+            precondition = noopcond
+
+        while self.output_inf.get_front_distance() > min_front and \
+                        precondition(front,left,right,yaw) is True:
+
+            self.handle_walk(helper,use_mpu=use_mpu,is_unknown_direction=True,speedcheck=speedcheck)
+            (front, left, right) = self.read_log_distances()
+            yaw = self.output_inf.get_orientation()[2]
 
         self.output_inf.buzzer_beep()
+
+    def walk_read_mat_color(self)-> Tuple[str,str]:
+        """Read the bottom color using the mat_color function."""
+
+        self._start_walking(self.MIN_SPEED)
+
+        logger.info("Time to check color")
+
+        knowncolor = ["blue", "orange"]
+        color = check_bottom_color(self.output_inf, knowncolor)
+
+        gyrohelper:GyroWalkerHelper = GyroWalkerHelper()
+
+        # running = False
+
+        if color is None:
+
+            def set_line_color(c):
+                self._line_color = c
+                self._stop_walking()
+
+            def value_check_func():
+                return check_bottom_color(self.output_inf, knowncolor)
+
+            colorchecker: ConditionCheckerThread = ConditionCheckerThread(
+                value_check_func=value_check_func,
+                callback_func=set_line_color,
+                interval_ms=50
+            )
+
+            colorchecker.start()
+
+            while (self.output_inf.get_front_distance() > self.WALLFRONTENDDISTANCE
+                and self._line_color is None):
+
+                _, _, yaw = self.output_inf.get_orientation()
+                turn_angle = gyrohelper.walk_func(yaw,self.output_inf.
+                                                            get_steering_angle())
+
+                self._turn_steering_with_logging(turn_angle)
+
+                logger.info("Front Distance:%s",self.output_inf.get_front_distance())
+
+            #Lets first stop the base and then check the color.
+            self._stop_walking()
+            if colorchecker.is_running():
+                logger.info("Stopping color checker thread, not found color yet.")
+                colorchecker.stop()
+
+            self.output_inf.buzzer_beep()
+            logger.info("Front Distance:%s",self.output_inf.get_front_distance())
+            color = self._line_color
+
+        color2 = check_bottom_color(self.output_inf, knowncolor)
+
+        return (color,color2)

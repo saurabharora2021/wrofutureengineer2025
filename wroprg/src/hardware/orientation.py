@@ -59,7 +59,10 @@ class OrientationEstimator(ShutdownInterface):
 
 
         #lets start the thread to read sensor data
-        self._thread: ConstantUpdateThread = ConstantUpdateThread(self.update, interval_ms=10)
+        self._thread: ConstantUpdateThread = ConstantUpdateThread(self.update, interval_ms=9)
+
+        self._stationary_gz_samples = []
+        self._stationary_sample_limit = 50  # Number of samples to average for bias
 
     def shutdown(self):
         """Shutdown readings"""
@@ -94,6 +97,8 @@ class OrientationEstimator(ShutdownInterface):
             dt = self.dt  # clamp to nominal to avoid spikes
         self.last_time = now
 
+        # logger.info("Update orientation... %0.2f", dt)
+
         # Read sensors
         ax, ay, az = self.get_accel()
         gx, gy, gz = self.get_gyro()
@@ -109,11 +114,19 @@ class OrientationEstimator(ShutdownInterface):
 
         # Yaw: only gyro with bias correction (no accel correction available)
         # Adapt bias slowly when stationary
-        if abs(gx) < self.stationary_threshold and \
-           abs(gy) < self.stationary_threshold and \
-           abs(gz) < self.stationary_threshold:
-            # move bias toward current measured gz
-            self.yaw_bias = 0.99 * self.yaw_bias + 0.01 * gz
+        stationary = abs(gx) < self.stationary_threshold and \
+                     abs(gy) < self.stationary_threshold and \
+                     abs(gz) < self.stationary_threshold
+
+        if stationary:
+            self._stationary_gz_samples.append(gz)
+            if len(self._stationary_gz_samples) >= self._stationary_sample_limit:
+                # Update bias using average of stationary samples
+                self.yaw_bias = sum(self._stationary_gz_samples) / len(self._stationary_gz_samples)
+                self._stationary_gz_samples.clear()
+        else:
+            self._stationary_gz_samples.clear()
+
         corrected_gz = gz - self.yaw_bias
         self.yaw += math.degrees(corrected_gz) * dt
 

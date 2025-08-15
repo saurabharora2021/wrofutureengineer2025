@@ -71,7 +71,7 @@ class MatIntelligence(ShutdownInterface):
     MIN_WALL2WALL_DISTANCE = 60
     ROBOT_WIDTH = 20  # Width of the robot in cm
     DELTA_ERROR = 10 # Maximum error in cm for distance measurements
-    FRONTDISTANCE_FOR_COLOR_CHECK=130
+    FRONTDISTANCE_FOR_COLOR_CHECK=120
     MAX_DISTANCE_READING = 200 # Maximum distance reading in cm
     WALLFRONTDISTANCE=15 # while corner walking , maximum distance from the wall in front
     WALLSIDEDISTANCE=20 # while corner walking , maximum distance from the wall on the side
@@ -261,9 +261,10 @@ class MatIntelligence(ShutdownInterface):
             if self._current_min_distances is not None:
                 logger.info("Learning distances for next location: %s", next_location)
                 logger.info("Current min distances: %s", self._current_min_distances)
+                mid_distance = (self._current_min_distances[0] + self._current_min_distances[1])/2
                 self._learned_distances[next_location] = (100,
-                                                        self._current_min_distances[0],
-                                                        self._current_min_distances[1])
+                                                        mid_distance,
+                                                        mid_distance)
 
         if self._location == MATLOCATION.CORNER_4:
             self._roundno += 1

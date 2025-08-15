@@ -11,7 +11,7 @@ class EquiWalkerHelper:
 
     DELTA_DISTANCE_CM = 1
     EQUIWALKMAXDELTA=13
-    MAX_GYRO_DELTA = 0.5 # Maximum gyro delta angle in degrees
+    MAX_GYRO_DELTA = 0.01 # Maximum gyro delta angle in degrees
     MIN_WALL_DISTANCE = 10  # Minimum distance to consider a wall present
     # Gyro correction factor,
     # this is multiplied with the delta gyro value, which is quite small

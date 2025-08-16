@@ -2,15 +2,15 @@
 import logging
 from typing import Optional,List
 import time
+from abc import ABC
 from hardware.hardware_interface import HardwareInterface
 from round1.utilityfunctions import clamp_angle
-
 
 logger = logging.getLogger(__name__)
 
 
 MAX_ANGLE = 30
-MAX_GYRO_DELTA = 0.05 # Maximum gyro delta angle in degrees
+MIN_GYRO_DELTA = 0.05 # Minimum gyro delta angle in degrees
 DELTA_DISTANCE_CM = 0.1
 class PIDController:
     """Simple PID controller."""
@@ -57,11 +57,10 @@ class PIDController:
         # Combine PID terms
         output = p_term + i_term + d_term
 
-        logger.info("PID angle: %.2f", output
-                    )
+        logger.info("PID angle: %.2f", output)
         return clamp_angle(output, MAX_ANGLE)
 
-class EquiWalkerHelper:
+class EquiWalkerHelper(ABC):
     """Helper class for equidistance walking with PID control."""
 
     def __init__(self, def_distance_left: float, def_distance_right: float,
@@ -69,7 +68,8 @@ class EquiWalkerHelper:
                  kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
                  kgyro: float = -5.0, def_turn_angle: float = 0.0,
                  fused_distance_weight: float = 0.5, fused_gyro_weight: float = 0.5,
-                 hardware: Optional[HardwareInterface]=None) -> None:
+                 hardware: Optional[HardwareInterface]=None,
+                 min_left: float = 10.00, min_right: float = 10.00) -> None:
 # Default before tuning
 # ki: float = -0.1
 #kd: float = -0.05
@@ -81,6 +81,8 @@ class EquiWalkerHelper:
         self.kgyro = kgyro
         self.fused_distance_weight = fused_distance_weight
         self.fused_gyro_weight = fused_gyro_weight
+        self.min_left = min_left
+        self.min_right = min_right
         self.pid = PIDController(kp, ki, kd)
         self.hardware: Optional[HardwareInterface] = hardware
         logger.info("EquiWalkerHelper initialized ...")
@@ -105,14 +107,30 @@ class EquiWalkerHelper:
             logger.error("Hardware interface not set, cannot log walk data.")
             logger.info(message)
 
+    def process_error(self, distance_error: float, gyro_correction: float) -> Optional[float]:
+        """Process the errors and return the steering angle."""
+        # Sensor fusion: Combine gyro and distance errors
+        fused_error = (self.fused_gyro_weight * gyro_correction) \
+                            + (self.fused_distance_weight * distance_error)
+
+        # Deadband to avoid small corrections
+        if abs(fused_error) < 0.1:
+            return None
+
+        logger.info("Fused Error: %.2f", fused_error)
+
+        # Use shared PID logic
+        turn = self.pid.calculate(fused_error)
+        self.log_walk_data(distance_error, gyro_error=gyro_correction,
+                           fused_error=fused_error, turn=turn)
+        return turn
+
     def walk_func(self, left_distance: float, right_distance: float,
                                current_angle: float) -> Optional[float]:
         """Calculate the steering angle using sensor fusion PID control."""
         # Gyro correction
         delta_angle = current_angle - self.def_turn_angle
-        gyro_correction = 0.0
-        if abs(delta_angle) >= MAX_GYRO_DELTA:
-            gyro_correction = self.kgyro * delta_angle
+        gyro_correction = self.kgyro * delta_angle
 
         # Distance error calculation
         left_delta = left_distance - self.def_distance_left
@@ -130,60 +148,56 @@ class EquiWalkerHelper:
         # Control error: positive means steer right
         distance_error = left_delta - right_delta
 
-        if left_distance <= 10:
+        if left_distance <= self.min_left:
             #close to wall, make delta negative
             distance_error -=10
-        elif right_distance <= 10:
+        elif right_distance <= self.min_right:
             #close to right wall, make delta more postive
             distance_error += 10
 
         # Deadband to avoid small corrections
         if abs(distance_error) < DELTA_DISTANCE_CM and \
-                                abs(gyro_correction) < MAX_GYRO_DELTA:
+                                abs(delta_angle) < MIN_GYRO_DELTA:
             self.pid.reset()
             return None
 
-        # Sensor fusion: Combine gyro and distance errors
-        fused_error = (self.fused_gyro_weight * gyro_correction) \
-                            + (self.fused_distance_weight * distance_error)
+        return self.process_error(distance_error, gyro_correction)
 
-        # Deadband to avoid small corrections
-        if abs(fused_error) < 0.1:
-            return None
-
-        logger.info("Fused Error: %.2f", fused_error)
-
-        # Use shared PID logic
-        turn = self.pid.calculate(fused_error)
-        self.log_walk_data(distance_error, gyro_error=gyro_correction,
-                           fused_error=fused_error, turn=turn)
-        return turn
-class GyroWalkerwithMinDistanceHelper:
+class GyroWalkerwithMinDistanceHelper(EquiWalkerHelper):
     """Helper class for Gyro Walker logic with distance."""
 
-    def __init__(self, kp: float = -4.0, ki: float = 0.0, kd: float = 0.05, kgyro: float = 5.0,
-                 walk_angle: float = 0.0, min_left: float = -1, min_right: float = -1,
-                 fused_distance_weight: float = 0.6, fused_gyro_weight: float = 0.4) -> None:
-        self.walk_angle = walk_angle
-        self.min_left = min_left
-        self.min_right = min_right
-        self.fused_distance_weight = fused_distance_weight
-        self.fused_gyro_weight = fused_gyro_weight
-        self.kgyro = kgyro
-
-        # Initialize the shared PID controller
-        self.pid = PIDController(kp, ki, kd)
+    def __init__(self,  kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
+                 kgyro: float = -5.0,
+                 def_turn_angle: float = 0.0, min_left: float = -1, min_right: float = -1,
+                 fused_distance_weight: float = 0.6, fused_gyro_weight: float = 0.4,
+                 hardware: Optional[HardwareInterface]=None
+                 ) -> None:
+        # Call base class __init__ with default values for required parameters
+        super().__init__(
+            def_distance_left=0.0,
+            def_distance_right=0.0,
+            max_left_distance=200.0,
+            max_right_distance=200.0,
+            kp=kp,
+            ki=ki,
+            kd=kd,
+            kgyro=kgyro,
+            def_turn_angle=def_turn_angle,
+            fused_distance_weight=fused_distance_weight,
+            fused_gyro_weight=fused_gyro_weight,
+            hardware=hardware,
+            min_left=min_left,
+            min_right=min_right
+        )
 
 
     def walk_func(self, left_distance: float, right_distance: float,
                                current_angle: float) -> Optional[float]:
         """Calculate the steering angle using sensor fusion PID control."""
         # Gyro correction
-        delta_angle = current_angle - self.walk_angle
+        delta_angle = current_angle - self.def_turn_angle
 
-        gyro_correction = 0.0
-        if abs(delta_angle) >= MAX_GYRO_DELTA:
-            gyro_correction = self.kgyro * delta_angle
+        gyro_correction = self.kgyro * delta_angle
 
         # Distance correction
         distance_error = 0.0
@@ -192,13 +206,10 @@ class GyroWalkerwithMinDistanceHelper:
         if self.min_right != -1 and right_distance < self.min_right:
             distance_error += self.min_right - right_distance
 
-        # Sensor fusion: Combine gyro and distance corrections
-        fused_error = (self.fused_gyro_weight * gyro_correction) \
-                       + (self.fused_distance_weight * distance_error)
-
         # Deadband to avoid small corrections
-        if abs(fused_error) < 0.1:
+        if abs(distance_error) < DELTA_DISTANCE_CM and \
+                                abs(delta_angle) < MIN_GYRO_DELTA:
+            self.pid.reset()
             return None
 
-        # Use the shared PID controller to calculate the steering angle
-        return self.pid.calculate(fused_error)
+        return self.process_error(distance_error, gyro_correction)

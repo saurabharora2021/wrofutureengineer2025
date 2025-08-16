@@ -287,7 +287,7 @@ class Walker:
                 self._start_walking(self.MIN_SPEED)
             self.output_inf.turn_steering(turn_angle)
         else:
-            logger.info("Turn angle is None")       
+            logger.info("Turn angle is None")
 
     def _handle_walk_start(self,left_distance:float,
                            right_distance:float,
@@ -336,7 +336,7 @@ class Walker:
         # Implement the gyro corner walking logic here
         # self.output_inf.reset_gyro()
         gyrohelper: GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper(
-            walk_angle=def_turn_angle, min_left=15, min_right=15)
+            def_turn_angle=def_turn_angle, min_left=15, min_right=15)
 
         (def_front, _, _) = self._intelligence.get_learned_distances()
         (front, left, right) = self.read_log_distances()
@@ -385,19 +385,24 @@ class Walker:
                                          gyrodefault:float,defaultspeed:float,speedcheck:bool=True,
                                          precondition:Optional[Callable[[float,float,float,float],
                                                                             bool]]=None,
-                                                                            use_mpu=True)->None:
+                                         use_mpu=True,
+                                         base_helper: Optional[EquiWalkerHelper] = None) ->  None:
         """Handle the straight walking logic.
            precondition: Callable Function with argument as (front,left,right),yaw
         """
         logger.info("Straight walk initiated with min distances - Front: %.2f, Left: %.2f,\
                      Right: %.2f, Gyro: %.2f",min_front, min_left, min_right, gyrodefault)
 
-        helper: EquiWalkerHelper = self._handle_walk_start(
+
+        if base_helper is None:
+            helper: EquiWalkerHelper = self._handle_walk_start(
                                  left_distance=min_left,
                                  right_distance=min_right,
                                  use_mpu=use_mpu,
                                  def_turn_angle=gyrodefault
                                  )
+        else:
+            helper = base_helper
 
         self._start_walking(defaultspeed)
 

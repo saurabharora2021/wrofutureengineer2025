@@ -82,7 +82,7 @@ class Walker:
         #ensure we have reached corner.
         self.walk_to_corner()
 
-        (front,left,right) = self.read_log_distances()
+        (_,left,right) = self.read_log_distances()
 
         if left > right:
             logger.info("Left side is not present, right side is present," \
@@ -258,8 +258,7 @@ class Walker:
             current_angle = yaw # Assuming yaw gives the current angle.
 
         turn_angle = helper.equidistance_walk_func(
-                            left_distance, right_distance, current_angle,
-                            current_steering_angle= self.output_inf.get_steering_angle())
+                            left_distance, right_distance, current_angle)
 
         self._turn_steering_with_logging(turn_angle,speedcheck=speedcheck)
         return turn_angle

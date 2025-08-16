@@ -12,7 +12,8 @@ class ScreenLogger:
     """Class to log messages to the screen."""
     FONT_SIZE = 10 # font size for messages
     LINE_HEIGHT = 10  # pixels per line
-    MAX_MESSAGES = 2  # maximum number of messages to display
+    MAX_MESSAGES = 3  # maximum number of messages to display
+    START_X = 10
 
     def __init__(self):
         self.image: Image.Image = Image.new("1", (PinConfig.SCREEN_WIDTH, PinConfig.SCREEN_HEIGHT))
@@ -29,33 +30,39 @@ class ScreenLogger:
         self.draw.rectangle((0, 0, PinConfig.SCREEN_WIDTH, PinConfig.SCREEN_HEIGHT),
                             outline=0, fill=0)
 
-        cursor = 5
+        cursor = 0  
         # Draw left sensor value
-        self.draw.text((5, cursor), f"L: {left:.2f}  R: {right:.2f}", font=self.font, fill=1,
+        self.draw.text((self.START_X, cursor), f"L: {left:.2f}  R: {right:.2f}", font=self.font, fill=1,
                         align="center")
 
         cursor += self.LINE_HEIGHT
 
         # Draw front sensor value
-        self.draw.text((5, cursor), f"Front: {front:.2f}", font=self.font, fill=1,
+        self.draw.text((self.START_X, cursor), f"Front: {front:.2f}", font=self.font, fill=1,
                         align="center")
 
         cursor += self.LINE_HEIGHT
 
         # Draw yaw value
-        self.draw.text((5, cursor), f"Y: {current_yaw:.2f}   S: {current_steering:.2f}",
+        self.draw.text((self.START_X, cursor), f"Y: {current_yaw:.2f}   S: {current_steering:.2f}",
                        font=self.font, fill=1, align="center")
         cursor += self.LINE_HEIGHT
 
-        for msg in enumerate(self.messages):
+        # if len(self.messages) == 0:
+        #     self.messages.append("No messages to display")
+        # else:
+        #     logger.info("Messages to display: %s", self.messages)
+
+        for i, msg in enumerate(self.messages):
             # Use constant for line height spacing
-            self.draw.text((0, cursor), msg, font=self.font, fill=255)
+            self.draw.text((0, cursor), msg, font=self.font, fill=1, align="center")
             cursor += self.LINE_HEIGHT
 
         return self.image
 
     def add_message(self, messages: List[str]) -> None:
         """Add messages to the screen logger."""
+        # logger.info("Screen logger messages: %s", messages)
         self.messages.extend(messages)
         if len(self.messages) > self.MAX_MESSAGES:
             self.messages = self.messages[-self.MAX_MESSAGES:]  # Keep only the last MAX_MESSAGES

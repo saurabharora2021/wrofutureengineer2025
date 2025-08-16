@@ -91,8 +91,12 @@ class EquiWalkerHelper:
             f"Error D : {distance_error:.2f} G : {gyro_error:.2f}",
             f"Fused :  {fused_error:.2f} Turn: {turn:.2f}"
         ]
-        if self.hardware:
+        if self.hardware is not None:
             self.hardware.add_screen_logger_message(message)
+            logger.info("Walk data logged: %s", message)
+        else:
+            logger.error("Hardware interface not set, cannot log walk data.")
+            logger.info(message)
 
     def walk_func(self, left_distance: float, right_distance: float,
                                current_angle: float) -> Optional[float]:

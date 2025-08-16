@@ -129,12 +129,12 @@ class RpiInterface(ShutdownInterface):
                 valid_distance = True
                 if (self.get_right_distance() < 0.1 or
                         self.get_right_distance() >= self.get_right_distance_max()):
-                    logger.info("Right distance sensor is not stable, %s cm",
+                    logger.info("Right distance sensor is not stable, %.2f cm",
                                     self.get_right_distance())
                     valid_distance = False
                 if (self.get_left_distance() < 0.1 or
                         self.get_left_distance() >= self.get_left_distance_max()):
-                    logger.info("Left distance sensor is not stable, %s cm",
+                    logger.info("Left distance sensor is not stable, %.2f cm",
                                     self.get_left_distance())
                     valid_distance = False
                 if valid_distance is False:
@@ -150,8 +150,7 @@ class RpiInterface(ShutdownInterface):
 
     def add_screen_logger_message(self, message: List[str]) -> None:
         """Add a message to the screen logger."""
-        if self._screenlogger is not None:
-            self._screenlogger.add_message(message)
+        self.get_screen_logger().add_message(message)
 
     def log_message(self, front: float, left: float, right: float, current_yaw: float,
                                                             current_steering: float) -> None:

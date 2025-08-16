@@ -306,7 +306,8 @@ class Walker:
             def_distance_right=right_distance,
             max_left_distance=left_distance_max,
             max_right_distance=right_distance_max,
-            def_turn_angle=def_turn_angle
+            def_turn_angle=def_turn_angle,
+            hardware=self.output_inf,
         )
         return helper
 

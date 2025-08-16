@@ -77,7 +77,7 @@ class MatIntelligence(ShutdownInterface):
     WALLFRONTDISTANCE=15 # while corner walking , maximum distance from the wall in front
     WALLSIDEDISTANCE=20 # while corner walking , maximum distance from the wall on the side
 
-    def __init__(self,roundcount:int = 1, hardware_interface: HardwareInterface=None) -> None:
+    def __init__(self,roundcount:int = 1, hardware_interface: Optional[HardwareInterface]=None) -> None:
         """Initialize the MatIntelligence class."""
         self._deque = deque()
         self._direction = MATDIRECTION.UNKNOWN_DIRECTION
@@ -207,7 +207,7 @@ class MatIntelligence(ShutdownInterface):
                                                           self._current_min_distances[1])
 
         self._current_min_distances = self.DEFAULT_DISTANCE
-        logger.info("Report side 1, current min distances: %s", self._current_min_distances)
+        logger.info("Report side 1, current min distances: %.2f", self._current_min_distances)
 
     def _wait_for_readings(self, timeout: float = 5.0) -> None:
         """Wait for readings to be processed."""
@@ -318,7 +318,7 @@ class MatIntelligence(ShutdownInterface):
     def _process_each_readings(self, front_distance:float, left_distance: float,
                                     right_distance: float) -> None:
         """Process each reading from the deque."""
-        logger.info("Processing reading: front=%s, left=%s, right=%s", front_distance,
+        logger.info("Processing reading: front=%.2f, left=%.2f, right=%.2f", front_distance,
                                                         left_distance, right_distance)
 
         if front_distance < 0 or left_distance < 0 or right_distance < 0:
@@ -333,7 +333,7 @@ class MatIntelligence(ShutdownInterface):
             left_distance = total/2
             right_distance = total/2
             self._mem_initial_start = (front_distance, left_distance, right_distance)
-            logger.info("Storing First distances: front=%s, left=%s, right=%s",
+            logger.info("Storing First distances: front=%.2f, left=%.2f, right=%.2f",
                         self._mem_initial_start[0], self._mem_initial_start[1],
                           self._mem_initial_start[2])
 
@@ -344,7 +344,7 @@ class MatIntelligence(ShutdownInterface):
         if self._current_min_distances is not None:
             current_total_distance= self._current_min_distances[0] + self._current_min_distances[1]
 
-        logger.info("Current distance: %s, New distance: %s",
+        logger.info("Current distance: %.2f, New distance: %.2f",
                      current_total_distance, total_distance)
         if total_distance < current_total_distance:
             left_distance = total_distance / 2

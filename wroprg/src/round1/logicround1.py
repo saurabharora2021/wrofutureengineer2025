@@ -135,7 +135,7 @@ class Walker:
         self.handle_unknowndirection_walk()
         #we don't need camera Now
         self.output_inf.camera_off()
-        self.output_inf.reset_gyro()
+        # self.output_inf.reset_gyro()
 
         #TODO: we cannot determine direction, beep and stop.
         if self._intelligence.get_direction() == MATDIRECTION.UNKNOWN_DIRECTION:
@@ -153,6 +153,8 @@ class Walker:
             if self._intelligence.get_generic_location() == MATGENERICLOCATION.CORNER:
                 # Handle corner.
                 self.handle_corner()
+                self._stop_walking()
+                return
             else:
                 #handle SIDE
                 self.handle_side()
@@ -229,7 +231,7 @@ class Walker:
 
     def _handle_walk(self,helper:EquiWalkerHelper,use_mpu=False,
                     is_unknown_direction:bool=False,is_corner:bool = False,
-                    speedcheck=False) -> float:
+                    speedcheck=False) -> Optional[float]:
         """Handle walk using helper""" 
 
         logger.info("Handling walk with direction: %s",
@@ -428,7 +430,7 @@ class Walker:
         knowncolor = ["blue", "orange"]
         color = check_bottom_color(self.output_inf, knowncolor)
 
-        gyrohelper:GyroWalkerHelper = GyroWalkerHelper()
+        gyrohelper:GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper()
 
         # running = False
 
@@ -447,7 +449,7 @@ class Walker:
                 interval_ms=50
             )
 
-            (front,_,_) = self.read_log_distances()
+            (front,left,right) = self.read_log_distances()
             colorchecker.start()
 
             while (front > self.WALLFRONTENDDISTANCE
@@ -455,12 +457,14 @@ class Walker:
 
                 _, _, yaw = self.output_inf.get_orientation()
 
-                turn_angle = gyrohelper.walk_func(yaw,self.output_inf.
+                turn_angle = gyrohelper.walk_func(current_left=left,current_right=right,
+                                                  current_angle = yaw,
+                                                  current_steering_angle=self.output_inf.
                                                             get_steering_angle())
 
                 self._turn_steering_with_logging(turn_angle)
 
-                (front,_,_) = self.read_log_distances()
+                (front,left,right) = self.read_log_distances()
 
                 logger.info("Front Distance:%0.2f",front)
 

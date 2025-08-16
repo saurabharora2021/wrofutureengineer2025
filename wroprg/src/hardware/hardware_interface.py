@@ -74,12 +74,14 @@ class HardwareInterface(ShutdownInterface):
         if self._measurements_manager is None:
             raise RuntimeError("Measurements manager not initialized. Call" \
                     " full_initialization() first.")
-        self._orientation_estimator.start_readings()
+        if self._orientation_estimator is not None:
+            self._orientation_estimator.start_readings()
         self._measurements_manager.start_reading()
 
     def add_comment(self, comment: str) -> None:
         """Add a comment to the measurements log."""
-        self._measurements_manager.add_comment(comment)
+        if self._measurements_manager is not None:
+            self._measurements_manager.add_comment(comment)
 
     # --- Raspberry Pi Interface Methods ---
 
@@ -165,7 +167,8 @@ class HardwareInterface(ShutdownInterface):
             self._lego_drive_base.shutdown()
 
         self._rpi.shutdown()
-        self._orientation_estimator.shutdown()
+        if self._orientation_estimator is not None:
+            self._orientation_estimator.shutdown()
         if self._measurements_manager is not None:
             self._measurements_manager.shutdown()
 
@@ -307,7 +310,7 @@ class MeasurementsManager(ShutdownInterface):
         self._stop_event = threading.Event()
         self._hardware_interface = hardware_interface
         self._mlogger = MeasurementsLogger()
-        self._screenlogger = hardware_interface._rpi.get_screen_logger()
+        self._rpi = hardware_interface._rpi
 
     def add_measurement(self, measurement: Measurement) -> None:
         """Add a new measurement to the list."""
@@ -339,7 +342,8 @@ class MeasurementsManager(ShutdownInterface):
                 measurement = Measurement(left, right, front, steering_angle,
                                           roll, pitch, yaw,timestamp)
                 self.add_measurement(measurement)
-                self._screenlogger.log_message(front=front, left=left, right=right,current_yaw=yaw,
+                self._rpi.log_message(front=front, left=left,
+                                                           right=right,current_yaw=yaw,
                                                current_steering=steering_angle)
             time.sleep(0.25)
 

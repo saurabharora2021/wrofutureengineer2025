@@ -10,11 +10,10 @@ import adafruit_mpu6050
 from gpiozero import Buzzer, RGBLED, DistanceSensor, Button, Device
 from gpiozero.pins.pigpio import PiGPIOFactory
 from PIL import Image, ImageDraw, ImageFont
-
+from hardware.screenlogger import ScreenLogger
 from hardware.pin_config import PinConfig
 from hardware.hardwareconfig import HardwareConfig
 from base.shutdown_handling import ShutdownInterface
-from hardware.screenlogger import ScreenLogger
 
 logger: logging.Logger = logging.getLogger(__name__)
 class RpiInterface(ShutdownInterface):
@@ -29,6 +28,9 @@ class RpiInterface(ShutdownInterface):
 
     front_distance_sensor: Optional[DistanceSensor] = None
     jumper_pin: Optional[Button] = None
+    _screenlogger: Optional[ScreenLogger] = None
+    display_loglines = True
+
 
     def __init__(self,stabilize:bool) -> None:
         """
@@ -114,9 +116,6 @@ class RpiInterface(ShutdownInterface):
                                                         PinConfig.FRONT_DISTANCE_MAX_DISTANCE)
             self.jumper_pin = Button(PinConfig.JUMPER_PIN, hold_time=1)
 
-        self.screenlogger = ScreenLogger(self)
-        self.display_logger = True
-
         logger.info("RpiInterface initialized successfully.")
 
         if stabilize:
@@ -145,15 +144,25 @@ class RpiInterface(ShutdownInterface):
 
     def get_screen_logger(self) -> ScreenLogger:
         """Get the logger for the RpiInterface."""
-        return self.screenlogger
+        if self._screenlogger is None:
+            self._screenlogger = ScreenLogger()
+        return self._screenlogger
+
+    def log_message(self, front: float, left: float, right: float, current_yaw: float,
+                                                            current_steering: float)->None:
+        """Log a message to the screen."""
+        image: Image.Image = self.get_screen_logger().log_message(front, left, right,
+                                                                current_yaw, current_steering)
+        self.paint_display(image)
+
 
     def disable_logger(self) -> None:
-        """Disable the screen logger."""
-        self.display_logger = False
+        """Disable the logger."""
+        self.display_loglines = False
 
     def enable_logger(self) -> None:
-        """Enable the screen logger."""
-        self.display_logger = True
+        """Enable the logger."""
+        self.display_loglines = True
 
     def buzzer_beep(self, timer: float = 1) -> None:
         """Turn on the buzzer."""
@@ -279,7 +288,7 @@ class RpiInterface(ShutdownInterface):
     def flush_pending_messages(self) -> None:
         """Flush the pending messages to the OLED display."""
         now = time.time()
-        if self.display_logger:
+        if self.display_loglines:
             self.draw.rectangle((0, 0, PinConfig.SCREEN_WIDTH, PinConfig.SCREEN_HEIGHT),
                                 outline=0, fill=0)
             for i, msg in enumerate(self.messages):

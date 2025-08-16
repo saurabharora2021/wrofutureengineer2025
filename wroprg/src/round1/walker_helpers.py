@@ -20,7 +20,7 @@ class EquiWalkerHelper:
 
     def __init__(self,def_distance_left: float, def_distance_right: float,
                  max_left_distance: float, max_right_distance: float,
-                 kp:float=-4.0, ki:float=0.1, kd:float=0.05, kgyro:float=5,
+                 kp:float=-4.0, ki:float=0, kd:float=0.05, kgyro:float=5,
                    def_turn_angle:float=0.0
                  ) -> None:
         self._queue = deque(maxlen=2)
@@ -101,8 +101,8 @@ class EquiWalkerHelper:
             return None
 
         # Sensor fusion: Combine gyro and distance errors
-        gyro_weight = 0.6  # Weight for gyro error
-        distance_weight = 0.4  # Weight for distance error
+        gyro_weight = 0.5  # Weight for gyro error
+        distance_weight = 0.5  # Weight for distance error
         fused_error = (gyro_weight * gyro_correction) + (distance_weight * distance_error)
 
         # PID calculations

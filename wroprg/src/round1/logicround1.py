@@ -48,19 +48,18 @@ class Walker:
 
         gyrodefault = 0
         deltadistance = start_right_distance - start_left_distance
-
+        midpoint:bool = True
         #If Delta is high move towards the center, move by 10cm otherwise too high correction.
         if abs(deltadistance)> 10:
+            midpoint = False
             if start_left_distance < start_right_distance:
                 logger.info("Adjusting left distance")
                 start_left_distance += 10
                 start_right_distance -= 10
-                gyrodefault = -2
             else:
                 logger.info("Adjusting right distance")
                 start_left_distance -= 10
                 start_right_distance += 10
-                gyrodefault = 2
             logger.info("adjusted left %.2f , right %.2f",start_left_distance,start_right_distance)
 
         (maxfront,_,__) = self._intelligence.get_learned_distances()
@@ -70,7 +69,8 @@ class Walker:
         # self.output_inf.reset_gyro()  # Reset gyro to zero
 
         self.handle_straight_walk_to_distance(maxfront,start_left_distance,start_right_distance,
-                                              gyrodefault,self.MIN_SPEED,speedcheck=True)
+                                              gyrodefault,self.MIN_SPEED,speedcheck=True,
+                                              force_change=not midpoint)
 
         #self._stop_walking()
         #return
@@ -183,7 +183,7 @@ class Walker:
         (front,_,_) = self.read_log_distances()
 
         while front > maxfront and self._current_distance == (0, 0):
-            self._handle_walk(helper=helper)
+            self._handle_walk(helper=helper,current_speed=self.WALK_TO_CORNER_SPEED)
             (front,_,_) = self.read_log_distances()
 
         if self._current_distance != (0, 0):
@@ -226,7 +226,7 @@ class Walker:
         # self.output_inf.reset_gyro()
         return
 
-    def _handle_walk(self,helper:EquiWalkerHelper,use_mpu=False,
+    def _handle_walk(self,helper:EquiWalkerHelper,current_speed:float,use_mpu=False,
                     is_unknown_direction:bool=False,is_corner:bool = False,
                     speedcheck=False) -> Optional[float]:
         """Handle walk using helper""" 
@@ -260,10 +260,12 @@ class Walker:
                             left_distance=left_distance,
                              right_distance=right_distance, current_angle=current_angle)
 
-        self._turn_steering_with_logging(turn_angle,speedcheck=speedcheck)
+        self._turn_steering_with_logging(turn_angle,speedcheck=speedcheck,
+                                         current_speed=current_speed)
         return turn_angle
 
-    def _turn_steering_with_logging(self,turn_angle,delta_angle:float=0,speedcheck:bool=False,
+    def _turn_steering_with_logging(self,turn_angle,current_speed:float,delta_angle:float=0,
+                                    speedcheck:bool=False,
                                     max_turn_angle:float=MAX_ANGLE):
         if turn_angle is not None:
             turn_angle = clamp_angle(turn_angle, max_turn_angle)
@@ -288,6 +290,8 @@ class Walker:
             self.output_inf.turn_steering(turn_angle)
         else:
             logger.info("Turn angle is None")
+            if speedcheck:
+                self._start_walking(current_speed)
 
     def _handle_walk_start(self,left_distance:float,
                            right_distance:float,
@@ -336,7 +340,7 @@ class Walker:
         # Implement the gyro corner walking logic here
         # self.output_inf.reset_gyro()
         gyrohelper: GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper(
-            def_turn_angle=def_turn_angle, min_left=15, min_right=15)
+            def_turn_angle=def_turn_angle, min_left=15, min_right=15,hardware=self.output_inf)
 
         (def_front, _, _) = self._intelligence.get_learned_distances()
         (front, left, right) = self.read_log_distances()
@@ -359,7 +363,8 @@ class Walker:
                 self._intelligence.reset_current_distance()
                 self._intelligence.register_callback(report_distances_corner)
 
-            self._turn_steering_with_logging(turn_angle,delta_angle=10,max_turn_angle=20)
+            self._turn_steering_with_logging(turn_angle,delta_angle=15,max_turn_angle=20,
+                                             current_speed=self.MIN_SPEED)
             (front, left, right) = self.read_log_distances()
             if self._start_time != 0:
                 current_time = time.time()
@@ -385,7 +390,7 @@ class Walker:
                                          gyrodefault:float,defaultspeed:float,speedcheck:bool=True,
                                          precondition:Optional[Callable[[float,float,float,float],
                                                                             bool]]=None,
-                                         use_mpu=True,
+                                         use_mpu=True,force_change:bool=False,
                                          base_helper: Optional[EquiWalkerHelper] = None) ->  None:
         """Handle the straight walking logic.
            precondition: Callable Function with argument as (front,left,right),yaw
@@ -395,12 +400,30 @@ class Walker:
 
 
         if base_helper is None:
-            helper: EquiWalkerHelper = self._handle_walk_start(
-                                 left_distance=min_left,
-                                 right_distance=min_right,
-                                 use_mpu=use_mpu,
-                                 def_turn_angle=gyrodefault
-                                 )
+            left_distance_max = self.output_inf.get_left_distance_max()
+            right_distance_max = self.output_inf.get_right_distance_max()
+
+            if force_change is False:
+
+                helper:EquiWalkerHelper = EquiWalkerHelper(
+                    def_distance_left=min_left,
+                    def_distance_right=min_right,
+                    max_left_distance=left_distance_max,
+                    max_right_distance=right_distance_max,
+                    def_turn_angle=gyrodefault,
+                    hardware=self.output_inf,
+                )
+            else:
+                helper:EquiWalkerHelper = EquiWalkerHelper(
+                    def_distance_left=min_left,
+                    def_distance_right=min_right,
+                    max_left_distance=left_distance_max,
+                    max_right_distance=right_distance_max,
+                    def_turn_angle=gyrodefault,
+                    hardware=self.output_inf,
+                    kp=-3,
+                    fused_distance_weight=0.3
+                )
         else:
             helper = base_helper
 
@@ -419,7 +442,7 @@ class Walker:
                         precondition(front,left,right,yaw) is True:
 
             self._handle_walk(helper,use_mpu=use_mpu,is_unknown_direction=True,
-                              speedcheck=speedcheck)
+                              speedcheck=speedcheck,current_speed=defaultspeed)
             (front, left, right) = self.read_log_distances()
             yaw = self.output_inf.get_orientation()[2]
             logger.warning("F:%.2f, L:%.2f, R:%.2f, Y:%.2f , ",
@@ -438,7 +461,8 @@ class Walker:
         knowncolor = ["blue", "orange"]
         color = check_bottom_color(self.output_inf, knowncolor)
 
-        gyrohelper:GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper()
+        gyrohelper:GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper(
+                                                        hardware=self.output_inf)
 
         # running = False
 
@@ -468,7 +492,7 @@ class Walker:
                 turn_angle = gyrohelper.walk_func(left_distance=left, right_distance=right,
                                                   current_angle=yaw)
 
-                self._turn_steering_with_logging(turn_angle)
+                self._turn_steering_with_logging(turn_angle,current_speed=self.MIN_SPEED)
 
                 (front,left,right) = self.read_log_distances()
 

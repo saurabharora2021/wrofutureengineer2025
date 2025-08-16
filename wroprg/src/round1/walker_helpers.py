@@ -167,7 +167,7 @@ class GyroWalkerwithMinDistanceHelper(EquiWalkerHelper):
     """Helper class for Gyro Walker logic with distance."""
 
     def __init__(self,  kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
-                 kgyro: float = -5.0,
+                 kgyro: float = -6.0,
                  def_turn_angle: float = 0.0, min_left: float = -1, min_right: float = -1,
                  fused_distance_weight: float = 0.6, fused_gyro_weight: float = 0.4,
                  hardware: Optional[HardwareInterface]=None

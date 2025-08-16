@@ -10,7 +10,7 @@ import adafruit_mpu6050
 from gpiozero import Buzzer, RGBLED, DistanceSensor, Button, Device
 from gpiozero.pins.pigpio import PiGPIOFactory
 from PIL import Image, ImageDraw, ImageFont
-
+from hardware.screenlogger import ScreenLogger
 from hardware.pin_config import PinConfig
 from hardware.hardwareconfig import HardwareConfig
 from base.shutdown_handling import ShutdownInterface
@@ -28,6 +28,9 @@ class RpiInterface(ShutdownInterface):
 
     front_distance_sensor: Optional[DistanceSensor] = None
     jumper_pin: Optional[Button] = None
+    _screenlogger: Optional[ScreenLogger] = None
+    display_loglines = True
+
 
     def __init__(self,stabilize:bool) -> None:
         """
@@ -113,7 +116,6 @@ class RpiInterface(ShutdownInterface):
                                                         PinConfig.FRONT_DISTANCE_MAX_DISTANCE)
             self.jumper_pin = Button(PinConfig.JUMPER_PIN, hold_time=1)
 
-
         logger.info("RpiInterface initialized successfully.")
 
         if stabilize:
@@ -127,12 +129,12 @@ class RpiInterface(ShutdownInterface):
                 valid_distance = True
                 if (self.get_right_distance() < 0.1 or
                         self.get_right_distance() >= self.get_right_distance_max()):
-                    logger.info("Right distance sensor is not stable, %s cm",
+                    logger.info("Right distance sensor is not stable, %.2f cm",
                                     self.get_right_distance())
                     valid_distance = False
                 if (self.get_left_distance() < 0.1 or
                         self.get_left_distance() >= self.get_left_distance_max()):
-                    logger.info("Left distance sensor is not stable, %s cm",
+                    logger.info("Left distance sensor is not stable, %.2f cm",
                                     self.get_left_distance())
                     valid_distance = False
                 if valid_distance is False:
@@ -140,6 +142,31 @@ class RpiInterface(ShutdownInterface):
                     time.sleep(1)
                 counter += 1
 
+    def get_screen_logger(self) -> ScreenLogger:
+        """Get the logger for the RpiInterface."""
+        if self._screenlogger is None:
+            self._screenlogger = ScreenLogger()
+        return self._screenlogger
+
+    def add_screen_logger_message(self, message: List[str]) -> None:
+        """Add a message to the screen logger."""
+        self.get_screen_logger().add_message(message)
+
+    def log_message(self, front: float, left: float, right: float, current_yaw: float,
+                                                            current_steering: float) -> None:
+        """Log a message to the screen."""
+        image: Image.Image = self.get_screen_logger().log_message(front, left, right,
+                                                                current_yaw, current_steering)
+        self.paint_display(image)
+
+
+    def disable_logger(self) -> None:
+        """Disable the logger."""
+        self.display_loglines = False
+
+    def enable_logger(self) -> None:
+        """Enable the logger."""
+        self.display_loglines = True
 
     def buzzer_beep(self, timer: float = 1) -> None:
         """Turn on the buzzer."""
@@ -265,14 +292,20 @@ class RpiInterface(ShutdownInterface):
     def flush_pending_messages(self) -> None:
         """Flush the pending messages to the OLED display."""
         now = time.time()
-        self.draw.rectangle((0, 0, PinConfig.SCREEN_WIDTH, PinConfig.SCREEN_HEIGHT),
-                            outline=0, fill=0)
-        for i, msg in enumerate(self.messages):
-            # Use constant for line height spacing
-            self.draw.text((0, i * RpiInterface.LINE_HEIGHT), msg, font=self.font, fill=255)
-        self.oled.image(self.image)
-        self.oled.show()
+        if self.display_loglines:
+            self.draw.rectangle((0, 0, PinConfig.SCREEN_WIDTH, PinConfig.SCREEN_HEIGHT),
+                                outline=0, fill=0)
+            for i, msg in enumerate(self.messages):
+                # Use constant for line height spacing
+                self.draw.text((0, i * RpiInterface.LINE_HEIGHT), msg, font=self.font, fill=255)
+            self.oled.image(self.image)
+            self.oled.show()
         self._last_oled_update = now
+
+    def paint_display(self, img: Image.Image) -> None:
+        """Paint the display with the given image."""
+        self.oled.image(img)
+        self.oled.show()
 
     def clear_messages(self) -> None:
         """Clear all messages from the display."""

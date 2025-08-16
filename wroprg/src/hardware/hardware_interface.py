@@ -4,7 +4,7 @@ from collections import deque
 import threading
 import logging
 import time
-from typing import Optional
+from typing import List, Optional
 from base.shutdown_handling import ShutdownInterface
 from hardware.hardwareconfig import HardwareConfig
 from hardware.legodriver import BuildHatDriveBase
@@ -74,8 +74,14 @@ class HardwareInterface(ShutdownInterface):
         if self._measurements_manager is None:
             raise RuntimeError("Measurements manager not initialized. Call" \
                     " full_initialization() first.")
-        self._orientation_estimator.start_readings()
+        if self._orientation_estimator is not None:
+            self._orientation_estimator.start_readings()
         self._measurements_manager.start_reading()
+
+    def add_comment(self, comment: str) -> None:
+        """Add a comment to the measurements log."""
+        if self._measurements_manager is not None:
+            self._measurements_manager.add_comment(comment)
 
     # --- Raspberry Pi Interface Methods ---
 
@@ -149,6 +155,10 @@ class HardwareInterface(ShutdownInterface):
         """Force flush the messages on the OLED screen."""
         self._rpi.force_flush_messages()
 
+    def add_screen_logger_message(self, message: List[str]) -> None:
+        """Add a message to the screen logger."""
+        self._rpi.add_screen_logger_message(message)
+
     def get_jumper_state(self) -> bool:
         """Get the state of the jumper pin."""        
         return self._rpi.get_jumper_state()
@@ -161,7 +171,8 @@ class HardwareInterface(ShutdownInterface):
             self._lego_drive_base.shutdown()
 
         self._rpi.shutdown()
-        self._orientation_estimator.shutdown()
+        if self._orientation_estimator is not None:
+            self._orientation_estimator.shutdown()
         if self._measurements_manager is not None:
             self._measurements_manager.shutdown()
 
@@ -287,9 +298,11 @@ class HardwareInterface(ShutdownInterface):
         left_distance = self.get_left_distance()
         right_distance = self.get_right_distance()
         front_distance = self.get_front_distance()
-        logger.warning("L:%.1f, R:%.1f, F:%.1f",
-                       left_distance, right_distance, front_distance)
         return front_distance, left_distance, right_distance
+
+    def disable_logger(self) -> None:
+        """Disable the logger."""
+        self._rpi.disable_logger()
 
 class MeasurementsManager(ShutdownInterface):
     """Class to read and store measurements from hardware sensors in a separate thread."""
@@ -299,6 +312,7 @@ class MeasurementsManager(ShutdownInterface):
         self._stop_event = threading.Event()
         self._hardware_interface = hardware_interface
         self._mlogger = MeasurementsLogger()
+        self._rpi = hardware_interface._rpi
 
     def add_measurement(self, measurement: Measurement) -> None:
         """Add a new measurement to the list."""
@@ -306,6 +320,9 @@ class MeasurementsManager(ShutdownInterface):
         self._mlogger.write_measurement(measurement)
         logger.debug("Added measurement: %s", measurement)
 
+    def add_comment(self, comment: str) -> None:
+        """Add a comment to the measurements log."""
+        self._mlogger.write_comment(comment)
 
     def get_latest_measurement(self) -> Measurement | None:
         """Get the latest measurement."""
@@ -327,6 +344,9 @@ class MeasurementsManager(ShutdownInterface):
                 measurement = Measurement(left, right, front, steering_angle,
                                           roll, pitch, yaw,timestamp)
                 self.add_measurement(measurement)
+                self._rpi.log_message(front=front, left=left,
+                                                           right=right,current_yaw=yaw,
+                                               current_steering=steering_angle)
             time.sleep(0.25)
 
     def start_reading(self) -> None:
@@ -336,6 +356,7 @@ class MeasurementsManager(ShutdownInterface):
             self._stop_event.clear()
             self._reading_thread = threading.Thread(target=self._read_hardware_loop, daemon=True)
             self._reading_thread.start()
+            self._hardware_interface.disable_logger()
 
     def stop_reading(self) -> None:
         """Stop the background thread for reading hardware."""

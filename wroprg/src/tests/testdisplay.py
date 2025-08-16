@@ -2,9 +2,10 @@
 import logging
 import argparse
 import threading
+from time import sleep
 from hardware.hardware_interface import HardwareInterface
+from hardware.validator import RobotValidator
 from round1.logicround1 import Walker
-from round1.matintelligence import MATDIRECTION, MatIntelligence
 from utils.helpers import HelperFunctions
 
 def main():
@@ -24,27 +25,26 @@ def main():
     try:
 
         pi_inf.force_flush_messages()
-
-        challenge1walker = Walker(pi_inf)
-        intel: MatIntelligence = MatIntelligence()
-        pi_inf.start_measurement_recording()
-
         #action button.
-        pi_inf.wait_for_action()
+        pi_inf.buzzer_beep()
+        # pi_inf.wait_for_action()
+        sleep(1)
+
+        pi_inf.start_measurement_recording()
 
         def run_gyro_walk():
 
-            #lets assume this is AntiClockwise and side1 is complete, we have reached corner1
-            intel.report_direction_side1(MATDIRECTION.ANTICLOCKWISE_DIRECTION)
-
-            challenge1walker.gyro_corner_walk(def_turn_angle=60)
+            while True:
+                pi_inf.add_screen_logger_message(["Hello Line 1","Hello Line 2","Hello Line 3"])
+                sleep(1)
 
         # Start gyro walk in a separate thread
         gyro_thread = threading.Thread(target=run_gyro_walk)
         gyro_thread.start()
 
         # In main thread, call wait_for_action()
-        pi_inf.wait_for_action()
+        while (pi_inf.is_button_pressed() is False and gyro_thread.is_alive()):
+            sleep(0.01)
 
         # Optionally, wait for the gyro walk thread to finish
         # gyro_thread.join()

@@ -1,6 +1,8 @@
 """Main application for the Wro - Raspberry Pi interface."""
 import logging
 import argparse
+import threading
+from time import sleep
 from round1.logicround1 import Walker
 from hardware.validator import RobotValidator
 from hardware.hardware_interface import HardwareInterface
@@ -44,12 +46,24 @@ def main():
         pi_inf.force_flush_messages()
 
         challenge1walker = Walker(pi_inf,nooflaps=1)
-        pi_inf.start_measurement_recording()
 
         #action button.
-        # pi_inf.wait_for_action()
+        pi_inf.wait_for_action()
 
-        challenge1walker.start_walk()
+        def runner():
+            pi_inf.reset_gyro()  # Reset gyro to zero
+            pi_inf.start_measurement_recording()
+
+            challenge1walker.start_walk()
+
+        # Start gyro walk in a separate thread
+        run_thread = threading.Thread(target=runner)
+        run_thread.start()
+        sleep(2)
+
+        # In main thread, call wait_for_action()
+        while (pi_inf.is_button_pressed() is False and run_thread.is_alive()):
+            sleep(0.01)
 
     except (ImportError, AttributeError, RuntimeError) as e:
         logger.error("Error Running Program")

@@ -2,9 +2,9 @@
 import logging
 import argparse
 import time
-from base.mat import mat_color
-from hardware.hardware_interface import HardwareInterface
+from utils.mat import mat_color
 from utils.helpers import HelperFunctions
+from hardware.hardware_interface import HardwareInterface
 
 def main():
     """ Main function to run the Wro - raspberry test color Application."""

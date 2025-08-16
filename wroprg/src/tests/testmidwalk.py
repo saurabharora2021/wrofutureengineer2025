@@ -48,6 +48,23 @@ def main():
         start_right_distance = pi_inf.get_right_distance()
 
         gyrodefault = 0
+        deltadistance = start_right_distance - start_left_distance
+
+        #If Delta is high move towards the center, move by 10cm otherwise too high correction.
+        if abs(deltadistance)> 10:
+            if start_left_distance < start_right_distance:
+                logger.info("Adjusting left distance")
+                start_left_distance += 10
+                start_right_distance -= 10
+                # gyrodefault = -1
+            else:
+                logger.info("Adjusting right distance")
+                start_left_distance -= 10
+                start_right_distance += 10
+                # gyrodefault = 1
+            logger.info("adjusted left %.2f , right %.2f",start_left_distance,start_right_distance)
+
+
 
         maxfront = 120
 
@@ -59,7 +76,7 @@ def main():
 
             challenge1walker.handle_straight_walk_to_distance(maxfront,start_left_distance,
                                                               start_right_distance,
-                                              gyrodefault,Walker.DEFAULT_SPEED,speedcheck=True)
+                                              gyrodefault,Walker.MIN_SPEED,speedcheck=True)
             pi_inf.drive_stop()
 
         # Start gyro walk in a separate thread

@@ -363,14 +363,14 @@ class MatIntelligence(ShutdownInterface):
 
 
     def register_callback(self, callback: Callable[[float,float],None]) -> None:
-        """Register the EquiWalkerHelper instance."""
+        """Register the callback instance."""
         if not callable(callback):
             raise TypeError("callback must be a callable")
         self._callback = callback
         logger.info("Callback registered successfully.")
 
     def unregister_callback(self) -> None:
-        """Unregister the EquiWalkerHelper instance."""
+        """Unregister the callback instance."""
         self._callback = None
         logger.info("Callback unregistered successfully.")
 

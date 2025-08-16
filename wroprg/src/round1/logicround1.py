@@ -6,8 +6,7 @@ from typing import Callable, Optional, Tuple
 from hardware.hardware_interface import HardwareInterface
 from round1.matintelligence import MATDIRECTION, MATGENERICLOCATION, MatIntelligence
 from round1.matintelligence import vote_directions, color_to_direction
-from round1.walker_helpers import EquiWalkerHelper, GyroWalkerHelper
-from round1.walker_helpers import GyroWalkerwithMinDistanceHelper
+from round1.walker_helpers import EquiWalkerHelper, GyroWalkerwithMinDistanceHelper
 from round1.utilityfunctions import clamp_angle, directiontostr, check_bottom_color
 from utils.threadingfunctions import ConditionCheckerThread
 
@@ -259,8 +258,9 @@ class Walker:
             _, _, yaw = self.output_inf.get_orientation()
             current_angle = yaw # Assuming yaw gives the current angle.
 
-        turn_angle = helper.equidistance_walk_func(
-                            left_distance, right_distance, current_angle)
+        turn_angle = helper.walk_func(
+                            left_distance=left_distance,
+                             right_distance=right_distance, current_angle=current_angle)
 
         self._turn_steering_with_logging(turn_angle,speedcheck=speedcheck)
         return turn_angle
@@ -351,8 +351,8 @@ class Walker:
 
             _, _, yaw = self.output_inf.get_orientation()
             logger.info("Current Yaw: %.2f", yaw)
-            turn_angle = gyrohelper.walk_func(yaw, self.output_inf.get_steering_angle(),
-                                              left, right)
+            turn_angle = gyrohelper.walk_func(current_angle=yaw,
+                                              left_distance=left, right_distance=right)
             if not turned and abs(yaw - def_turn_angle) < turn_max_delta :
                 logger.info("Turned achieve lets check distance=====")
                 turned = True
@@ -457,10 +457,8 @@ class Walker:
 
                 _, _, yaw = self.output_inf.get_orientation()
 
-                turn_angle = gyrohelper.walk_func(current_left=left,current_right=right,
-                                                  current_angle = yaw,
-                                                  current_steering_angle=self.output_inf.
-                                                            get_steering_angle())
+                turn_angle = gyrohelper.walk_func(left_distance=left, right_distance=right,
+                                                  current_angle=yaw)
 
                 self._turn_steering_with_logging(turn_angle)
 

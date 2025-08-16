@@ -298,8 +298,6 @@ class HardwareInterface(ShutdownInterface):
         left_distance = self.get_left_distance()
         right_distance = self.get_right_distance()
         front_distance = self.get_front_distance()
-        logger.warning("L:%.1f, R:%.1f, F:%.1f",
-                       left_distance, right_distance, front_distance)
         return front_distance, left_distance, right_distance
 
     def disable_logger(self) -> None:

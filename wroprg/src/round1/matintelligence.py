@@ -86,6 +86,8 @@ class MatIntelligence(ShutdownInterface):
         self._roundcount = roundcount
         self._readings_counter = 0
         self._hardware_interface: Optional[HardwareInterface] = hardware_interface
+        #settings log level to warn to avoid overlogging.
+        logger.setLevel(logging.WARNING)
 
         # Reading for the start location, for starting position
         self._mem_initial_start = (0,0,0)

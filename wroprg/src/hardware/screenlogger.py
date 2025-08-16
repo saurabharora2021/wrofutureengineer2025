@@ -63,7 +63,7 @@ class ScreenLogger:
 
         for _, msg in enumerate(self.messages):
             # Use constant for line height spacing
-            self.draw.text((0, cursor), msg, font=self.font, fill=1, align="center")
+            self.draw.text((self.START_X, cursor), msg, font=self.font, fill=1, align="center")
             cursor += self.LINE_HEIGHT
 
         return self.image

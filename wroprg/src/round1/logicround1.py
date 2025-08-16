@@ -286,6 +286,8 @@ class Walker:
             if (speedcheck and abs(max_delta_angle) >= self.DELTA_ANGLE):
                 self._start_walking(self.MIN_SPEED)
             self.output_inf.turn_steering(turn_angle)
+        else:
+            logger.info("Turn angle is None")       
 
     def _handle_walk_start(self,left_distance:float,
                            right_distance:float,
@@ -415,6 +417,9 @@ class Walker:
                               speedcheck=speedcheck)
             (front, left, right) = self.read_log_distances()
             yaw = self.output_inf.get_orientation()[2]
+            logger.warning("F:%.2f, L:%.2f, R:%.2f, Y:%.2f , ",
+                       front, left, right, yaw)
+            time.sleep(0.005)
 
         self.output_inf.buzzer_beep()
 

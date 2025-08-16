@@ -59,7 +59,7 @@ def main():
 
             challenge1walker.handle_straight_walk_to_distance(maxfront,start_left_distance,
                                                               start_right_distance,
-                                              gyrodefault,Walker.MIN_SPEED,speedcheck=True)
+                                              gyrodefault,Walker.DEFAULT_SPEED,speedcheck=True)
             pi_inf.drive_stop()
 
         # Start gyro walk in a separate thread

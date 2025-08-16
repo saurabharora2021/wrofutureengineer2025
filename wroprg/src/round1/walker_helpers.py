@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 MAX_ANGLE = 30
 MAX_GYRO_DELTA = 0.05 # Maximum gyro delta angle in degrees
-DELTA_DISTANCE_CM = 1
+DELTA_DISTANCE_CM = 0.1
 class PIDController:
     """Simple PID controller."""
 
@@ -23,11 +23,17 @@ class PIDController:
         self._integral = 0
         self._prev_time = time.perf_counter()
 
+    def reset(self):
+        """reset to zero prev values"""
+        self._prev_error = 0
+        self._integral = 0
+        self._prev_time = time.perf_counter()
+
     def calculate(self, error: float) -> float:
         """Calculate the PID output value for the given error."""
 
         now = time.perf_counter()
-        dt = max(0.001, now - self._prev_time)  # Minimum 1ms to avoid division by zero
+        dt = min(max(0.001, now - self._prev_time),0.1)  # Minimum 1ms to avoid division by zero
         self._prev_time = now
 
         # Proportional term
@@ -60,19 +66,19 @@ class EquiWalkerHelper:
 
     def __init__(self, def_distance_left: float, def_distance_right: float,
                  max_left_distance: float, max_right_distance: float,
-                 kp: float = -5.0, ki: float = -0.1, kd: float = -0.05,
-                 kgyro: float = 5.0, def_turn_angle: float = 0.0,
+                 kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
+                 kgyro: float = -5.0, def_turn_angle: float = 0.0,
                  fused_distance_weight: float = 0.5, fused_gyro_weight: float = 0.5,
                  hardware: Optional[HardwareInterface]=None) -> None:
-
+# Default before tuning
+# ki: float = -0.1
+#kd: float = -0.05
         self.def_distance_left = def_distance_left
         self.def_distance_right = def_distance_right
         self.max_left_distance = max_left_distance
         self.max_right_distance = max_right_distance
         self.def_turn_angle = def_turn_angle
         self.kgyro = kgyro
-        #TODO: set gyro to zero
-        self.kgyro = 0
         self.fused_distance_weight = fused_distance_weight
         self.fused_gyro_weight = fused_gyro_weight
         self.pid = PIDController(kp, ki, kd)
@@ -88,8 +94,9 @@ class EquiWalkerHelper:
                       turn:float) -> None:
         """Log walking data to the hardware interface."""
         message:List[str] = [
-            f"Error D : {distance_error:.2f} G : {gyro_error:.2f}",
-            f"Fused :  {fused_error:.2f} Turn: {turn:.2f}"
+            f"Error D :{distance_error:.2f} G :{gyro_error:.2f}",
+            f"Fuse: {fused_error:.2f} Tu:{turn:.2f}",
+            ""
         ]
         if self.hardware is not None:
             self.hardware.add_screen_logger_message(message)
@@ -123,9 +130,17 @@ class EquiWalkerHelper:
         # Control error: positive means steer right
         distance_error = left_delta - right_delta
 
+        if left_distance <= 10:
+            #close to wall, make delta negative
+            distance_error -=10
+        elif right_distance <= 10:
+            #close to right wall, make delta more postive
+            distance_error += 10
+
         # Deadband to avoid small corrections
         if abs(distance_error) < DELTA_DISTANCE_CM and \
                                 abs(gyro_correction) < MAX_GYRO_DELTA:
+            self.pid.reset()
             return None
 
         # Sensor fusion: Combine gyro and distance errors

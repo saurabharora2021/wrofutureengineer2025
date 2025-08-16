@@ -185,7 +185,6 @@ class Walker:
 
         while front > maxfront and self._current_distance == (0, 0):
             self._handle_walk(helper=helper)
-            sleep(0.01)
             (front,_,_) = self.read_log_distances()
 
         if self._current_distance != (0, 0):
@@ -291,7 +290,7 @@ class Walker:
 
     def _handle_walk_start(self,left_distance:float,
                            right_distance:float,
-                           use_mpu:bool=False,kp:float=0,
+                           use_mpu:bool=False,
                            def_turn_angle:float=0.0) -> EquiWalkerHelper:
 
         logger.info("Handling walk start with direction: %s",
@@ -307,7 +306,6 @@ class Walker:
             def_distance_right=right_distance,
             max_left_distance=left_distance_max,
             max_right_distance=right_distance_max,
-            kp=kp,
             def_turn_angle=def_turn_angle
         )
         return helper

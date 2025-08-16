@@ -148,8 +148,13 @@ class RpiInterface(ShutdownInterface):
             self._screenlogger = ScreenLogger()
         return self._screenlogger
 
+    def add_screen_logger_message(self, message: List[str]) -> None:
+        """Add a message to the screen logger."""
+        if self._screenlogger is not None:
+            self._screenlogger.add_message(message)
+
     def log_message(self, front: float, left: float, right: float, current_yaw: float,
-                                                            current_steering: float)->None:
+                                                            current_steering: float) -> None:
         """Log a message to the screen."""
         image: Image.Image = self.get_screen_logger().log_message(front, left, right,
                                                                 current_yaw, current_steering)

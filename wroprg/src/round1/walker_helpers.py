@@ -1,7 +1,8 @@
 """Helper functions for Walker logic in WRO2025."""
 import logging
-from typing import Optional
+from typing import Optional,List
 import time
+from hardware.hardware_interface import HardwareInterface
 from round1.utilityfunctions import clamp_angle
 
 
@@ -54,15 +55,15 @@ class PIDController:
                     )
         return clamp_angle(output, MAX_ANGLE)
 
-#TODO: if distance is less than 10cm we need to strong correct.
 class EquiWalkerHelper:
     """Helper class for equidistance walking with PID control."""
 
     def __init__(self, def_distance_left: float, def_distance_right: float,
                  max_left_distance: float, max_right_distance: float,
-                 kp: float = -5.0, ki: float = 0.0, kd: float = -0.05,
+                 kp: float = -5.0, ki: float = -0.1, kd: float = -0.05,
                  kgyro: float = 5.0, def_turn_angle: float = 0.0,
-                 fused_distance_weight: float = 0.5, fused_gyro_weight: float = 0.5):
+                 fused_distance_weight: float = 0.5, fused_gyro_weight: float = 0.5,
+                 hardware: Optional[HardwareInterface]=None) -> None:
 
         self.def_distance_left = def_distance_left
         self.def_distance_right = def_distance_right
@@ -75,6 +76,23 @@ class EquiWalkerHelper:
         self.fused_distance_weight = fused_distance_weight
         self.fused_gyro_weight = fused_gyro_weight
         self.pid = PIDController(kp, ki, kd)
+        self.hardware: Optional[HardwareInterface] = hardware
+        logger.info("EquiWalkerHelper initialized ...")
+        logger.info("EquiWalkerHelper distances: left=%.2f, right=%.2f", def_distance_left,
+                     def_distance_right)
+        logger.info("EquiWalkerHelper parameters: kgyro=%.2f, def_turn_angle=%.2f, \
+                    fused_distance_weight=%.2f, fused_gyro_weight=%.2f",
+                    kgyro, def_turn_angle, fused_distance_weight, fused_gyro_weight)
+
+    def log_walk_data(self,distance_error:float,gyro_error:float,fused_error:float,
+                      turn:float) -> None:
+        """Log walking data to the hardware interface."""
+        message:List[str] = [
+            f"Error D : {distance_error:.2f} G : {gyro_error:.2f}",
+            f"Fused :  {fused_error:.2f} Turn: {turn:.2f}"
+        ]
+        if self.hardware:
+            self.hardware.add_screen_logger_message(message)
 
     def walk_func(self, left_distance: float, right_distance: float,
                                current_angle: float) -> Optional[float]:
@@ -107,7 +125,8 @@ class EquiWalkerHelper:
             return None
 
         # Sensor fusion: Combine gyro and distance errors
-        fused_error = (self.fused_gyro_weight * gyro_correction) + (self.fused_distance_weight * distance_error)
+        fused_error = (self.fused_gyro_weight * gyro_correction) \
+                            + (self.fused_distance_weight * distance_error)
 
         # Deadband to avoid small corrections
         if abs(fused_error) < 0.1:
@@ -116,7 +135,10 @@ class EquiWalkerHelper:
         logger.info("Fused Error: %.2f", fused_error)
 
         # Use shared PID logic
-        return self.pid.calculate(fused_error)
+        turn = self.pid.calculate(fused_error)
+        self.log_walk_data(distance_error, gyro_error=gyro_correction,
+                           fused_error=fused_error, turn=turn)
+        return turn
 class GyroWalkerwithMinDistanceHelper:
     """Helper class for Gyro Walker logic with distance."""
 
@@ -152,7 +174,8 @@ class GyroWalkerwithMinDistanceHelper:
             distance_error += self.min_right - right_distance
 
         # Sensor fusion: Combine gyro and distance corrections
-        fused_error = (self.fused_gyro_weight * gyro_correction) + (self.fused_distance_weight * distance_error)
+        fused_error = (self.fused_gyro_weight * gyro_correction) \
+                       + (self.fused_distance_weight * distance_error)
 
         # Deadband to avoid small corrections
         if abs(fused_error) < 0.1:

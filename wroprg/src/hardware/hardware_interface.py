@@ -4,7 +4,7 @@ from collections import deque
 import threading
 import logging
 import time
-from typing import Optional
+from typing import List, Optional
 from base.shutdown_handling import ShutdownInterface
 from hardware.hardwareconfig import HardwareConfig
 from hardware.legodriver import BuildHatDriveBase
@@ -154,6 +154,10 @@ class HardwareInterface(ShutdownInterface):
     def force_flush_messages(self) -> None:
         """Force flush the messages on the OLED screen."""
         self._rpi.force_flush_messages()
+
+    def add_screen_logger_message(self, message: List[str]) -> None:
+        """Add a message to the screen logger."""
+        self._rpi.add_screen_logger_message(message)
 
     def get_jumper_state(self) -> bool:
         """Get the state of the jumper pin."""        

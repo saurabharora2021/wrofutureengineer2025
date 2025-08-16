@@ -50,22 +50,28 @@ class PIDController:
         # Combine PID terms
         output = p_term + i_term + d_term
 
+        logger.info("PID angle: %.2f", output
+                    )
         return clamp_angle(output, MAX_ANGLE)
 
+#TODO: if distance is less than 10cm we need to strong correct.
 class EquiWalkerHelper:
     """Helper class for equidistance walking with PID control."""
 
     def __init__(self, def_distance_left: float, def_distance_right: float,
                  max_left_distance: float, max_right_distance: float,
-                 kp: float = -4.0, ki: float = 0.0, kd: float = 0.05,
+                 kp: float = -5.0, ki: float = 0.0, kd: float = -0.05,
                  kgyro: float = 5.0, def_turn_angle: float = 0.0,
                  fused_distance_weight: float = 0.5, fused_gyro_weight: float = 0.5):
+
         self.def_distance_left = def_distance_left
         self.def_distance_right = def_distance_right
         self.max_left_distance = max_left_distance
         self.max_right_distance = max_right_distance
         self.def_turn_angle = def_turn_angle
         self.kgyro = kgyro
+        #TODO: set gyro to zero
+        self.kgyro = 0
         self.fused_distance_weight = fused_distance_weight
         self.fused_gyro_weight = fused_gyro_weight
         self.pid = PIDController(kp, ki, kd)
@@ -83,11 +89,14 @@ class EquiWalkerHelper:
         left_delta = left_distance - self.def_distance_left
         right_delta = right_distance - self.def_distance_right
 
-        # Validate distances
+        # Validate distances, if one distance is bad or missing.
+        # overcorrect on the other side.
         if left_distance >= self.max_left_distance or left_distance <= 0:
             left_delta = 0.0
+            right_delta=right_delta*2
         if right_distance >= self.max_right_distance or right_distance <= 0:
             right_delta = 0.0
+            left_delta=left_delta*2
 
         # Control error: positive means steer right
         distance_error = left_delta - right_delta
@@ -103,6 +112,8 @@ class EquiWalkerHelper:
         # Deadband to avoid small corrections
         if abs(fused_error) < 0.1:
             return None
+
+        logger.info("Fused Error: %.2f", fused_error)
 
         # Use shared PID logic
         return self.pid.calculate(fused_error)

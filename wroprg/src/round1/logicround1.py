@@ -1,5 +1,4 @@
 """ This modules implements the Challenge 1 Walker for the WRO2025 Robot."""
-from time import sleep
 import logging
 import time
 from typing import Callable, Optional, Tuple

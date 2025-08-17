@@ -103,10 +103,10 @@ class OrientationEstimator(ShutdownInterface):
         ax, ay, az = self.get_accel()
         gx, gy, gz = self.get_gyro()
 
-        # Subtract offsets
+        # Subtract offsets for roll and pitch. Yaw bias is handled separately.
         gx -= math.radians(self.roll_offset)
         gy -= math.radians(self.pitch_offset)
-        gz -= math.radians(self.yaw_offset)
+        # gz -= math.radians(self.yaw_offset) # <-- REMOVE THIS LINE
 
         # Prediction: integrate gyro (convert rad/s to deg/s)
         roll_pred = self.roll + math.degrees(gx) * dt
@@ -121,12 +121,20 @@ class OrientationEstimator(ShutdownInterface):
         if stationary:
             self._stationary_gz_samples.append(gz)
             if len(self._stationary_gz_samples) >= self._stationary_sample_limit:
-                # Update bias using average of stationary samples
-                self.yaw_bias = sum(self._stationary_gz_samples) / len(self._stationary_gz_samples)
+                # Calculate the new stationary average
+                stationary_avg_bias = sum(self._stationary_gz_samples) / len(self._stationary_gz_samples)
+                
+                # Instead of replacing, gently blend the new average with the existing bias.
+                # This respects the initial calibration but allows for slow adaptation.
+                # (95% old value, 5% new value)
+                self.yaw_bias = self.yaw_bias * 0.95 + stationary_avg_bias * 0.05
+
+                logger.info("Refined Stationary yaw bias to: %.4f rad/s", self.yaw_bias)
                 self._stationary_gz_samples.clear()
         else:
             self._stationary_gz_samples.clear()
 
+        # Apply the single, unified bias correction
         corrected_gz = gz - self.yaw_bias
         self.yaw += math.degrees(corrected_gz) * dt
 
@@ -152,14 +160,9 @@ class OrientationEstimator(ShutdownInterface):
         self.pitch = pitch
         self.yaw = yaw
 
-        # Reset yaw bias (rad/s) and optionally sample current bias
-        self.yaw_bias = 0.0
-        if sample_yaw_bias:
-            try:
-                _, _, gz = self.get_gyro()  # rad/s
-                self.yaw_bias = gz
-            except Exception:
-                pass
+        # Reset yaw bias to the last known good calibrated value.
+        # This is more reliable than sampling a single point.
+        self.yaw_bias = math.radians(self.yaw_offset)
 
         # Reinitialize accel-angle Kalman filters with same tuning
         self.kalman_roll = SimpleKalmanFilter(q=self.kalman_roll.q, r=self.kalman_roll.r, p=1.0,
@@ -174,12 +177,13 @@ class OrientationEstimator(ShutdownInterface):
         """Returns (roll, pitch, yaw) in degrees."""
         return self.roll, self.pitch, self.yaw
 
-    def calibrate_imu(self, samples=100) -> tuple[float, float, float]:
+    def calibrate_imu(self, samples=200) -> tuple[float, float, float]:
         """
         Calibrate IMU by averaging gyro readings over a number of samples.
         Returns offsets for roll, pitch, yaw (in degrees).
         """
         print("Calibrating IMU... Place the robot on a perfectly level surface.")
+        time.sleep(0.5)
         total_gx = 0.0
         total_gy = 0.0
         total_gz = 0.0
@@ -199,4 +203,8 @@ class OrientationEstimator(ShutdownInterface):
         self.roll_offset = offset_roll
         self.pitch_offset = offset_pitch
         self.yaw_offset = offset_yaw
+
+        # Set the primary yaw_bias (in rad/s) from the good calibration
+        self.yaw_bias = math.radians(offset_yaw)
+
         return offset_roll, offset_pitch, offset_yaw

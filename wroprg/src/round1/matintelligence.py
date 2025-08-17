@@ -87,7 +87,7 @@ class MatIntelligence(ShutdownInterface):
         self._readings_counter = 0
         self._hardware_interface: Optional[HardwareInterface] = hardware_interface
         #settings log level to warn to avoid overlogging.
-        logger.setLevel(logging.WARNING)
+        # logger.setLevel(logging.WARNING)
 
         # Reading for the start location, for starting position
         self._mem_initial_start = (0,0,0)
@@ -246,6 +246,13 @@ class MatIntelligence(ShutdownInterface):
         else:
             return (-1,-1,-1)
 
+    def _mid_distance(self) -> float|None:
+        """Get the mid distance for the current location."""
+        if self._current_min_distances is not None:
+            mid= (self._current_min_distances[0] + self._current_min_distances[1]) / 2
+            return mid
+        return None
+
     def location_complete(self) -> MATLOCATION:
         """Change the current location of the Mat Walker."""
         logger.info("Location complete: %s",self._location)
@@ -253,37 +260,45 @@ class MatIntelligence(ShutdownInterface):
         # if self._roundno == 1:
             #we are learning the distances for the first round.
         self._wait_for_readings()
+        next_location = self._next_location()
+
         if location_to_genericlocation(self._location) == MATGENERICLOCATION.SIDE:
             # We are at a side, so we can learn the distances.
-            if self._current_min_distances is not None:
+            mid = self._mid_distance()
+            if mid is not None:
                 self._learned_distances[self._location] = (100,
-                                                        self._current_min_distances[0],
-                                                        self._current_min_distances[1])
+                                                        mid,
+                                                        mid)
         else:
             #We are at a corner , so we learned the distance for the next side.
-            next_location = self._next_location()
-            if self._current_min_distances is not None:
+            mid = self._mid_distance()
+            if mid is not None:
                 logger.info("Learning distances for next location: %s", next_location)
                 logger.info("Current min distances: %s", self._current_min_distances)
-                mid_distance = (self._current_min_distances[0] + self._current_min_distances[1])/2
                 self._learned_distances[next_location] = (100,
-                                                        mid_distance,
-                                                        mid_distance)
+                                                        mid,mid)
 
         if self._location == MATLOCATION.CORNER_4:
             self._roundno += 1
-        self._location = self._next_location()
+        self._location = next_location
         #reset the min locations.
-        if self._learned_distances.get(self._location) is not None:
-            self._current_min_distances = self._learned_distances.get(self._location)
-        else:
-            if self._roundno == 1:
-                #this can happen
+
+        self._current_min_distances = self.get_learned_distances()
+
+        if self._roundno == 1:
+            mid = self._mid_distance()
+            if mid is not None and mid < 25:
                 self._current_min_distances = self.DEFAULT_DISTANCE
-            else:
-                logger.error("Cannot find current min for location: %s", self._location)
+        
         if self._hardware_interface is not None:
+            logger.info("NEW LOCATION===%s", self._location)
             self._hardware_interface.add_comment(f"New Location : {self._location}")
+        else:
+            logger.error("Hardware interface is not set, cannot add comment.")
+
+        logger.info("Current readings... Front: %.2f, Left: %.2f, Right: %.2f",
+                    self._current_min_distances[0], self._current_min_distances[1],
+                    self._current_min_distances[2])
         return self._location
 
     def _next_location(self) -> MATLOCATION:

@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class BuildHatDriveBase(ShutdownInterface):
     """ This class implements the Drive Base using Build Hat motors and sensors."""
 
-    MAX_STEERING_DEGREE: Final = 38
+    MAX_STEERING_DEGREE: Final = 45
     # Negative gear ratio indicates that positive steering input results in a negative motor
     # rotation due to the physical gear setup.
     STEERING_GEAR_RATIO: Final = -2

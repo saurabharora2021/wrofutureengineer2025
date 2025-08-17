@@ -173,6 +173,8 @@ class GyroWalkerwithMinDistanceHelper(EquiWalkerHelper):
                  hardware: Optional[HardwareInterface]=None
                  ) -> None:
         # Call base class __init__ with default values for required parameters
+        logger.info("GyroWalkerwithMinDistanceHelper initialized ...")
+
         super().__init__(
             def_distance_left=0.0,
             def_distance_right=0.0,

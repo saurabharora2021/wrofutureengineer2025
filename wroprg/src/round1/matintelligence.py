@@ -174,6 +174,12 @@ class MatIntelligence(ShutdownInterface):
             else:
                 time.sleep(0.01)  # Avoid busy waiting
 
+    def print_mat_intelligence(self):
+        """Print the current state of MatIntelligence."""
+        logger.info("MatIntelligence State:")
+        logger.info("%s",self._learned_distances)
+
+
     def get_round_number(self) -> int:
         """Get the current round number."""
         return self._roundno
@@ -296,9 +302,8 @@ class MatIntelligence(ShutdownInterface):
         else:
             logger.error("Hardware interface is not set, cannot add comment.")
 
-        logger.info("Current readings... Front: %.2f, Left: %.2f, Right: %.2f",
-                    self._current_min_distances[0], self._current_min_distances[1],
-                    self._current_min_distances[2])
+        logger.info("Current readings... Left: %.2f, Right: %.2f",
+                    self._current_min_distances[0], self._current_min_distances[1])
         return self._location
 
     def _next_location(self) -> MATLOCATION:
@@ -361,9 +366,9 @@ class MatIntelligence(ShutdownInterface):
         if self._current_min_distances is not None:
             current_total_distance= self._current_min_distances[0] + self._current_min_distances[1]
 
-        logger.info("Current distance: %.2f, New distance: %.2f",
-                     current_total_distance, total_distance)
         if total_distance < current_total_distance:
+            logger.info("Current distance: %.2f, New distance: %.2f",
+                     current_total_distance, total_distance)
             left_distance = total_distance / 2
             right_distance = total_distance / 2
 

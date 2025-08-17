@@ -45,9 +45,9 @@ class RobotValidator:
             return False
         #Mat Logic, at starting point , size of mat is 100cm. so left and right distance should
         # not be greater than 100cm, since bot also has some width.
-        if left_distance + right_distance > 100:
+        if left_distance + right_distance > 105:
             logger.error("Invalid distances: Left=%.2f, Right=%.2f. Total distance is greater" \
-                        " than 100cm.", left_distance, right_distance)
+                        " than 105cm.", left_distance, right_distance)
             return False
 
         # Lets check if Raspberry Pi is not throttling

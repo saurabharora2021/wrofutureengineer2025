@@ -57,8 +57,8 @@ Key features:
 </p>
 
 - **Kanak Arora** – Lead Programming and Electronics and Basic build development– [xyz@email.com](mailto:xyz@email.com)  
-- **Mohit something** – Electronics and Program development – [xyz@email.com](mailto:xyz@email.com)
-- **Rachit something** – Electronics and Build development– [xyz@email.com](mailto:xyz@email.com)
+- **Mohit Kuriseti** – Electronics and Program development – [xyz@email.com](mailto:xyz@email.com)
+- **Rachit Tiwari** – Electronics and Build development– [xyz@email.com](mailto:xyz@email.com)
 - **Team YoLabs** – WRO Future Engineers preparation and reference build development.  
 
 

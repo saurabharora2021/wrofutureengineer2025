@@ -67,7 +67,7 @@ def vote_directions(list_of_directions: list[MATDIRECTION]) -> MATDIRECTION:
 class MatIntelligence(ShutdownInterface):
     """Class to implement the mathematical intelligence for the Mat used."""
 
-    DEFAULT_DISTANCE = (100,20)
+    DEFAULT_DISTANCE = (90,20)
     MAX_WALL2WALL_DISTANCE = 110
     MIN_WALL2WALL_DISTANCE = 60
     ROBOT_WIDTH = 20  # Width of the robot in cm

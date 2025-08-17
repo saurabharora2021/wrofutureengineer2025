@@ -48,6 +48,7 @@ class Walker:
 
         gyrodefault = 0
         deltadistance = start_right_distance - start_left_distance
+        totalstartdistance = start_left_distance + start_right_distance
         midpoint:bool = True
         #If Delta is high move towards the center, move by 10cm otherwise too high correction.
         if abs(deltadistance)> 10:
@@ -66,8 +67,6 @@ class Walker:
 
         logger.info("Max front distance: %.2f", maxfront)
 
-        # self.output_inf.reset_gyro()  # Reset gyro to zero
-
         self.handle_straight_walk_to_distance(maxfront,start_left_distance,start_right_distance,
                                               gyrodefault,self.MIN_SPEED,speedcheck=True,
                                               force_change=not midpoint)
@@ -75,7 +74,8 @@ class Walker:
         #self._stop_walking()
         #return
         #Complete walk to corner , now lets find the color for direction.
-        (color,color2) = self.walk_read_mat_color()
+
+        (color,color2) = self.walk_read_mat_color(start_distance=totalstartdistance)
 
         #ensure we have reached corner.
         self.walk_to_corner()
@@ -133,7 +133,6 @@ class Walker:
         self.handle_unknowndirection_walk()
         #we don't need camera Now
         self.output_inf.camera_off()
-        # self.output_inf.reset_gyro()
 
         #TODO: we cannot determine direction, beep and stop.
         if self._intelligence.get_direction() == MATDIRECTION.UNKNOWN_DIRECTION:
@@ -213,9 +212,9 @@ class Walker:
             if current_direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
                 # lets assume this is AntiClockwise and side1 is complete,
                 # we have reached corner1
-                def_turn_angle=50
+                def_turn_angle=45
             else:
-                def_turn_angle=-50
+                def_turn_angle=-45
             self.gyro_corner_walk(def_turn_angle=def_turn_angle)
         else:
             raise NotImplementedError("Gyro corner walk is not implemented for round 2.")
@@ -223,7 +222,6 @@ class Walker:
         #TODO: Turned the corner, lets stop the base.
         self._stop_walking()
         self.output_inf.buzzer_beep()
-        # self.output_inf.reset_gyro()
         return
 
     def _handle_walk(self,helper:EquiWalkerHelper,current_speed:float,use_mpu=False,
@@ -338,9 +336,9 @@ class Walker:
             self._current_yaw = self.output_inf.get_orientation()[2]
 
         # Implement the gyro corner walking logic here
-        # self.output_inf.reset_gyro()
+        self.output_inf.reset_gyro()
         gyrohelper: GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper(
-            def_turn_angle=def_turn_angle, min_left=15, min_right=15,hardware=self.output_inf)
+            def_turn_angle=def_turn_angle, min_left=20, min_right=20,hardware=self.output_inf)
 
         (def_front, _, _) = self._intelligence.get_learned_distances()
         (front, left, right) = self.read_log_distances()
@@ -451,18 +449,28 @@ class Walker:
 
         self.output_inf.buzzer_beep()
 
-    def walk_read_mat_color(self)-> Tuple[str|None,str|None]:
+    def walk_read_mat_color(self, start_distance: float) -> Tuple[str|None,str|None]:
         """Read the bottom color using the mat_color function."""
 
         self._start_walking(self.MIN_SPEED)
 
         logger.info("Time to check color")
 
+        min_left = 40
+        min_right = 40
+
+        if start_distance < 70:
+            min_left = 20
+            min_right = 20
+
         knowncolor = ["blue", "orange"]
         color = check_bottom_color(self.output_inf, knowncolor)
 
         gyrohelper:GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper(
-                                                        hardware=self.output_inf)
+                                                        hardware=self.output_inf,
+                                                        min_left=min_left,
+                                                        min_right=min_right
+                                                    )
 
         # running = False
 

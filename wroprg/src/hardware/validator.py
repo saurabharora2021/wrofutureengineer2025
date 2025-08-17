@@ -36,17 +36,17 @@ class RobotValidator:
         #Check distance sensors, left and right should be greater than 0
         left_distance = self.hardware_inf.get_left_distance()
         right_distance = self.hardware_inf.get_right_distance()
-        logger.info("Left Distance: %s, Right Distance: %s", left_distance, right_distance)
+        logger.info("Left Distance: %.2f, Right Distance: %.2f", left_distance, right_distance)
         if (left_distance <= 0 or right_distance <= 0 or
             left_distance >= self.hardware_inf.get_left_distance_max() or
               right_distance >= self.hardware_inf.get_right_distance_max()):
-            logger.error("Invalid distances: Left=%s, Right=%s.",
+            logger.error("Invalid distances: Left=%.2f, Right=%.2f.",
                               left_distance, right_distance)
             return False
         #Mat Logic, at starting point , size of mat is 100cm. so left and right distance should
         # not be greater than 100cm, since bot also has some width.
         if left_distance + right_distance > 100:
-            logger.error("Invalid distances: Left=%s, Right=%s. Total distance is greater" \
+            logger.error("Invalid distances: Left=%.2f, Right=%.2f. Total distance is greater" \
                         " than 100cm.", left_distance, right_distance)
             return False
 

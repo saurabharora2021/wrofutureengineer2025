@@ -66,7 +66,17 @@ class BuildHatDriveBase(ShutdownInterface):
 
         logger.warning("After TurnPosition front wheel:%s", self.front_motor.get_position())
 
+    def camera_on(self) -> None:
+        """Turn on the camera."""
+        if self.bottom_color_sensor is None:
+            raise RuntimeError("Bottom color sensor not initialized.")
+        self.bottom_color_sensor.on()
 
+    def camera_off(self) -> None:
+        """Turn off the camera."""
+        if self.bottom_color_sensor is None:
+            raise RuntimeError("Bottom color sensor not initialized.")
+        self.bottom_color_sensor.off()
 
     def turn_steering(self, degrees: float, steering_speed: float, retry:int=3) -> None:
         """
@@ -112,7 +122,7 @@ class BuildHatDriveBase(ShutdownInterface):
             logger.warning("Front not correct after turn: %s, expected: %s",
                            final_position, target_position)
             if retry > 0:
-                self.turn_steering(degrees, steering_speed=steering_speed+10, retry=retry - 1)
+                self.turn_steering(degrees, steering_speed=steering_speed+15, retry=retry - 1)
 
     def check_set_steering(self, expected_position: float = 0,min_error:float = 2,
                            retrycount:int = 3,steering_speed:float=10) -> None:
@@ -145,7 +155,7 @@ class BuildHatDriveBase(ShutdownInterface):
         """Run the drive base forward at the specified speed."""
         # Due to the gear combination, we need to run the motor in negative
         # direction to move forward.
-        self.back_motor.start(-1 * speed)
+        self.back_motor.start(speed)
 
     def stop(self) -> None:
         """Stop the drive base."""

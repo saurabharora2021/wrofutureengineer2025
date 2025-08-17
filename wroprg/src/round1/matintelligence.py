@@ -77,7 +77,8 @@ class MatIntelligence(ShutdownInterface):
     WALLFRONTDISTANCE=15 # while corner walking , maximum distance from the wall in front
     WALLSIDEDISTANCE=20 # while corner walking , maximum distance from the wall on the side
 
-    def __init__(self,roundcount:int = 1, hardware_interface: Optional[HardwareInterface]=None) -> None:
+    def __init__(self,roundcount:int = 1, hardware_interface: Optional[HardwareInterface]=None
+                                                    ) -> None:
         """Initialize the MatIntelligence class."""
         self._deque = deque()
         self._direction = MATDIRECTION.UNKNOWN_DIRECTION
@@ -217,11 +218,11 @@ class MatIntelligence(ShutdownInterface):
         self._current_min_distances = self.DEFAULT_DISTANCE
         logger.info("Report side 1, current min distances: %.2f", self._current_min_distances)
 
-    def _wait_for_readings(self, timeout: float = 5.0) -> None:
+    def _wait_for_readings(self, timeout: float = 2.0) -> None:
         """Wait for readings to be processed."""
         start_time = time.time()
         while len(self._deque) > 0 and (time.time() - start_time) < timeout:
-            time.sleep(0.1)
+            time.sleep(0.01)
 
     def reset_current_distance(self):
         """Reset the current distance readings."""
@@ -262,9 +263,6 @@ class MatIntelligence(ShutdownInterface):
     def location_complete(self) -> MATLOCATION:
         """Change the current location of the Mat Walker."""
         logger.info("Location complete: %s",self._location)
-        #TODO: should we reset in first round ? or every round ?
-        # if self._roundno == 1:
-            #we are learning the distances for the first round.
         self._wait_for_readings()
         next_location = self._next_location()
 
@@ -295,7 +293,7 @@ class MatIntelligence(ShutdownInterface):
             mid = self._mid_distance()
             if mid is not None and mid < 25:
                 self._current_min_distances = self.DEFAULT_DISTANCE
-        
+
         if self._hardware_interface is not None:
             logger.info("NEW LOCATION===%s", self._location)
             self._hardware_interface.add_comment(f"New Location : {self._location}")
@@ -305,6 +303,13 @@ class MatIntelligence(ShutdownInterface):
         logger.info("Current readings... Left: %.2f, Right: %.2f",
                     self._current_min_distances[0], self._current_min_distances[1])
         return self._location
+
+    def reprocess_map(self):
+        """Reprocess the map based on the current readings."""
+        logger.info("Reprocessing map...")
+        ### This method can be used to reprocess the map based on the current readings.
+        #TODO: we can find the optimal front distance based on width of the column.
+        #TODO: for corners we can find the optimal outside and inside distances while walkings.
 
     def _next_location(self) -> MATLOCATION:
         """Get the next location in the sequence."""
@@ -350,7 +355,6 @@ class MatIntelligence(ShutdownInterface):
 
         if self._readings_counter == 1:
             # This is the first reading, set the starting distances
-            #TODO: lets try to middle the bot.
             total= left_distance + right_distance
             left_distance = total/2
             right_distance = total/2

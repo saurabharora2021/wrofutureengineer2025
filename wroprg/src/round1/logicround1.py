@@ -4,7 +4,6 @@ import time
 from typing import Callable, Optional, Tuple
 from hardware.hardware_interface import HardwareInterface
 from round1.matintelligence import MATDIRECTION, MATGENERICLOCATION, MatIntelligence
-from round1.matintelligence import MATLOCATION
 from round1.matintelligence import vote_directions, color_to_direction
 from round1.walker_helpers import EquiWalkerHelper, GyroWalkerwithMinDistanceHelper
 from round1.utilityfunctions import clamp_angle, directiontostr, check_bottom_color
@@ -152,9 +151,9 @@ class Walker:
         #we don't need camera Now
         self.output_inf.camera_off()
 
-        #TODO: we cannot determine direction, beep and stop.
+        #we cannot determine direction, beep and stop.
         if self._intelligence.get_direction() == MATDIRECTION.UNKNOWN_DIRECTION:
-            logger.warning("Direction is unknown, stopping the walk.")
+            logger.error("Direction is unknown, stopping the walk.")
             self.output_inf.buzzer_beep()
             self.output_inf.led1_red()
             self.output_inf.force_flush_messages()
@@ -168,16 +167,9 @@ class Walker:
             if self._intelligence.get_generic_location() == MATGENERICLOCATION.CORNER:
                 # Handle corner.
                 self.handle_corner()
-                # self._stop_walking()
-                # return
-                # if self._intelligence.get_location()==MATLOCATION.SIDE_4:
-                #     self._stop_walking()
-                #     return
             else:
                 #handle SIDE
                 self.handle_side()
-                # self._stop_walking()
-                # return
 
         #print the matintelligence
         self._intelligence.print_mat_intelligence()
@@ -188,10 +180,10 @@ class Walker:
         total_learned = learned_left + learned_right
         total_actual = actual_left + actual_right
         if abs(total_learned - total_actual) < 2:
-           #forget the difference, center actual an return
-           return self._center_bot_correction(front, actual_left, actual_right)
+            #forget the difference, center actual an return
+            return self._center_bot_correction(front, actual_left, actual_right)
         else:
-            # we need to proportionally reduce actual 
+            # we need to proportionally reduce actual
             if total_actual<total_learned:
                 return self._center_bot_correction(front, actual_left, actual_right)
             else:
@@ -216,9 +208,14 @@ class Walker:
         self._stop_walking()
         self.output_inf.reset_gyro()
 
+
+        max_left = self.output_inf.get_left_distance_max()
+        max_right = self.output_inf.get_right_distance_max()
+
         (minfront,left_def,right_def) = self._intelligence.get_learned_distances()
 
         def_yaw = self.output_inf.get_orientation()[2]
+        current_yaw = def_yaw
 
         (current_front,current_left,current_right) = self.read_log_distances()
 
@@ -236,10 +233,14 @@ class Walker:
             # self._stop_walking()
 
         prev_distance = current_left + current_right
-        def condition_met(front,left,right,yaw) -> bool:
+        prev_left = current_left
+        prev_right = current_right
+        def condition_met(_front,left,right,_yaw) -> bool:
             # Define the condition for stopping the walk
+            # Either you have found the new minimum point or
+            # previous distances are less than current distances by a good margin.
             return self._current_distance == (0, 0) and \
-                   abs((current_left + current_right)- prev_distance)< 5
+                   abs((left + right)- prev_distance)< 5
 
         self._intelligence.register_callback(report_distances_side)
 
@@ -249,27 +250,62 @@ class Walker:
             logger.info("Starting round handle side...")
             self.handle_straight_walk_to_distance(min_front=minfront,min_left=left_def,
                                                   min_right=right_def,
-                                              gyrodefault=def_yaw,defaultspeed=self.DEFAULT_SPEED,
+                                              gyrodefault=current_yaw,
+                                              defaultspeed=self.DEFAULT_SPEED,
                                               precondition=condition_met)
             (current_front,current_left,current_right) = self.read_log_distances()
-            #Either you have found a new less point, or current left and right are less the previous.
-            #time to correct and center
+            #Either you have found a new less point, or current left and right are
+            #  less the previous time to correct and center
             if self._current_distance != (0, 0):
                 _,left_def, right_def = self._side_bot_centering(current_front,
                                                     learned_left=self._current_distance[0],
                                                     learned_right=self._current_distance[1],
                                                     actual_left=current_left,
-                                                    actual_right=current_right) 
+                                                    actual_right=current_right)
                 self._current_distance = (0, 0)
-                logger.info("Updated Def distances - Left: %.2f, Right: %.2f", left_def, right_def)
+                logger.info("Updated Def distances current distances - L: %.2f, R: %.2f", left_def,
+                                                                                     right_def)
+                current_yaw = def_yaw
             elif abs((current_left + current_right)- prev_distance) > 5:
-                # we have straighten lets recalibrated.
-                _,left_def, right_def = self._side_bot_centering(current_front,
-                                                    learned_left=self._current_distance[0],
-                                                    learned_right=self._current_distance[1],
-                                                    actual_left=current_left,
-                                                    actual_right=current_right) 
-                prev_distance = current_left + current_right
+
+                delta_distance = prev_distance - (current_left + current_right)
+                logger.info("Significant distance change detected: %.2f", delta_distance)
+                if delta_distance > 0:
+                    # If the delta is positive, means we are getting straighter
+                    _, left_def, right_def = self._side_bot_centering(current_front,
+                                                            learned_left=self._current_distance[0],
+                                                            learned_right=self._current_distance[1],
+                                                            actual_left=current_left,
+                                                            actual_right=current_right)
+                    prev_distance = current_left + current_right
+                    prev_left = current_left
+                    prev_right = current_right
+                    current_yaw = def_yaw
+                    logger.info("Updated Def distances for positive delta - L: %.2f, R: %.2f",
+                                 left_def, right_def)
+                else:
+                    # distance is negative, means we are getting less straight, this is bad news.
+                    # can we somehow correct this.
+                    if current_left >= max_left or current_right >= max_right:
+                        logger.warning("distance increase from prev distance, but one "\
+                                       "side is missing cannot reset.")
+                    else:
+                        if current_left > prev_left and current_right <= prev_right:
+                            #we are drifting right , try to gyro corrections to left.
+                            current_yaw +=1
+                            prev_distance = current_left + current_right
+                            prev_left = current_left
+                            prev_right = current_right
+                            logger.info("Drifing right , we need to reset gyro to handle")
+                            logger.info("Updated Def distances for delta - Yaw: %.2f",current_yaw)
+                        elif current_right > prev_right and current_left <= prev_left:
+                            # we are drifting left, try gyro corrections to right
+                            current_yaw -= 1
+                            prev_distance = current_left + current_right
+                            prev_left = current_left
+                            prev_right = current_right
+                            logger.info("Drifing left , we need to reset gyro to handle")
+                            logger.info("Updated Def distances for delta - Yaw: %.2f",current_yaw)
             else:
                 logger.info("Completed round handle side...")
 
@@ -283,33 +319,30 @@ class Walker:
 
         self.walk_to_corner()
         current_direction = self._intelligence.get_direction()
-        (front,left,right) = self.read_log_distances()
+        (_front,left,right) = self.read_log_distances()
 
-        if self._intelligence.get_round_number() == 1:
-            def_turn_angle = 0
-            current_angle = self.output_inf.get_orientation()[2]
-            logger.info("handle_corner current yaw %.2f",current_angle)
-            if current_direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
-                # lets assume this is AntiClockwise and side1 is complete,
-                # we have reached corner1
-                if right > 50:
-                #TODO: test angle clockwise angle
-                    logger.info("Based on current right distance, turn 65")
-                    def_turn_angle=65 #-current_angle
-                else:
-                    logger.info("Based on current right distance, turn 55")
-                    def_turn_angle=55 #-current_angle
+        def_turn_angle = 0
+        current_angle = self.output_inf.get_orientation()[2]
+        logger.info("handle_corner current yaw %.2f",current_angle)
+        if current_direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
+            # lets assume this is AntiClockwise and side1 is complete,
+            # we have reached corner1
+            if right > 50:
+                logger.info("Based on current right distance, turn 65")
+                def_turn_angle=max(65, 65-current_angle)
             else:
-                if left > 50:
-                    logger.info("Based on current left distance, turn -65")
-                    def_turn_angle=min(-65, -65-current_angle)
-                else:
-                    logger.info("Based on current left distance, turn -55")
-                    def_turn_angle=min(-55 , -55-current_angle)
-            self.gyro_corner_walk(def_turn_angle=def_turn_angle)
-            self.output_inf.buzzer_beep()
+                logger.info("Based on current right distance, turn 55")
+                def_turn_angle=max(55, 55-current_angle)
         else:
-            raise NotImplementedError("Gyro corner walk is not implemented for round 2.")
+            if left > 50:
+                logger.info("Based on current left distance, turn -65")
+                def_turn_angle=min(-65, -65-current_angle)
+            else:
+                logger.info("Based on current left distance, turn -55")
+                def_turn_angle=min(-55 , -55-current_angle)
+        self.gyro_corner_walk(def_turn_angle=def_turn_angle)
+        self.output_inf.buzzer_beep()
+
         return
 
     def _handle_walk(self,helper:EquiWalkerHelper,current_speed:float,use_mpu=False,
@@ -379,29 +412,6 @@ class Walker:
             if speedcheck:
                 self._start_walking(current_speed)
 
-    def _handle_walk_start(self,left_distance:float,
-                           right_distance:float,
-                           use_mpu:bool=False,
-                           def_turn_angle:float=0.0) -> EquiWalkerHelper:
-
-        logger.info("Handling walk start with direction: %s",
-                     directiontostr(self._intelligence.get_direction()))
-        # if use_mpu:
-            # self.output_inf.reset_gyro()  # Reset yaw to zero
-
-        left_distance_max = self.output_inf.get_left_distance_max()
-        right_distance_max = self.output_inf.get_right_distance_max()
-
-        helper:EquiWalkerHelper = EquiWalkerHelper(
-            def_distance_left=left_distance,
-            def_distance_right=right_distance,
-            max_left_distance=left_distance_max,
-            max_right_distance=right_distance_max,
-            def_turn_angle=def_turn_angle,
-            hardware=self.output_inf,
-        )
-        return helper
-
     def read_log_distances(self)->tuple[float, float, float]:
         """Read the distances from the log."""
         (front_distance,left_distance,right_distance) = self.output_inf.logdistances()
@@ -411,6 +421,8 @@ class Walker:
 
     def gyro_corner_walk(self,def_turn_angle:float):
         """Handle the gyro corner walking logic."""
+
+        #TODO: Implement the gyro corner for round 2 onwards.
         logger.info("Gyro corner walk initiated with turn angle: %.2f", def_turn_angle)
 
         self._current_distance = (0, 0)
@@ -477,7 +489,6 @@ class Walker:
             (front, left, right) = self.read_log_distances()
             if self._start_time != 0:
                 current_time = time.time()
-            
 
         if front<= def_front:
             logger.error("Too close to wall for front wall.")

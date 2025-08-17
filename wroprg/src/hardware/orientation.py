@@ -122,8 +122,9 @@ class OrientationEstimator(ShutdownInterface):
             self._stationary_gz_samples.append(gz)
             if len(self._stationary_gz_samples) >= self._stationary_sample_limit:
                 # Calculate the new stationary average
-                stationary_avg_bias = sum(self._stationary_gz_samples) / len(self._stationary_gz_samples)
-                
+                stationary_avg_bias = sum(self._stationary_gz_samples) / \
+                                      len(self._stationary_gz_samples)
+
                 # Instead of replacing, gently blend the new average with the existing bias.
                 # This respects the initial calibration but allows for slow adaptation.
                 # (95% old value, 5% new value)
@@ -149,7 +150,7 @@ class OrientationEstimator(ShutdownInterface):
         self.pitch = a * pitch_pred + (1.0 - a) * accel_pitch
 
     def reset(self, roll: float = 0.0, pitch: float = 0.0, yaw: float = 0.0,
-               sample_yaw_bias: bool = True) -> None:
+                ) -> None:
         """
         Reset internal state and start estimation again.
         - roll/pitch/yaw are in degrees

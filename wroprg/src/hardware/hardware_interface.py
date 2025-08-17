@@ -4,7 +4,7 @@ from collections import deque
 import threading
 import logging
 import time
-from typing import Optional, Tuple
+from typing import List, Optional
 from base.shutdown_handling import ShutdownInterface
 from hardware.hardwareconfig import HardwareConfig
 from hardware.legodriver import BuildHatDriveBase
@@ -29,6 +29,13 @@ class HardwareInterface(ShutdownInterface):
 
         self._orientation_estimator = None
 
+    def clear_messages(self) -> None:
+        """clear display messages"""
+        if self._rpi is None:
+            raise RuntimeError("Raspberry Pi interface not initialized." \
+            " Call full_initialization() first.")
+        else:
+            return self._rpi.clear_messages()
 
     def full_initialization(self) -> None:
         """Initialize all hardware components."""
@@ -52,8 +59,7 @@ class HardwareInterface(ShutdownInterface):
                 )
                 self._orientation_estimator = OrientationEstimator(
                         get_accel=self.get_acceleration,
-                        get_gyro=self.get_gyro,
-                        dt=0.01
+                        get_gyro=self.get_gyro
                 )
 
             else:
@@ -63,51 +69,21 @@ class HardwareInterface(ShutdownInterface):
             logger.error("Failed to initialize drive base: %s", e)
             raise RuntimeError(f"Drive base initialization failed: {e}") from e
 
-    def get_default_angle(self) -> Tuple[float, float, float]:
-        """Get the default angles for the chassis."""
-        if HardwareConfig.CHASSIS_VERSION == 1:
-            raise ValueError("Not supported for chassis version 1.")
-        elif HardwareConfig.CHASSIS_VERSION == 2:
-            return self.calibrate_imu()  # Calibrate IMU for chassis version 2
-        else:
-            raise ValueError("Unsupported chassis version for default X angle.")
-
-    def calibrate_imu(self,samples=100)-> Tuple[float, float, float]:
-        """
-        Reads the IMU for a number of samples to find the average resting offset.
-        """
-        print("Calibrating IMU... Place the robot on a perfectly level surface.")
-        total_angle_x = 0
-        total_angle_y = 0
-        total_angle_z = 0
-        for _ in range(samples):
-            gyro_x, gyro_y, gyro_z = self.get_gyro()
-            total_angle_x += gyro_x
-            total_angle_y += gyro_y
-            total_angle_z += gyro_z
-            time.sleep(0.01) # Small delay between readings
-
-        offset_x = total_angle_x / samples
-        offset_y = total_angle_y / samples
-        offset_z = total_angle_z / samples
-        logger.info("Calibration complete. Tilt Offsets: X: %.2f, Y: %.2f, Z: %.2f degrees",
-                    offset_x, offset_y, offset_z)
-
-        return offset_x, offset_y, offset_z
-
     def start_measurement_recording(self) -> None:
         """Start the measurements manager thread."""
         if self._measurements_manager is None:
             raise RuntimeError("Measurements manager not initialized. Call" \
                     " full_initialization() first.")
+        if self._orientation_estimator is not None:
+            self._orientation_estimator.start_readings()
         self._measurements_manager.start_reading()
 
-    # --- Raspberry Pi Interface Methods ---
+    def add_comment(self, comment: str) -> None:
+        """Add a comment to the measurements log."""
+        if self._measurements_manager is not None:
+            self._measurements_manager.add_comment(comment)
 
-    def update_orientation(self):
-        """Update the orientation estimator with latest sensor data."""
-        if self._orientation_estimator is not None:
-            self._orientation_estimator.update()
+    # --- Raspberry Pi Interface Methods ---
 
     def get_orientation(self):
         """Get the current (roll, pitch, yaw) in degrees."""
@@ -179,6 +155,10 @@ class HardwareInterface(ShutdownInterface):
         """Force flush the messages on the OLED screen."""
         self._rpi.force_flush_messages()
 
+    def add_screen_logger_message(self, message: List[str]) -> None:
+        """Add a message to the screen logger."""
+        self._rpi.add_screen_logger_message(message)
+
     def get_jumper_state(self) -> bool:
         """Get the state of the jumper pin."""        
         return self._rpi.get_jumper_state()
@@ -191,6 +171,8 @@ class HardwareInterface(ShutdownInterface):
             self._lego_drive_base.shutdown()
 
         self._rpi.shutdown()
+        if self._orientation_estimator is not None:
+            self._orientation_estimator.shutdown()
         if self._measurements_manager is not None:
             self._measurements_manager.shutdown()
 
@@ -219,19 +201,46 @@ class HardwareInterface(ShutdownInterface):
         else:
             raise ValueError("Unsupported chassis version for gyroscope sensor.")
 
-    def reset_yaw(self)-> None:
+    def reset_gyro(self)-> None:
         """Reset the yaw angle to zero."""
         if self._orientation_estimator is not None:
-            self._orientation_estimator.reset_yaw()
+            self._orientation_estimator.reset()
         else:
             raise RuntimeError("Orientation estimator not initialized.")
 
+    def is_button_pressed(self):
+        """Check if the action button is pressed."""
+        if self._rpi is None:
+            raise RuntimeError("Raspberry Pi interface not initialized.\
+                                Call full_initialization() first.")
+        else:
+            return self._rpi.action_button.is_active
+
     # --- LEGO Driver Methods ---
+
+    def camera_off(self) -> None:
+        """Turn off the camera."""
+        if self._lego_drive_base is None:
+            raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
+        self._lego_drive_base.camera_off()
+
+    def camera_on(self) -> None:
+        """Turn on the camera."""
+        if self._lego_drive_base is None:
+            raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
+        self._lego_drive_base.camera_on()
+
     def drive_forward(self, speed: float) -> None:
         """Run the drive base forward at the specified speed."""
         if self._lego_drive_base is None:
             raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
         self._lego_drive_base.run_front(speed)
+
+    def drive_backward(self, speed: float) -> None:
+        """Run the drive base backward at the specified speed."""
+        if self._lego_drive_base is None:
+            raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
+        self._lego_drive_base.run_front(-speed)
 
     def turn_steering(self, degrees: float, steering_speed: float=20) -> None:
         """
@@ -289,9 +298,11 @@ class HardwareInterface(ShutdownInterface):
         left_distance = self.get_left_distance()
         right_distance = self.get_right_distance()
         front_distance = self.get_front_distance()
-        logger.warning("L:%.1f, R:%.1f, F:%.1f",
-                       left_distance, right_distance, front_distance)
         return front_distance, left_distance, right_distance
+
+    def disable_logger(self) -> None:
+        """Disable the logger."""
+        self._rpi.disable_logger()
 
 class MeasurementsManager(ShutdownInterface):
     """Class to read and store measurements from hardware sensors in a separate thread."""
@@ -301,6 +312,7 @@ class MeasurementsManager(ShutdownInterface):
         self._stop_event = threading.Event()
         self._hardware_interface = hardware_interface
         self._mlogger = MeasurementsLogger()
+        self._rpi = hardware_interface._rpi
 
     def add_measurement(self, measurement: Measurement) -> None:
         """Add a new measurement to the list."""
@@ -308,6 +320,9 @@ class MeasurementsManager(ShutdownInterface):
         self._mlogger.write_measurement(measurement)
         logger.debug("Added measurement: %s", measurement)
 
+    def add_comment(self, comment: str) -> None:
+        """Add a comment to the measurements log."""
+        self._mlogger.write_comment(comment)
 
     def get_latest_measurement(self) -> Measurement | None:
         """Get the latest measurement."""
@@ -323,13 +338,15 @@ class MeasurementsManager(ShutdownInterface):
                 right = self._hardware_interface.get_right_distance()
                 front = self._hardware_interface.get_front_distance()
                 steering_angle = self._hardware_interface.get_steering_angle()
-                self._hardware_interface.update_orientation()  # Update orientation estimator
                 roll, pitch, yaw = self._hardware_interface.get_orientation()
                 # Create a new measurement with the current timestamp
                 timestamp = time.time()
                 measurement = Measurement(left, right, front, steering_angle,
                                           roll, pitch, yaw,timestamp)
                 self.add_measurement(measurement)
+                self._rpi.log_message(front=front, left=left,
+                                                           right=right,current_yaw=yaw,
+                                               current_steering=steering_angle)
             time.sleep(0.25)
 
     def start_reading(self) -> None:
@@ -339,6 +356,7 @@ class MeasurementsManager(ShutdownInterface):
             self._stop_event.clear()
             self._reading_thread = threading.Thread(target=self._read_hardware_loop, daemon=True)
             self._reading_thread.start()
+            self._hardware_interface.disable_logger()
 
     def stop_reading(self) -> None:
         """Stop the background thread for reading hardware."""

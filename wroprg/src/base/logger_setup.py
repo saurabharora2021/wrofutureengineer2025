@@ -19,7 +19,13 @@ class LoggerSetup(ShutdownInterface):
         # Rotating file handler for log_level and above
 
         file_handler = RotatingFileHandler(log_file, mode="a", maxBytes=max_bytes,
-                                           backupCount=backup_count)
+                           backupCount=backup_count)
+        # Force rollover if previous log exists and is not empty
+        try:
+            if file_handler.stream and file_handler.stream.tell() > 0:
+                file_handler.doRollover()
+        except (OSError, ValueError, AttributeError):
+            pass
         file_handler.setLevel(logging.INFO)
         file_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         file_handler.setFormatter(file_formatter)

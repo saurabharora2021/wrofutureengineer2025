@@ -13,7 +13,7 @@ class BuildHatDriveBase(ShutdownInterface):
     MAX_STEERING_DEGREE: Final = 45
     # Negative gear ratio indicates that positive steering input results in a negative motor
     # rotation due to the physical gear setup.
-    STEERING_GEAR_RATIO: Final = -2
+    STEERING_GEAR_RATIO: Final = -1.67
     DELTA_ANGLE: float = 0.5
 
     front_distance_sensor: Optional[DistanceSensor] = None

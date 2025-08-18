@@ -287,7 +287,9 @@ class MatIntelligence(ShutdownInterface):
         self._location = next_location
         #reset the min locations.
 
-        self._current_min_distances = self.get_learned_distances()
+        (_,left,right) = self.get_learned_distances()
+        self._current_min_distances = (left,right)
+
 
         if self._roundno == 1:
             mid = self._mid_distance()

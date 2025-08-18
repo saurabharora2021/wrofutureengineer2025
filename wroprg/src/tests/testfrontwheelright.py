@@ -22,9 +22,10 @@ def main():
     try:
         pi_inf.force_flush_messages()
         #Turn steering to right 15 degrees
-        pi_inf.turn_steering(10)
+        pi_inf.turn_steering(30)
         pi_inf.buzzer_beep()
-        sleep(10)
+        logger.error("Current Steering %.2f", pi_inf.get_steering_angle())
+        sleep(6)
         pi_inf.reset_steering()
 
     except (ImportError, AttributeError, RuntimeError) as e:

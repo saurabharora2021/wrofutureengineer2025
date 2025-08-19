@@ -19,7 +19,7 @@ class Walker:
     MIN_SPEED= 15
 
     WALLFRONTENDDISTANCE=30
-
+    KNOWN_COLORS = ("blue", "orange")
     MAX_ANGLE = 15
     DELTA_ANGLE = 8
 
@@ -463,12 +463,7 @@ class Walker:
 
         def report_distances_corner(left: float, right: float):
             logger.info("corner Report. Left: %.2f, Right: %.2f", left, right)
-            prev_distance = self._current_distance
             self._current_distance = (left, right)
-            if abs(prev_distance[0]+prev_distance[1] - (left + right)) > 2:
-                logger.warning("Significant distance change detected.")
-                self._start_time = time.time()
-                self._stop_walking()
 
         # Implement the gyro corner walking logic here
         self.output_inf.reset_gyro()
@@ -492,7 +487,7 @@ class Walker:
 
         turn_max_delta = abs(def_turn_angle/2)
 
-        while state.front > def_front and (self._start_time == 0):
+        while state.front > def_front and (self._current_distance == 0):
 
             state = self._read_state()
             logger.info("Current Yaw: %.2f", state.yaw)
@@ -504,7 +499,7 @@ class Walker:
                 self._intelligence.reset_current_distance()
                 self._intelligence.register_callback(report_distances_corner)
 
-            if state.front > def_front and (self._start_time == 0):
+            if state.front > def_front and (self._current_distance == 0):
 
                 self._turn_steering_with_logging(turn_angle,delta_angle=15,max_turn_angle=20,
                                              current_speed=self.MIN_SPEED)
@@ -586,28 +581,25 @@ class Walker:
             min_left = 20
             min_right = 20
 
-        knowncolor = ["blue", "orange"]
-        color = check_bottom_color(self.output_inf, knowncolor)
-
-        gyrohelper:GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper(
-                                                        def_turn_angle=def_turn_angle,
-                                                        hardware=self.output_inf,
-                                                        min_left=min_left,
-                                                        min_right=min_right,
-                                                        kgyro=-4.0,
-                                                        kp=-3.0
-                                                    )
-
-        # running = False
+        color = check_bottom_color(self.output_inf, list(self.KNOWN_COLORS))
 
         if color is None:
+
+            gyrohelper:GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper(
+                                                def_turn_angle=def_turn_angle,
+                                                hardware=self.output_inf,
+                                                min_left=min_left,
+                                                min_right=min_right,
+                                                kgyro=-4.0,
+                                                kp=-3.0
+                                            )
 
             def set_line_color(c):
                 self._line_color = c
                 self._stop_walking()
 
             def value_check_func():
-                return check_bottom_color(self.output_inf, knowncolor)
+                return check_bottom_color(self.output_inf, list(self.KNOWN_COLORS))
 
             colorchecker: ConditionCheckerThread = ConditionCheckerThread(
                 value_check_func=value_check_func,
@@ -615,37 +607,34 @@ class Walker:
                 interval_ms=50
             )
 
-            state = self._read_state()
+
             colorchecker.start()
 
-            running=False
+            try:
+                state = self._read_state()
+                self._start_walking(self.MIN_SPEED)
+                while (state.front > self.WALLFRONTENDDISTANCE
+                                    and self._line_color is None):
 
-            while (state.front > self.WALLFRONTENDDISTANCE
-                and self._line_color is None):
-
-                turn_angle = gyrohelper.walk_func(left_distance=state.left,
+                    turn_angle = gyrohelper.walk_func(left_distance=state.left,
                                                   right_distance=state.right,
                                                   current_angle=state.yaw)
 
-                self._turn_steering_with_logging(turn_angle,current_speed=self.MIN_SPEED)
-                if running is False:
-                    self._start_walking(self.MIN_SPEED)
-                    running = True
+                    self._turn_steering_with_logging(turn_angle,current_speed=self.MIN_SPEED)
+                    time.sleep(0.001)
+                    state = self._read_state()
 
-                state = self._read_state()
-
-                logger.info("Front Distance:%0.2f",state.front)
-
-            #Lets first stop the base and then check the color.
-            self._stop_walking()
-            if colorchecker.is_running():
-                logger.info("Stopping color checker thread, not found color yet.")
-                colorchecker.stop()
+            finally:
+                #Lets first stop the base and then check the color.
+                self._stop_walking()
+                if colorchecker.is_running():
+                    logger.info("Stopping color checker thread, not found color yet.")
+                    colorchecker.stop()
 
             self.output_inf.buzzer_beep()
             color = self._line_color
 
-        color2 = check_bottom_color(self.output_inf, knowncolor)
+        color2 = check_bottom_color(self.output_inf, list(self.KNOWN_COLORS))
 
         return (color,color2)
 

@@ -67,15 +67,15 @@ def vote_directions(list_of_directions: list[MATDIRECTION]) -> MATDIRECTION:
 class MatIntelligence(ShutdownInterface):
     """Class to implement the mathematical intelligence for the Mat used."""
 
-    DEFAULT_DISTANCE = (90,20)
-    MAX_WALL2WALL_DISTANCE = 110
-    MIN_WALL2WALL_DISTANCE = 60
-    ROBOT_WIDTH = 20  # Width of the robot in cm
-    DELTA_ERROR = 10 # Maximum error in cm for distance measurements
-    FRONTDISTANCE_FOR_COLOR_CHECK=120
-    MAX_DISTANCE_READING = 200 # Maximum distance reading in cm
-    WALLFRONTDISTANCE=15 # while corner walking , maximum distance from the wall in front
-    WALLSIDEDISTANCE=20 # while corner walking , maximum distance from the wall on the side
+    DEFAULT_DISTANCE = (90.0,20.0)
+    MAX_WALL2WALL_DISTANCE = 110.0
+    MIN_WALL2WALL_DISTANCE = 60.0
+    ROBOT_WIDTH = 20.0  # Width of the robot in cm
+    DELTA_ERROR = 10.0 # Maximum error in cm for distance measurements
+    FRONTDISTANCE_FOR_COLOR_CHECK=120.0
+    MAX_DISTANCE_READING = 200.0 # Maximum distance reading in cm
+    WALLFRONTDISTANCE=15.0 # while corner walking , maximum distance from the wall in front
+    WALLSIDEDISTANCE=20.0 # while corner walking , maximum distance from the wall on the side
 
     def __init__(self,roundcount:int = 1, hardware_interface: Optional[HardwareInterface]=None
                                                     ) -> None:
@@ -136,7 +136,6 @@ class MatIntelligence(ShutdownInterface):
         }
 
         self._learned_distances = {}
-        self._current_min_distances = (100,100)
         self._current_min_distances = self.DEFAULT_DISTANCE  # (left, right)
 
         self._callback: Callable[[float,float],None] | None = None
@@ -215,9 +214,9 @@ class MatIntelligence(ShutdownInterface):
             self._learned_distances[MATLOCATION.SIDE_1] = (100,self._current_min_distances[0],
                                                           self._current_min_distances[1])
 
-        self._current_min_distances = self.DEFAULT_DISTANCE
         logger.info("Report side 1, current min distances: %.2f,%.2f",
                     self._current_min_distances[0], self._current_min_distances[1])
+        self._current_min_distances = self.DEFAULT_DISTANCE
 
     def _wait_for_readings(self, timeout: float = 2.0) -> None:
         """Wait for readings to be processed."""

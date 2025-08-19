@@ -2,7 +2,7 @@
 import subprocess
 import logging
 
-from hardware.hardware_interface import HardwareInterface
+from hardware.hardware_interface import HardwareInterface, RobotState
 
 logger: logging.Logger = logging.getLogger(__name__)
 class RobotValidator:
@@ -26,7 +26,8 @@ class RobotValidator:
         if not self.hardware_inf:
             logger.error("Hardware Interface is not initialized.")
             return False
-        if self.hardware_inf.get_front_distance() <= 0:
+        state: RobotState = self.hardware_inf.read_state()
+        if state.front <= 0:
             logger.error("Front distance sensor is not initialized or not working.")
             return False
         if self.hardware_inf.get_bottom_color() is None:
@@ -34,8 +35,8 @@ class RobotValidator:
             return False
 
         #Check distance sensors, left and right should be greater than 0
-        left_distance = self.hardware_inf.get_left_distance()
-        right_distance = self.hardware_inf.get_right_distance()
+        left_distance = state.left
+        right_distance = state.right
         logger.info("Left Distance: %.2f, Right Distance: %.2f", left_distance, right_distance)
         if (left_distance <= 0 or right_distance <= 0 or
             left_distance >= self.hardware_inf.get_left_distance_max() or

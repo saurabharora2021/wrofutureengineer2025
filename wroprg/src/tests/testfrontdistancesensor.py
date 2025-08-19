@@ -20,7 +20,7 @@ def main():
 
     try:
 
-        front_distance = pi_inf.get_front_distance()
+        front_distance = pi_inf.read_state().front
         logger.warning("Front Distance: %d cm", front_distance)
 
         pi_inf.force_flush_messages()

@@ -4,7 +4,7 @@ from collections import deque
 import threading
 import logging
 import time
-from typing import List, Optional
+from typing import List, NamedTuple, Optional
 from base.shutdown_handling import ShutdownInterface
 from hardware.hardwareconfig import HardwareConfig
 from hardware.legodriver import BuildHatDriveBase
@@ -15,6 +15,12 @@ from hardware.statsfunctions import DumpKalmanFilter
 
 logger = logging.getLogger(__name__)
 
+class RobotState(NamedTuple):
+    """Container for the robot state."""
+    front: float
+    left: float
+    right: float
+    yaw: float
 class HardwareInterface(ShutdownInterface):
     """
     Provides unified access to all hardware components.
@@ -127,7 +133,7 @@ class HardwareInterface(ShutdownInterface):
         """Get the maximum distance from the right distance sensor."""
         return self._rpi.get_right_distance_max()
 
-    def get_left_distance(self) -> float:
+    def _get_left_distance(self) -> float:
         """Get the distance from the left distance sensor."""
         return self._rpi.get_left_distance()
 
@@ -270,7 +276,7 @@ class HardwareInterface(ShutdownInterface):
             raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
         return self._lego_drive_base.get_bottom_color_rgbi()
 
-    def get_front_distance(self) -> float:
+    def _get_front_distance(self) -> float:
         """Get the distance to the front obstacle in centimeter."""
         if HardwareConfig.CHASSIS_VERSION == 1:
             if self._lego_drive_base is None:
@@ -291,14 +297,13 @@ class HardwareInterface(ShutdownInterface):
         return self._lego_drive_base.get_steering_angle()
 
     ## End of LEGO Driver Methods
-
-    def logdistances(self) -> tuple[float, float, float]:
-        """Log the current distances from all sensors.
-        And return them as a tuple(front_distance, left_distance, right_distance)"""
-        left_distance = self.get_left_distance()
-        right_distance = self.get_right_distance()
-        front_distance = self.get_front_distance()
-        return front_distance, left_distance, right_distance
+    def read_state(self) -> RobotState:
+        """Read the current state of the robot."""
+        front = self._get_front_distance()
+        left = self._get_left_distance()
+        right = self.get_right_distance()
+        yaw = self.get_orientation()[2]
+        return RobotState(front=front, left=left, right=right, yaw=yaw)
 
     def disable_logger(self) -> None:
         """Disable the logger."""
@@ -334,18 +339,17 @@ class MeasurementsManager(ShutdownInterface):
         """Thread target: read hardware every 0.5 seconds."""
         while not self._stop_event.is_set():
             if self._hardware_interface is not None:
-                left = self._hardware_interface.get_left_distance()
-                right = self._hardware_interface.get_right_distance()
-                front = self._hardware_interface.get_front_distance()
+                state:RobotState = self._hardware_interface.read_state()
                 steering_angle = self._hardware_interface.get_steering_angle()
                 roll, pitch, yaw = self._hardware_interface.get_orientation()
                 # Create a new measurement with the current timestamp
                 timestamp = time.time()
-                measurement = Measurement(left, right, front, steering_angle,
+                measurement = Measurement(state.left, state.right, state.front,
+                                          steering_angle,
                                           roll, pitch, yaw,timestamp)
                 self.add_measurement(measurement)
-                self._rpi.log_message(front=front, left=left,
-                                                           right=right,current_yaw=yaw,
+                self._rpi.log_message(front=state.front, left=state.left,
+                                                           right=state.right,current_yaw=yaw,
                                                current_steering=steering_angle)
             time.sleep(0.25)
 

@@ -235,7 +235,7 @@ class MatIntelligence(ShutdownInterface):
         """Get the initial readings stored in memory."""
         return self._mem_initial_start
 
-    def get_learned_distances(self,location:MATLOCATION=None) -> tuple[float, float, float]:
+    def get_learned_distances(self,location:MATLOCATION|None=None) -> tuple[float, float, float]:
         """Get the learned distances."""
         if location is None:
             location = self._location
@@ -275,33 +275,40 @@ class MatIntelligence(ShutdownInterface):
 
             self._learned_distances[location] = (100,mid,mid)
         else:
-            if (current_dist[1] + current_dist[2]) > 2*mid:
+            mid_dist = (current_dist[1] + current_dist[2])/2
+            if  mid_dist> mid or mid_dist < 20:
                 self._learned_distances[location] = (current_dist[0],mid,mid)
                 logger.info("Learning distances for location overwrite: %s", location)
                 logger.info("Current min distances overwrite: %s", self._current_min_distances)
+            else:
+                logger.info("Not learning distances for location: %s", location)
 
 
     def location_complete(self) -> MATLOCATION:
         """Change the current location of the Mat Walker."""
-        logger.info("Location complete: %s",self._location)
+        logger.info("Location complete: %s, current dis:%s",self._location,
+                            self._current_min_distances)
         self._wait_for_readings()
         next_location = self.next_location()
 
         if location_to_genericlocation(self._location) == MATGENERICLOCATION.SIDE:
             # We are at a side, so we can learn the distances.
             mid = self._mid_distance()
+            logger.info("location complete: side mid:%s", mid)
             if mid is not None:
                 self._set_learned_distance(self._location, mid)
         else:
             #We are at a corner , so we learned the distance for the next side.
             mid = self._mid_distance()
+            logger.info("location complete: corner mid:%s", mid)
             if mid is not None:
                 self._set_learned_distance(next_location, mid)
 
         if self._location == MATLOCATION.CORNER_4:
             self._roundno += 1
+
+        #reset the location and min distances
         self._location = next_location
-        #reset the min locations.
 
         (_,left,right) = self.get_learned_distances()
         self._current_min_distances = (left,right)
@@ -310,6 +317,7 @@ class MatIntelligence(ShutdownInterface):
         if self._roundno == 1:
             mid = self._mid_distance()
             if mid is not None and mid < 25:
+                logger.info("resetting current min for round 1 to default")
                 self._current_min_distances = self.DEFAULT_DISTANCE
 
         if self._hardware_interface is not None:

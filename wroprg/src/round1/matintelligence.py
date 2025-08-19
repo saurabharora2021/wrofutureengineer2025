@@ -216,7 +216,8 @@ class MatIntelligence(ShutdownInterface):
                                                           self._current_min_distances[1])
 
         self._current_min_distances = self.DEFAULT_DISTANCE
-        logger.info("Report side 1, current min distances: %.2f", self._current_min_distances)
+        logger.info("Report side 1, current min distances: %.2f,%.2f",
+                    self._current_min_distances[0], self._current_min_distances[1])
 
     def _wait_for_readings(self, timeout: float = 2.0) -> None:
         """Wait for readings to be processed."""

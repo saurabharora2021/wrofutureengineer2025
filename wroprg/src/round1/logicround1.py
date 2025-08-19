@@ -30,7 +30,6 @@ class Walker:
         self._line_color: str|None = None
         #setting decimals for float datatype.
         self._current_distance = (0.1, 0.1)
-        self._start_time=0
 
         # Cache sensor max values once
         self._left_max = self.output_inf.get_left_distance_max()
@@ -371,35 +370,38 @@ class Walker:
                         directiontostr(self._intelligence.get_direction()))
 
         state = self._read_state()
+        current_left = state.left
+        current_right = state.right
 
         #TODO: Handle somewhere else.
         if not is_unknown_direction:
             (_,left_def,right_def) = self._intelligence.get_learned_distances()
 
             if left_def == -1:
-                state.left = self._left_max
+                current_left = self._left_max
 
             if right_def == -1:
-                state.right = self._right_max
+                current_right = self._right_max
 
         if is_corner:
             logger.info("Special corner handling")
-            if state.left >= self._left_max:
+            if current_left >= self._left_max:
                 logger.info("At corner, adjusting steering.")
-                state.left -= 10
+                current_left -= 10
         current_angle = 0
         if use_mpu:
             current_angle = state.yaw
 
         turn_angle = helper.walk_func(
-                            left_distance=state.left,
-                             right_distance=state.right, current_angle=current_angle)
+                            left_distance=current_left,
+                             right_distance=current_right, current_angle=current_angle)
 
         self._turn_steering_with_logging(turn_angle,speedcheck=speedcheck,
                                          current_speed=current_speed)
         return turn_angle
 
-    def _turn_steering_with_logging(self,turn_angle:float,current_speed:float,delta_angle:float=0,
+    def _turn_steering_with_logging(self,turn_angle:float| None,current_speed:float,
+                                    delta_angle:float=0,
                                     speedcheck:bool=False,
                                     max_turn_angle:float=MAX_ANGLE):
         if turn_angle is None:
@@ -435,12 +437,15 @@ class Walker:
 
     def gyro_corner_walk_round_1(self,def_turn_angle:float):
         """Round 1 corner walk using generic routine."""
+        logger.info("Gyro corner walk round 1 started..")
         min_left, min_right = (30, 20) if self._intelligence.get_direction() \
                                     == MATDIRECTION.CLOCKWISE_DIRECTION else (20, 30)
         self._gyro_corner_walk(def_turn_angle, min_left, min_right)
 
     def gyro_corner_walk_round_n(self,def_turn_angle:float):
         """Round 2+ corner walk using generic routine."""
+        logger.info("Gyro corner walk round n started..")
+
         location = self._intelligence.next_location()
         _, l_left, l_right = self._intelligence.get_learned_distances(location)
 
@@ -459,7 +464,6 @@ class Walker:
         logger.info("Gyro corner walk round n initiated with turn angle: %.2f", def_turn_angle)
 
         self._current_distance = (0, 0)
-        self._start_time=0
 
         def report_distances_corner(left: float, right: float):
             logger.info("corner Report. Left: %.2f, Right: %.2f", left, right)
@@ -670,24 +674,43 @@ class Walker:
         if base_helper is not None:
             return base_helper
 
-        left_max = self._left_max
-        right_max = self._right_max
+        if force_change is False:
+            if weak_gyro is False:
 
-        kwargs = dict(
-            def_distance_left=min_left,
-            def_distance_right=min_right,
-            max_left_distance=left_max,
-            max_right_distance=right_max,
-            def_turn_angle=gyrodefault,
-            hardware=self.output_inf,
-        )
+                helper:EquiWalkerHelper = EquiWalkerHelper(
+                    def_distance_left=min_left,
+                    def_distance_right=min_right,
+                    max_left_distance=self._left_max,
+                    max_right_distance=self._right_max,
+                    def_turn_angle=gyrodefault,
+                    hardware=self.output_inf,
+                )
+            else:
+                #weak Gyro is true. use less of gyro weight
+                helper:EquiWalkerHelper = EquiWalkerHelper(
+                    def_distance_left=min_left,
+                    def_distance_right=min_right,
+                    max_left_distance=self._left_max,
+                    max_right_distance=self._right_max,
+                    def_turn_angle=gyrodefault,
+                    hardware=self.output_inf,
+                    fused_gyro_weight=0.4,
+                    kgyro=-4.0,
+                    fused_distance_weight=0.5
+                )
+        else:
+            helper:EquiWalkerHelper = EquiWalkerHelper(
+                def_distance_left=min_left,
+                def_distance_right=min_right,
+                max_left_distance=self._left_max,
+                max_right_distance=self._right_max,
+                def_turn_angle=gyrodefault,
+                hardware=self.output_inf,
+                kp=-3,
+                fused_distance_weight=0.3
+            )
 
-        if force_change:
-            kwargs.update(kp=-3.0, fused_distance_weight=0.3)
-        elif weak_gyro:
-            kwargs.update(fused_gyro_weight=0.4, kgyro=-4.0, fused_distance_weight=0.5)
-
-        return EquiWalkerHelper(**kwargs)
+        return helper
 
     def _decide_direction(self, color: str|None, color2: str|None,
                           left: float, right: float) -> MATDIRECTION:

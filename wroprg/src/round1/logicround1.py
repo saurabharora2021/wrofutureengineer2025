@@ -4,11 +4,13 @@ import time
 from typing import Callable, Optional, Tuple
 from hardware.hardware_interface import HardwareInterface
 from hardware.hardware_interface import RobotState
-from round1.matintelligence import MATDIRECTION, MATGENERICLOCATION, MatIntelligence
-from round1.matintelligence import vote_directions, color_to_direction
 from round1.walker_helpers import EquiWalkerHelper, GyroWalkerwithMinDistanceHelper
 from round1.utilityfunctions import clamp_angle, directiontostr, check_bottom_color
+from round1.matintelligence import MatIntelligence
 from utils.threadingfunctions import ConditionCheckerThread
+from utils.mat import MATDIRECTION, MATGENERICLOCATION
+from utils.mat import color_to_direction,vote_directions
+
 
 logger = logging.getLogger(__name__)
 class Walker:
@@ -189,6 +191,7 @@ class Walker:
     def side_bot_centering(self,front:float,learned_left:float,learned_right:float,
                                 actual_left:float,actual_right:float,
                                 prev_yaw:float,lenient:bool=False)-> Tuple[bool,float,float,float]:
+        """ Side bot Centering for handle side function."""
         total_learned = learned_left + learned_right
         total_actual = actual_left + actual_right
         logger.info("Side Bot Centering: Learned L: %.2f, R: %.2f, Actual L: %.2f, R: %.2f",
@@ -212,8 +215,26 @@ class Walker:
             if total_actual<total_learned:
                 return self.center_bot_correction(front, actual_left, actual_right,prev_yaw)
             else:
+
+                logger.info("Proportional reduction of actual distances")
                 # total actual > total_learned
                 # we need to proportionally reduce actual
+
+                if actual_left == self._left_max or actual_right == self._right_max:
+                    # If we are at the max distance, we need to be careful
+                    logger.info("At max distance, adjusting...")
+                    if actual_left == self._left_max and actual_right != self._right_max:
+                        #we can adjust the right distance
+                        if actual_right > total_learned/2:
+                            actual_right -= 5
+                    elif actual_right == self._right_max and actual_left != self._left_max:
+                        #we can adjust the left distance
+                        if actual_left > total_learned/2:
+                            actual_left -= 5
+                    logger.info("Adjusted distances: Left: %.2f, Right: %.2f",
+                                actual_left, actual_right)
+                    return (True, prev_yaw, actual_left, actual_right)
+
                 diff = total_actual - total_learned
                 if actual_left> actual_right:
                     actual_left -= diff
@@ -792,18 +813,3 @@ class Walker:
             logger.info("Using first color direction: %s", directioncolor)
             return directioncolor
         return MATDIRECTION.UNKNOWN_DIRECTION
-
-def main():
-
-    # Initialize hardware interface
-    hardware = HardwareInterface()
-
-    # Create Walker instance
-    walker = Walker(output_inf=hardware, nooflaps=1)
-
-    # Start the walk
-    walker.side_bot_centering(learned_left=48.19,learned_right=48.19,actual_left=52.97,actual_right=200)
-
-
-if __name__ == "__main__":
-    main()

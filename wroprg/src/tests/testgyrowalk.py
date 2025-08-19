@@ -3,9 +3,10 @@ import logging
 import argparse
 import threading
 from hardware.hardware_interface import HardwareInterface
+from round1.matintelligence import MatIntelligence
 from round1.logicround1 import Walker
-from round1.matintelligence import MATDIRECTION, MatIntelligence
 from utils.helpers import HelperFunctions
+from utils.mat import MATDIRECTION
 
 def main():
     """ Main function to run the Wro - raspberry test distance sensor Application."""

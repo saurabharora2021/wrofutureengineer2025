@@ -88,7 +88,7 @@ class Walker:
         # If Delta is high move towards the center, move by 10cm otherwise too high correction.
         if abs(deltadistance)> 20 or right <= 20 or left <= 20:
             correction = 5 #10 if front > 130 else 5
-            yaw_correction = 1.5 if front > 130 else 2
+            yaw_correction = 1 if front > 130 else 2
             if left < right:
                 logger.info("Adjusting left distance, moving to right")
                 left += correction
@@ -227,15 +227,17 @@ class Walker:
                         #we can adjust the right distance
                         if actual_right > total_learned/2:
                             actual_right -= 5
+                            prev_yaw = -1
                     elif actual_right == self._right_max and actual_left != self._left_max:
                         #we can adjust the left distance
                         if actual_left > total_learned/2:
                             actual_left -= 5
-                    logger.info("Adjusted distances: Left: %.2f, Right: %.2f",
-                                actual_left, actual_right)
+                            prev_yaw = +1
+                    logger.info("Adjusted distances: L: %.2f, R: %.2f Y: %.2f",
+                                actual_left, actual_right, prev_yaw)
                     return (True, prev_yaw, actual_left, actual_right)
 
-                diff = total_actual - total_learned
+                diff = min(total_actual - total_learned,10)
                 if actual_left> actual_right:
                     actual_left -= diff
                 else:
@@ -416,10 +418,10 @@ class Walker:
         else:
             if state.left < 50:
                 logger.info("Based on current left distance, turn -65")
-                def_turn_angle=min(-65, -60-current_angle)
+                def_turn_angle=min(-65, -60-current_angle*1.5)
             else:
                 logger.info("Based on current left distance, turn -55")
-                def_turn_angle=min(-55 , -50-current_angle)
+                def_turn_angle=min(-55 , -50-current_angle*1.5)
         if self._intelligence.get_round_number() == 1:
             # lets handle the corner walk for round 1.
             # we are going to use the gyro corner walk.
@@ -501,7 +503,7 @@ class Walker:
             logger.info("corner Report. Left: %.2f, Right: %.2f", left, right)
             self._current_distance = (left, right)
             #TODO: we should stop for now lets wait.
-            # self._stop_walking()
+            self._stop_walking()
 
         # Implement the gyro corner walking logic here
         self.output_inf.reset_gyro()
@@ -601,9 +603,10 @@ class Walker:
 
         turn_angle = self._inner_turn(state, left_def, right_def,
                                            speedcheck, defaultspeed,
-                                           is_unknown_direction, helper)
+                                           is_unknown_direction, helper,lenient=True)
 
         self._start_walking(defaultspeed)
+        state = self._read_state()
 
         while state.front > min_front and \
                         keep_walking(state) is True:
@@ -621,7 +624,7 @@ class Walker:
 
     def _inner_turn(self,state:RobotState, left_def:float, right_def:float,
                     speedcheck:bool, defaultspeed:float,is_unknown_direction:bool,
-                    helper: EquiWalkerHelper):
+                    helper: EquiWalkerHelper,lenient:bool=False):
         current_left = state.left
         current_right = state.right
 
@@ -635,6 +638,9 @@ class Walker:
         turn_angle = helper.walk_func(
                         left_distance=current_left,
                             right_distance=current_right, current_angle=state.yaw)
+
+        if lenient is True and turn_angle is not None:
+            turn_angle = turn_angle * 0.5
 
         self._turn_steering_with_logging(turn_angle,speedcheck=speedcheck,
                                         current_speed=defaultspeed)

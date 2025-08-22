@@ -4,6 +4,7 @@ import time
 from typing import Callable, Optional, Tuple
 from hardware.hardware_interface import HardwareInterface
 from hardware.hardware_interface import RobotState
+from round1.distance_function import DistanceCalculator
 from round1.walker_helpers import EquiWalkerHelper, GyroWalkerwithMinDistanceHelper
 from round1.utilityfunctions import clamp_angle, directiontostr, check_bottom_color
 from round1.matintelligence import MatIntelligence
@@ -44,6 +45,7 @@ class Walker:
 
         self._walking:bool = False
         self._prev_angle = -99999
+        self.distance_calculator = DistanceCalculator()
 
     def read_state(self) -> RobotState:
         """Read the current state of the robot."""
@@ -513,11 +515,13 @@ class Walker:
         self._current_distance = (0, 0)
         logger.info("Starting corner walk... F:%.2f, current distance %s", state.front,
                                                 self._current_distance)
+        self.distance_calculator.reset()
         self._start_walking(self.MIN_SPEED)
 
         while state.front > def_front and self._current_distance == (0,0) \
                         and ((gyroreset is True and abs(state.yaw - def_turn_angle) < 1) or \
-                             gyroreset is False):
+                             gyroreset is False) and \
+                                self.distance_calculator.get_distance() < 200.0:
 
             state = self.read_state()
             logger.info("Current Yaw: %.2f", state.yaw)
@@ -551,11 +555,13 @@ class Walker:
         if self._walking is False :
             self._walking = True
             self.output_inf.drive_forward(speed)
+            self.distance_calculator.run_speed(speed)
 
     def stop_walking(self):
         """Stop the walking movement."""
         self._walking = False
         self.output_inf.drive_stop()
+        self.distance_calculator.stop()
 
     def handle_straight_walk_to_distance(self,min_front:float,min_left:float,min_right:float,
                                          gyrodefault:float,defaultspeed:float,speedcheck:bool=True,

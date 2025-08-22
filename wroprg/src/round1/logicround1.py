@@ -267,6 +267,13 @@ class Walker:
 
         (min_front,left_def,right_def) = self.intelligence.get_learned_distances()
 
+        # Get the steering if it more than +-5, reduce it .
+        steering = self.output_inf.get_steering_angle()
+
+        if abs(steering) > 5:
+            steering = 5 if steering > 0 else -5
+            self.output_inf.turn_steering(steering)
+
         current_state = self.read_state()
 
         if gyroreset:
@@ -607,6 +614,7 @@ class Walker:
 
         #we would walk slow if the turn angle exist.
         if turn_angle is None:
+            logger.info("No turn angle detected, walking straight faster")
             self._start_walking(defaultspeed)
         else:
             self._start_walking(self.MIN_SPEED)
@@ -791,7 +799,7 @@ class Walker:
                 max_right_distance=self._right_max,
                 def_turn_angle=gyrodefault,
                 kp=-3,
-                fused_distance_weight=0.3
+                fused_distance_weight=0.4
             )
 
         return helper

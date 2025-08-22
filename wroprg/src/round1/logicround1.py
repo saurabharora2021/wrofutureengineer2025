@@ -391,6 +391,9 @@ class Walker:
             else:
                 logger.info("Based on current right distance, turn 55")
                 def_turn_angle=max(60, 55-current_angle)
+            if state.front < 80:
+                #too close to front wall,add another 5 to turn
+                def_turn_angle+=5
         else:
             if state.left < 50:
                 logger.info("Based on current left distance, turn -65")
@@ -398,6 +401,9 @@ class Walker:
             else:
                 logger.info("Based on current left distance, turn -55")
                 def_turn_angle=min(-55 , -50-current_angle*1.5)
+            if state.front < 80:
+                #too close to front wall,add another 5 to turn
+                def_turn_angle-=5
         if self.intelligence.get_round_number() == 1:
             # lets handle the corner walk for round 1.
             # we are going to use the gyro corner walk.
@@ -519,7 +525,7 @@ class Walker:
         self._start_walking(self.MIN_SPEED)
 
         while state.front > def_front and self._current_distance == (0,0) \
-                        and ((gyroreset is True and abs(state.yaw - def_turn_angle) < 1) or \
+                        and ((gyroreset is True and abs(state.yaw - def_turn_angle) > 1) or \
                              gyroreset is False) and \
                                 self.distance_calculator.get_distance() < 200.0:
 

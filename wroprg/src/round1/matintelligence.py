@@ -355,6 +355,13 @@ class MatIntelligence(ShutdownInterface):
         """Set the default distances for each location, primarily used for testing."""
         self._learned_distances = default_distances
 
+    def set_location(self,location:MATLOCATION) -> None:
+        """Set the current location of the Mat Walker, primarily for testing."""
+        if location not in MATLOCATION:
+            raise ValueError(f"Invalid location: {location}")
+        self._location = location
+        logger.info("Location set to: %s", self._location)
+
     def next_location(self,location:MATLOCATION) -> MATLOCATION:
         """Get the next location in the sequence."""
 

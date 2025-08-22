@@ -258,7 +258,7 @@ class Walker:
 
         if gyroreset:
             #lets start with zero heading.
-            self._stop_walking()
+            self.stop_walking()
             self.output_inf.reset_gyro()
 
         (min_front,left_def,right_def) = self.intelligence.get_learned_distances()
@@ -362,7 +362,7 @@ class Walker:
             else:
                 logger.info("Completed round handle side...")
 
-        self._stop_walking()
+        self.stop_walking()
         self.intelligence.location_complete()
         self.intelligence.unregister_callback()
         return current_yaw
@@ -476,7 +476,7 @@ class Walker:
             logger.info("corner Report. Left: %.2f, Right: %.2f", left, right)
             self._current_distance = (left, right)
             #TODO: we should stop for now lets wait.
-            self._stop_walking()
+            self.stop_walking()
 
         # Implement the gyro corner walking logic here
         if gyroreset:
@@ -527,7 +527,7 @@ class Walker:
         if state.front <= def_front:
             logger.error("Too close to wall for front wall.")
 
-        self._stop_walking()
+        self.stop_walking()
         logger.info("End corner walk...")
 
         self.intelligence.location_complete()
@@ -539,7 +539,7 @@ class Walker:
             self._walking = True
             self.output_inf.drive_forward(speed)
 
-    def _stop_walking(self):
+    def stop_walking(self):
         """Stop the walking movement."""
         self._walking = False
         self.output_inf.drive_stop()
@@ -625,7 +625,7 @@ class Walker:
                                                                 Tuple[str|None,str|None]:
         """Read the bottom color using the mat_color function."""
 
-        self._stop_walking()
+        self.stop_walking()
 
         logger.info("Time to check color")
 
@@ -654,7 +654,7 @@ class Walker:
             def set_line_color(c):
                 self._line_color = c
                 logger.info("Found Color: %s", c)
-                self._stop_walking()
+                self.stop_walking()
 
             def value_check_func():
                 return check_bottom_color(self.output_inf, list(self.KNOWN_COLORS))
@@ -686,7 +686,7 @@ class Walker:
 
             finally:
                 #Lets first stop the base and then check the color.
-                self._stop_walking()
+                self.stop_walking()
                 if colorchecker.is_running():
                     logger.info("Stopping color checker thread, not found color yet.")
                     colorchecker.stop()

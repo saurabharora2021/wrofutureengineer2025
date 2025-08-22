@@ -24,14 +24,14 @@ def main():
      # Default distances for clockwise equidistance walking
     default_distances_clockwise = {
         # left, right are not known at this point.
-        MATLOCATION.SIDE_1: (100,47,47),
-        MATLOCATION.CORNER_1: (15,35, 30),
-        MATLOCATION.SIDE_2: (100,47,47),
-        MATLOCATION.CORNER_2: (15,35, 30),
-        MATLOCATION.SIDE_3: (100,47,47),
-        MATLOCATION.CORNER_3: (15,35, 30),
-        MATLOCATION.SIDE_4: (100,47,47),
-        MATLOCATION.CORNER_4: (15,35, 30),
+        MATLOCATION.SIDE_1: (100.0,47.0,47.0),
+        MATLOCATION.CORNER_1: (15.0,35.0,30.0),
+        MATLOCATION.SIDE_2: (100.0,47.0,47.0),
+        MATLOCATION.CORNER_2: (15.0,35.0,30.0),
+        MATLOCATION.SIDE_3: (100.0,47.0,47.0),
+        MATLOCATION.CORNER_3: (15.0,35.0,30.0),
+        MATLOCATION.SIDE_4: (100.0,47.0,47.0),
+        MATLOCATION.CORNER_4: (15.0,35.0,30.0),
     }
 
     try:
@@ -42,7 +42,10 @@ def main():
         roundwalker:WalkerN = WalkerN(output_inf=pi_inf)
 
         roundwalker.intelligence.report_direction_side1(MATDIRECTION.CLOCKWISE_DIRECTION)
+        roundwalker.intelligence.set_location(MATLOCATION.SIDE_1)
         roundwalker.intelligence.set_default_distances(default_distances_clockwise)
+
+        roundwalker.intelligence.print_mat_intelligence()
 
         def run_gyro_walk():
 

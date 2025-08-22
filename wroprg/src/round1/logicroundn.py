@@ -204,13 +204,17 @@ class WalkerN(Walker):
         """Handle side walk
         returns the final yaw to be used.
         """
-
-        # we are planning to straight the robot and then do a gyro walk.
-
         if gyroreset:
             #lets start with zero heading.
             self.stop_walking()
             self.output_inf.reset_gyro()
+
+        # Get the steering if it more than +-5, reduce it .
+        steering = self.output_inf.get_steering_angle()
+
+        if abs(steering) > 5:
+            steering = 5 if steering > 0 else -5
+            self.output_inf.turn_steering(steering)
 
         (min_front,left_def,right_def) = self.intelligence.get_learned_distances()
 
@@ -222,14 +226,11 @@ class WalkerN(Walker):
         (is_correction, yaw_delta, left_def, right_def) = self.side_bot_centering(
             current_state.front,
             left_def, right_def, current_state.left, current_state.right,0)
-        logger.info("handle side: correction: %s, Y: %.2f, L def: %.2f, R def: %.2f",
+        logger.info("handle_side_walk_n: correction: %s, Y: %.2f, L def: %.2f, R def: %.2f",
                     is_correction, yaw_delta, left_def, right_def)
 
         current_yaw = def_yaw + yaw_delta
 
-        logger.info("handle side L:%0.2f, R:%0.2f correction %s", left_def,
-                    right_def, is_correction)
-       
         prev_distance = current_state.left + current_state.right
         def condition_met(state:RobotState) -> bool:
             # Define the condition for stopping the walk
@@ -254,31 +255,12 @@ class WalkerN(Walker):
                                               weak_gyro=False,
                                               speedcheck=True,
                                               keep_walking=condition_met)
+
             current_state = self.read_state()
             #Either you have found a new less point, or current left and right are
             #  less the previous time to correct and center
             if current_state.front > min_front:
-                if self._current_distance != (0, 0):
-                    delta = (left_def + right_def) - \
-                        (self._current_distance[0]+self._current_distance[1])
-                    if delta > 4: #delta should be greater than 4cm to consider
-                        _, yaw_delta, left_def, right_def = self.side_bot_centering(
-                                                        current_state.front,
-                                                        learned_left=self._current_distance[0],
-                                                        learned_right=self._current_distance[1],
-                                                        actual_left=current_state.left,
-                                                        actual_right=current_state.right,
-                                                        prev_yaw=yaw_delta,
-                                                        lenient=True
-                                                    )
-                    else:
-                        logger.info("new current distance is too close to current def ignoring...")
-                    self._current_distance = (0, 0)
-                    logger.info("Updated Def distances current distances -"\
-                                +" L: %.2f, R: %.2f, Yaw: %.2f",left_def,right_def,current_yaw)
-                    prev_distance = current_state.left + current_state.right
-                    current_yaw = def_yaw + yaw_delta
-                elif current_state.left == self._left_max or current_state.right == self._right_max:
+                if current_state.left == self._left_max or current_state.right == self._right_max:
                     #we need to ignore this changes and moved ahead.
                     prev_distance = current_state.left + current_state.right
                 elif prev_distance - (current_state.left + current_state.right) > 10:
@@ -305,4 +287,4 @@ class WalkerN(Walker):
                 logger.info("Completed round handle side...")
 
         self.intelligence.location_complete()
-        return current_yaw
+        return current_state.yaw

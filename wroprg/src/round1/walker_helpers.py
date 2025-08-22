@@ -56,7 +56,6 @@ class PIDController:
         # Combine PID terms
         output = p_term + i_term + d_term
 
-        logger.info("PID angle: %.2f", output)
         return clamp_angle(output, MAX_ANGLE)
 
 class EquiWalkerHelper(ABC):
@@ -103,6 +102,8 @@ class EquiWalkerHelper(ABC):
             f"Fuse: {fused_error:.2f} Tu:{turn:.2f}",
             ""
         ]
+        logger.info("Walker: Error D :%.2f G :%.2f Fuse: %.2f Tu:%.2f",
+                    distance_error, gyro_error, fused_error, turn)
         self._messages = message
 
 
@@ -115,8 +116,6 @@ class EquiWalkerHelper(ABC):
         # Deadband to avoid small corrections
         if abs(fused_error) < 0.1:
             return None
-
-        logger.info("Fused Error: %.2f", fused_error)
 
         # Use shared PID logic
         turn = self.pid.calculate(fused_error)
@@ -227,7 +226,7 @@ class FixedTurnWalker(GyroWalkerwithMinDistanceHelper):
                  fused_distance_weight: float = 0.6, fused_gyro_weight: float = 0.4,
                  ) -> None:
         # Call base class __init__ with default values for required parameters
-        logger.info("GyroWalkerwithMinDistanceHelper minleft %.2f , minright %.2f",
+        logger.info("FixedTurnWalker minleft %.2f , minright %.2f",
                     min_left, min_right)
 
         super().__init__(

@@ -95,7 +95,8 @@ class MatIntelligence(ShutdownInterface):
     def add_readings(self, front_distance: float, left_distance: float,
                             right_distance: float) -> None:
         """Add readings to the deque."""
-        self._deque.append((front_distance, left_distance, right_distance))
+        if self._roundno == 1:
+            self._deque.append((front_distance, left_distance, right_distance))
 
     def _start_reading_thread(self):
         """Start the background thread to process readings from the deque."""
@@ -351,7 +352,8 @@ class MatIntelligence(ShutdownInterface):
                         logger.info("Changed Learned distances for size %s: %s", location,
                                     learned_distance)
 
-    def set_default_distances(self, default_distances: dict[MATLOCATION, tuple[float, float, float]]) -> None:
+    def set_default_distances(self, default_distances: dict[MATLOCATION,
+                                                             tuple[float, float, float]]) -> None:
         """Set the default distances for each location, primarily used for testing."""
         self._learned_distances = default_distances
 

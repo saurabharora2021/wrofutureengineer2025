@@ -166,7 +166,9 @@ class EquiWalkerHelper(ABC):
 class GyroWalkerwithMinDistanceHelper(EquiWalkerHelper):
     """Helper class for Gyro Walker logic with distance."""
 
-    def __init__(self,  kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
+    def __init__(self,
+                 max_left_distance: float, max_right_distance: float,
+                 kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
                  kgyro: float = -6.0,
                  def_turn_angle: float = 0.0, min_left: float = -1, min_right: float = -1,
                  fused_distance_weight: float = 0.6, fused_gyro_weight: float = 0.4,
@@ -179,8 +181,8 @@ class GyroWalkerwithMinDistanceHelper(EquiWalkerHelper):
         super().__init__(
             def_distance_left=0.0,
             def_distance_right=0.0,
-            max_left_distance=200.0,
-            max_right_distance=200.0,
+            max_left_distance=max_left_distance,
+            max_right_distance=max_right_distance,
             kp=kp,
             ki=ki,
             kd=kd,
@@ -212,6 +214,65 @@ class GyroWalkerwithMinDistanceHelper(EquiWalkerHelper):
         # Deadband to avoid small corrections
         if abs(distance_error) < DELTA_DISTANCE_CM and \
                                 abs(delta_angle) < MIN_GYRO_DELTA:
+            self.pid.reset()
+            return None
+
+        return self.process_error(distance_error, gyro_correction)
+class FixedTurnWalker(GyroWalkerwithMinDistanceHelper):
+    """ This follows a fixed turning angle till min distance is violated."""
+
+    def __init__(self,
+                 max_left_distance: float, max_right_distance: float,
+                 fixed_turn_angle: float,
+                 kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
+                 kgyro: float = -6.0,
+                 def_turn_angle: float = 0.0, min_left: float = -1, min_right: float = -1,
+                 fused_distance_weight: float = 0.6, fused_gyro_weight: float = 0.4,
+                 hardware: Optional[HardwareInterface]=None
+                 ) -> None:
+        # Call base class __init__ with default values for required parameters
+        logger.info("GyroWalkerwithMinDistanceHelper minleft %.2f , minright %.2f",
+                    min_left, min_right)
+
+        super().__init__(
+            max_left_distance=max_left_distance,
+            max_right_distance=max_right_distance,
+            kp=kp,
+            ki=ki,
+            kd=kd,
+            kgyro=kgyro,
+            def_turn_angle=def_turn_angle,
+            fused_distance_weight=fused_distance_weight,
+            fused_gyro_weight=fused_gyro_weight,
+            hardware=hardware,
+            min_left=min_left,
+            min_right=min_right
+        )
+        self.fixed_turn_angle = fixed_turn_angle
+
+    def walk_func(self, left_distance: float, right_distance: float,
+                               current_angle: float) -> Optional[float]:
+        """Calculate the steering angle using sensor fusion PID control."""
+        # Distance correction
+        distance_error = 0.0
+        if self.min_left != -1 and left_distance < self.min_left:
+            distance_error += self.min_left - left_distance
+        if self.min_right != -1 and right_distance < self.min_right:
+            distance_error += self.min_right - right_distance
+
+        #small error we continue to turn as per plan
+        if abs(distance_error) < DELTA_DISTANCE_CM:
+            self.pid.reset()
+            return self.fixed_turn_angle
+
+        # Gyro correction
+        delta_angle = current_angle - self.def_turn_angle
+
+        gyro_correction = self.kgyro * delta_angle
+
+
+        # Deadband to avoid small corrections
+        if abs(delta_angle) < MIN_GYRO_DELTA:
             self.pid.reset()
             return None
 

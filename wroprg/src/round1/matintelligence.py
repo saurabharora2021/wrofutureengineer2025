@@ -235,14 +235,19 @@ class MatIntelligence(ShutdownInterface):
         """Change the current location of the Mat Walker."""
         logger.info("Location complete: %s, current dis:%s",self._location,
                             self._current_min_distances)
-        self._wait_for_readings()
-        next_location = self.next_location()
+        if self._roundno == 1:
+            self._wait_for_readings()
+        next_location = self.next_location(self._location)
 
         if location_to_genericlocation(self._location) == MATGENERICLOCATION.SIDE:
             # We are at a side, so we can learn the distances.
             mid = self._mid_distance()
             logger.info("location complete: side mid:%s", mid)
             if mid is not None:
+                if mid >50:
+                    mid = 48
+                elif mid < 40 and mid > 29:
+                    mid = 28
                 self._set_learned_distance(self._location, mid)
         else:
             #We are at a corner , so we learned the distance for the next side.
@@ -252,6 +257,8 @@ class MatIntelligence(ShutdownInterface):
                 self._set_learned_distance(next_location, mid)
 
         if self._location == MATLOCATION.CORNER_4:
+            self.reprocess_map()
+            self.print_mat_intelligence()
             self._roundno += 1
 
         #reset the location and min distances
@@ -281,30 +288,94 @@ class MatIntelligence(ShutdownInterface):
         """Reprocess the map based on the current readings."""
         logger.info("Reprocessing map...")
         ### This method can be used to reprocess the map based on the current readings.
-        #TODO: we can find the optimal front distance based on width of the column.
-        #TODO: for corners we can find the optimal outside and inside distances while walkings.
+        for location in self._locationssequence:
+            generic_loc = location_to_genericlocation(location)
+            learned_distance = self.get_learned_distances(location)
+            if generic_loc == MATGENERICLOCATION.SIDE:
 
-    def next_location(self) -> MATLOCATION:
+                # If the location is a side, we can learn the distances.
+                if learned_distance is not None:
+                    logger.info("Learned distances for location %s: %s", location,
+                                learned_distance)
+                    #next corner
+                    next_corner = self.next_location(location)
+                    #next side
+                    next_side = self.next_location(next_corner)
+
+                    next_distance = self.get_learned_distances(next_side)
+                    if next_distance is not None:
+                        logger.info("Learned distances for next side %s: %s", next_side,
+                                    next_distance)
+                        #lets find the size of next size.
+                        total = next_distance[1] + next_distance[2]
+                        if total > 50 and total < 130:
+                            # we have a longer side, lets walk less
+                            learned_distance = (100,next_distance[1],next_distance[2])
+                        elif total < 65 and total > 35:
+                            #we have a shorter side , lets walk more
+                            learned_distance = (70,next_distance[1],next_distance[2])
+
+                        self._learned_distances[location] = learned_distance
+                        logger.info("Changed Learned distances for size %s: %s", location,
+                                learned_distance)
+            elif generic_loc == MATGENERICLOCATION.CORNER:
+                # If the location is a corner, we can learn the distances.
+                if learned_distance is not None:
+                    logger.info("Learned distances for location %s: %s", location,
+                                learned_distance)
+                    #next side
+                    next_side = self.next_location(location)
+
+                    next_distance = self.get_learned_distances(next_side)
+                    if next_distance is not None:
+                        logger.info("Learned distances for next corner %s: %s", next_side,
+                                    next_distance)
+                        #lets find the size of next size,
+                        total = next_distance[1] + next_distance[2]
+                        if total > 50 and total < 130:
+                            # we have a longer side.
+                            if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION:
+
+                                learned_distance = (self.WALLFRONTDISTANCE, 35, 30)
+                            else:
+                                learned_distance = (self.WALLFRONTDISTANCE, 30, 35)
+                        elif total < 65 and total > 35:
+                            #we are on the shorter side
+                            if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION:
+
+                                learned_distance = (self.WALLFRONTDISTANCE, 25, 20)
+                            else:
+                                learned_distance = (self.WALLFRONTDISTANCE, 20, 25)
+
+                        self._learned_distances[location] = learned_distance
+                        logger.info("Changed Learned distances for size %s: %s", location,
+                                    learned_distance)
+
+    def set_default_distances(self, default_distances: dict[MATLOCATION, tuple[float, float, float]]) -> None:
+        """Set the default distances for each location, primarily used for testing."""
+        self._learned_distances = default_distances
+
+    def next_location(self,location:MATLOCATION) -> MATLOCATION:
         """Get the next location in the sequence."""
 
-        if self._location == MATLOCATION.SIDE_1:
+        if location == MATLOCATION.SIDE_1:
             return MATLOCATION.CORNER_1
-        elif self._location == MATLOCATION.CORNER_1:
+        elif location == MATLOCATION.CORNER_1:
             return MATLOCATION.SIDE_2
-        elif self._location == MATLOCATION.SIDE_2:
+        elif location == MATLOCATION.SIDE_2:
             return MATLOCATION.CORNER_2
-        elif self._location == MATLOCATION.CORNER_2:
+        elif location == MATLOCATION.CORNER_2:
             return MATLOCATION.SIDE_3
-        elif self._location == MATLOCATION.SIDE_3:
+        elif location == MATLOCATION.SIDE_3:
             return MATLOCATION.CORNER_3
-        elif self._location == MATLOCATION.CORNER_3:
+        elif location == MATLOCATION.CORNER_3:
             return MATLOCATION.SIDE_4
-        elif self._location == MATLOCATION.SIDE_4:
+        elif location == MATLOCATION.SIDE_4:
             return MATLOCATION.CORNER_4
-        elif self._location == MATLOCATION.CORNER_4:
+        elif location == MATLOCATION.CORNER_4:
             return MATLOCATION.SIDE_1
         else:
-            raise ValueError(f"Unknown current location: {self._location}")
+            raise ValueError(f"Unknown current location: {location}")
 
     def shutdown(self) -> None:
         """Shutdown the MatIntelligence."""

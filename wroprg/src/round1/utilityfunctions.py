@@ -2,8 +2,7 @@
 Utility functions for the Round 1.
 """
 import logging
-from round1.matintelligence import MATDIRECTION
-from utils.mat import mat_color
+from utils.mat import mat_color,MATDIRECTION
 
 logger = logging.getLogger(__name__)
 

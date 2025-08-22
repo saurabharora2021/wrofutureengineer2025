@@ -23,6 +23,7 @@ class Walker:
     WALLFRONTENDDISTANCE=30.0
     KNOWN_COLORS = ("blue", "orange")
     MAX_ANGLE = 20
+    MAX_STEERING_ANGLE = 24.4
     MAX_DELTA_ANGLE = 8
 
     output_inf: HardwareInterface
@@ -42,6 +43,7 @@ class Walker:
                                                               hardware_interface=output_inf)
 
         self._walking:bool = False
+        self._prev_angle = -99999
 
     def read_state(self) -> RobotState:
         """Read the current state of the robot."""
@@ -437,7 +439,7 @@ class Walker:
             logger.info("turn angle after delta: %.2f", turn_angle)
         turn_angle = clamp_angle(turn_angle, max_turn_angle)
         logger.info("Steering from %.2f to %.2f", current_steering_angle, turn_angle)
-        if turn_angle >= 0:
+        if delta >= 0:
             logger.info("Turning right to angle: %.2f", turn_angle)
         else:
             logger.info("Turning left to angle: %.2f", turn_angle)
@@ -445,7 +447,13 @@ class Walker:
         # Turn the steering based on the calculated angle
         if (speedcheck and abs(max_delta_angle) >= self.MAX_DELTA_ANGLE):
             self._start_walking(self.MIN_SPEED)
-        self.output_inf.turn_steering(turn_angle)
+
+        if turn_angle==self._prev_angle:
+            logger.info("Turn angle is same as previous angle, not turning.")
+            return
+        else:
+            self._prev_angle = turn_angle
+            self.output_inf.turn_steering(turn_angle)
 
     def gyro_corner_walk_round_1(self,def_turn_angle:float):
         """Round 1 corner walk using generic routine."""
@@ -484,8 +492,7 @@ class Walker:
 
         gyrohelper: GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper(
             max_left_distance=self._left_max,max_right_distance=self._right_max,
-            def_turn_angle=def_turn_angle, min_left=min_left, min_right=min_right,
-              hardware=self.output_inf)
+            def_turn_angle=def_turn_angle, min_left=min_left, min_right=min_right)
 
         (def_front, _, _) = self.intelligence.get_learned_distances()
         state = self.read_state()
@@ -494,7 +501,9 @@ class Walker:
 
         turn_angle = gyrohelper.walk_func(current_angle=state.yaw,
                                               left_distance=state.left, right_distance=state.right)
-        self.turn_steering_with_logging(turn_angle,delta_angle=20,max_turn_angle=25,
+        self.output_inf.add_screen_logger_message(gyrohelper.get_log_data())
+        self.turn_steering_with_logging(turn_angle,delta_angle=20,
+                                        max_turn_angle=self.MAX_STEERING_ANGLE,
                                              current_speed=self.MIN_SPEED)
 
         turned = False
@@ -506,12 +515,15 @@ class Walker:
                                                 self._current_distance)
         self._start_walking(self.MIN_SPEED)
 
-        while state.front > def_front and self._current_distance == (0,0):
+        while state.front > def_front and self._current_distance == (0,0) \
+                        and ((gyroreset is True and abs(state.yaw - def_turn_angle) < 1) or \
+                             gyroreset is False):
 
             state = self.read_state()
             logger.info("Current Yaw: %.2f", state.yaw)
             turn_angle = gyrohelper.walk_func(current_angle=state.yaw,
                                               left_distance=state.left, right_distance=state.right)
+            self.output_inf.add_screen_logger_message(gyrohelper.get_log_data())
             if not turned and abs(state.yaw - def_turn_angle) < turn_max_delta :
                 logger.info("Turned achieve lets check distance=====")
                 turned = True
@@ -520,8 +532,9 @@ class Walker:
 
             if state.front > def_front and self._current_distance == (0,0):
 
-                self.turn_steering_with_logging(turn_angle,delta_angle=15,max_turn_angle=25,
-                                             current_speed=self.MIN_SPEED)
+                self.turn_steering_with_logging(turn_angle,delta_angle=15,
+                                                 max_turn_angle=self.MAX_STEERING_ANGLE,
+                                                 current_speed=self.MIN_SPEED)
                 time.sleep(0.005)
 
         if state.front <= def_front:
@@ -580,7 +593,11 @@ class Walker:
                                            speedcheck, defaultspeed,
                                            is_unknown_direction, helper,lenient=True)
 
-        self._start_walking(defaultspeed)
+        #we would walk slow if the turn angle exist.
+        if turn_angle is None:
+            self._start_walking(defaultspeed)
+        else:
+            self._start_walking(self.MIN_SPEED)
         state = self.read_state()
 
         while state.front > min_front and \
@@ -613,6 +630,7 @@ class Walker:
         turn_angle = helper.walk_func(
                         left_distance=current_left,
                             right_distance=current_right, current_angle=state.yaw)
+        self.output_inf.add_screen_logger_message(helper.get_log_data())
 
         if lenient is True and turn_angle is not None:
             turn_angle = turn_angle * 0.5
@@ -642,7 +660,6 @@ class Walker:
 
             gyrohelper:GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper(
                                                 def_turn_angle=def_turn_angle,
-                                                hardware=self.output_inf,
                                                 min_left=min_left,
                                                 min_right=min_right,
                                                 kgyro=-4.0,
@@ -679,6 +696,7 @@ class Walker:
                     turn_angle = gyrohelper.walk_func(left_distance=state.left,
                                                   right_distance=state.right,
                                                   current_angle=state.yaw)
+                    self.output_inf.add_screen_logger_message(gyrohelper.get_log_data())
 
                     self.turn_steering_with_logging(turn_angle,current_speed=self.MIN_SPEED)
                     time.sleep(0.005)
@@ -740,7 +758,6 @@ class Walker:
                     max_left_distance=self._left_max,
                     max_right_distance=self._right_max,
                     def_turn_angle=gyrodefault,
-                    hardware=self.output_inf,
                 )
             else:
                 #weak Gyro is true. use less of gyro weight
@@ -750,7 +767,6 @@ class Walker:
                     max_left_distance=self._left_max,
                     max_right_distance=self._right_max,
                     def_turn_angle=gyrodefault,
-                    hardware=self.output_inf,
                     fused_gyro_weight=0.4,
                     kgyro=-4.0,
                     fused_distance_weight=0.5
@@ -762,7 +778,6 @@ class Walker:
                 max_left_distance=self._left_max,
                 max_right_distance=self._right_max,
                 def_turn_angle=gyrodefault,
-                hardware=self.output_inf,
                 kp=-3,
                 fused_distance_weight=0.3
             )

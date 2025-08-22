@@ -126,14 +126,14 @@ class WalkerN(Walker):
 
         gyrohelper: GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper(
             max_left_distance=self._left_max,max_right_distance=self._right_max,
-            def_turn_angle=def_turn_angle, min_left=min_left, min_right=min_right,
-              hardware=self.output_inf)
+            def_turn_angle=def_turn_angle, min_left=min_left, min_right=min_right)
 
         #we are going to start turning before walking
 
         turn_angle = gyrohelper.walk_func(current_angle=state.yaw,
                                               left_distance=state.left, right_distance=state.right)
-        self.turn_steering_with_logging(turn_angle,delta_angle=5,max_turn_angle=25,
+        self.turn_steering_with_logging(turn_angle,delta_angle=5,
+                                        max_turn_angle=self.MAX_STEERING_ANGLE,
                                              current_speed=self.DEFAULT_GYRO_SPEED)
 
         self._current_distance = (0, 0)
@@ -153,7 +153,8 @@ class WalkerN(Walker):
             if state.front > def_front:
 
                 #we are going to turn the steering
-                self.turn_steering_with_logging(turn_angle,delta_angle=5,max_turn_angle=25,
+                self.turn_steering_with_logging(turn_angle,delta_angle=5,
+                                                max_turn_angle=self.MAX_STEERING_ANGLE,
                                             current_speed=self.RECOMENDED_CORNER_STEERING,
                                             speedcheck=True)
 

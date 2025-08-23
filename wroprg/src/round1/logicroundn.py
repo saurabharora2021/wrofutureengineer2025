@@ -2,7 +2,7 @@
 import logging
 from hardware.hardware_interface import HardwareInterface
 from hardware.hardware_interface import RobotState
-from round1.walker_helpers import FixedTurnWalker,GyroWalkerwithMinDistanceHelper
+from round1.walker_helpers import FixedTurnWalker
 from round1.logicround1 import Walker
 from utils.mat import MATDIRECTION, MATGENERICLOCATION
 
@@ -93,7 +93,7 @@ class WalkerN(Walker):
 
         # self.stop_walking()
 
-        for i in range(1, 0):
+        for i in range(1, 3):
             #lets walk the corner at 90 degrees corner1
             current_yaw_angle += corner_yaw_angle
             self.handle_gyro_corner(
@@ -102,75 +102,17 @@ class WalkerN(Walker):
                 current_speed=self.CORNER_GYRO_SPEED
             )
 
-            #go to side 1-2-3
+            #go to side 2-3-4
             self.handle_side_walk_n(gyroreset=False,def_yaw=current_yaw_angle,
                                     speed=self.DEFAULT_GYRO_SPEED)
 
         #go to corner 4
         current_yaw_angle += corner_yaw_angle
-        # self._gyro_only_corner_walk(def_turn_angle=current_yaw_angle ,
-                                    # gyroreset=False)
-
-    def _gyro_only_corner_walk(self, def_turn_angle: float,
-                           gyroreset: bool=True,
-                            speed: float=DEFAULT_GYRO_SPEED) -> None:
-        """Handle the gyro corner walking logic."""
-
-        logger.info("Gyro walk round n initiated with turn angle: %.2f", def_turn_angle)
-
-        # Implement the gyro corner walking logic here
-        if gyroreset:
-            self.output_inf.reset_gyro()
-
-        (def_front, min_left, min_right) = self.intelligence.get_learned_distances()
-        state = self.read_state()
-
-        #we would try to create a band of 14cm in the mid for walking.
-        min_left = min_left - 7
-        min_right = min_right - 7
-
-        gyrohelper: GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper(
-            max_left_distance=self._left_max,max_right_distance=self._right_max,
-            def_turn_angle=def_turn_angle, min_left=min_left, min_right=min_right)
-
-        #we are going to start turning before walking
-
-        turn_angle = gyrohelper.walk_func(current_angle=state.yaw,
-                                              left_distance=state.left, right_distance=state.right)
-        self.turn_steering_with_logging(turn_angle,delta_angle=5,
-                                        max_turn_angle=self.MAX_STEERING_ANGLE,
-                                             current_speed=self.DEFAULT_GYRO_SPEED)
-
-        self._current_distance = (0, 0)
-        logger.info("Starting corner walk... F:%.2f, current distance %s", state.front,
-                                                self._current_distance)
-        self.start_walking(speed)
-
-        while  state.front > def_front :
-
-            state = self.read_state()
-            logger.info("Current Yaw: %.2f", state.yaw)
-            turn_angle = gyrohelper.walk_func(current_angle=state.yaw,
-                                              left_distance=state.left, right_distance=state.right)
-
-            state = self.read_state()
-
-            if state.front > def_front:
-
-                #we are going to turn the steering
-                self.turn_steering_with_logging(turn_angle,delta_angle=5,
-                                                max_turn_angle=self.MAX_STEERING_ANGLE,
-                                            current_speed=self.RECOMENDED_CORNER_STEERING,
-                                            speedcheck=True)
-
-
-        if state.front <= def_front:
-            logger.error("Too close to wall for front wall.")
-
-        logger.info("End _gyro_only_walk...")
-
-        self.intelligence.location_complete()
-        self.intelligence.unregister_callback()
+        self.handle_gyro_corner(
+                recommended_angle=self.RECOMENDED_CORNER_STEERING,
+                final_yaw=current_yaw_angle,
+                current_speed=self.CORNER_GYRO_SPEED
+            )
 
     def handle_gyro_corner(self,recommended_angle:float,final_yaw:float,current_speed:float):
         """Handle the gyro cornering logic."""
@@ -190,7 +132,7 @@ class WalkerN(Walker):
                                                                fixed_turn_angle=recommended_angle,
                                                                min_left=min_left,
                                                                min_right=min_right)
-        
+
         state: RobotState = self.output_inf.read_state()
 
         turn_angle = fixedturnwalker.walk_func(
@@ -205,8 +147,10 @@ class WalkerN(Walker):
 
         self.output_inf.drive_forward(current_speed)
 
-        logger.info("Start corner with def_f %.2f, F: %.2f, final_yaw:%.2f, current_yaw:%.2f,D:%.2f",
-                    def_front, state.front, final_yaw, state.yaw, self.distance_calculator.get_distance())
+        logger.info("Start corner with def_f %.2f, F: %.2f, final_yaw:%.2f,"+\
+                    "current_yaw:%.2f,D:%.2f",
+                    def_front, state.front, final_yaw, state.yaw,
+                    self.distance_calculator.get_distance())
 
         while state.front > def_front and abs(state.yaw - final_yaw) > 0.5 \
                     and self.distance_calculator.get_distance() < 200:

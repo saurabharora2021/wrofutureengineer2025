@@ -26,6 +26,7 @@ class Walker:
     MAX_ANGLE = 20
     MAX_STEERING_ANGLE = 24.4
     MAX_DELTA_ANGLE = 8
+    YAW_CORRECTION = 0.75
 
     output_inf: HardwareInterface
 
@@ -93,17 +94,16 @@ class Walker:
         # If Delta is high move towards the center, move by 10cm otherwise too high correction.
         if abs(deltadistance)> 20 or right <= 20 or left <= 20:
             correction = 5 #10 if front > 130 else 5
-            yaw_correction = 1 if front > 130 else 2
             if left < right:
                 logger.info("Adjusting left distance, moving to right")
                 left += correction
                 right -= correction
-                delta_yaw = -yaw_correction
+                delta_yaw = -self.YAW_CORRECTION
             else:
                 logger.info("Adjusting right distance,moving to left")
                 left -= correction
                 right += correction
-                delta_yaw = yaw_correction
+                delta_yaw = self.YAW_CORRECTION
             logger.info("adjusted left %.2f , right %.2f, yaw %.2f",left,right,delta_yaw)
             return True,delta_yaw,left, right
         else:
@@ -226,12 +226,12 @@ class Walker:
                         #we can adjust the right distance
                         if actual_right > total_learned/2:
                             actual_right -= 5
-                            prev_yaw = -1
+                            prev_yaw = -self.YAW_CORRECTION
                     elif actual_right == self._right_max and actual_left != self._left_max:
                         #we can adjust the left distance
                         if actual_left > total_learned/2:
                             actual_left -= 5
-                            prev_yaw = +1
+                            prev_yaw = +self.YAW_CORRECTION
                     logger.info("Adjusted distances: L: %.2f, R: %.2f Y: %.2f",
                                 actual_left, actual_right, prev_yaw)
                     return (True, prev_yaw, actual_left, actual_right)
@@ -802,7 +802,7 @@ class Walker:
                 max_right_distance=self._right_max,
                 def_turn_angle=gyrodefault,
                 kp=-3,
-                fused_distance_weight=0.4
+                fused_distance_weight=0.35
             )
 
         return helper

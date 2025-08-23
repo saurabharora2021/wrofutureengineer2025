@@ -26,7 +26,7 @@ class Walker:
     MAX_ANGLE = 20
     MAX_STEERING_ANGLE = 24.4
     MAX_DELTA_ANGLE = 8
-    YAW_CORRECTION = 0.75
+    YAW_CORRECTION = 0.9
 
     output_inf: HardwareInterface
 
@@ -430,7 +430,7 @@ class Walker:
         if turn_angle is None:
             logger.info("Turn angle is None")
             if speedcheck:
-                self._start_walking(current_speed)
+                self.start_walking(current_speed)
             return
 
         current_steering_angle = self.output_inf.get_steering_angle()
@@ -451,6 +451,7 @@ class Walker:
 
         if turn_angle==self._prev_turn_angle:
             logger.info("Turn angle is same as previous angle, not turning.")
+            self._prev_turn_angle = 0
             return
         else:
             self._prev_turn_angle = turn_angle
@@ -464,7 +465,7 @@ class Walker:
 
         # Turn the steering based on the calculated angle
         if (speedcheck and abs(delta) >= self.MAX_DELTA_ANGLE):
-            self._start_walking(self.MIN_SPEED)
+            self.start_walking(self.MIN_SPEED)
 
         self.output_inf.turn_steering(turn_angle)
 
@@ -527,7 +528,7 @@ class Walker:
         logger.info("Starting corner walk... F:%.2f, current distance %s", state.front,
                                                 self._current_distance)
         self.distance_calculator.reset()
-        self._start_walking(self.MIN_SPEED)
+        self.start_walking(self.MIN_SPEED)
 
         while state.front > def_front and self._current_distance == (0,0) \
                         and ((gyroreset is True and abs(state.yaw - def_turn_angle) > 1) or \
@@ -560,8 +561,8 @@ class Walker:
         self.intelligence.location_complete()
         self.intelligence.unregister_callback()
 
-    def _start_walking(self, speed: float):
-        """Start the walking movement."""
+    def start_walking(self, speed: float):
+        """Start the walking movement, public for testing only"""
         if self._walking is False :
             self._walking = True
             self.output_inf.drive_forward(speed)
@@ -612,9 +613,9 @@ class Walker:
         #we would walk slow if the turn angle exist.
         if turn_angle is None:
             logger.info("No turn angle detected, walking straight faster")
-            self._start_walking(defaultspeed)
+            self.start_walking(defaultspeed)
         else:
-            self._start_walking(self.MIN_SPEED)
+            self.start_walking(self.MIN_SPEED)
         state = self.read_state()
 
         prev_turn_angle = 0
@@ -712,7 +713,7 @@ class Walker:
                 state = self.read_state()
                 self._line_color = None
                 logger.info("Start color walk")
-                self._start_walking(self.MIN_SPEED)
+                self.start_walking(self.MIN_SPEED)
                 while (state.front > self.WALLFRONTENDDISTANCE
                                     and self._line_color is None):
 
@@ -802,7 +803,7 @@ class Walker:
                 max_right_distance=self._right_max,
                 def_turn_angle=gyrodefault,
                 kp=-3,
-                fused_distance_weight=0.35
+                fused_distance_weight=0.4
             )
 
         return helper

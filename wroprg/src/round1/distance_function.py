@@ -1,6 +1,8 @@
 """Distance Calculation Module"""
 import time
+import logging
 
+logger = logging.getLogger(__name__)
 class DistanceCalculator:
     """
     Calculates the total distance traveled given speed values at different points in time.
@@ -20,7 +22,7 @@ class DistanceCalculator:
         Resets the distance calculator to its initial state.
         """
         self.current_speed = 0
-        self.start_time = 0
+        self.start_time = time.time()
         self.distance = 0
 
     def stop(self):
@@ -40,6 +42,8 @@ class DistanceCalculator:
             elapsed_time = end_time - self.start_time
             self.distance += elapsed_time * self.current_speed * self.WHEEL_CONSTANT
             self.start_time = end_time
+            logger.info("distance after adding... %.2f",self.distance
+            )
 
     def run_speed(self, speed: float):
         """
@@ -51,4 +55,6 @@ class DistanceCalculator:
 
     def get_distance(self) -> float:
         """Returns the total distance traveled."""
+        self._add_speed()
+        logger.info("Distance travelled: %.2f", self.distance)
         return self.distance

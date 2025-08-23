@@ -56,11 +56,11 @@ class MatIntelligence(ShutdownInterface):
         self._default_distances_anticlockwise = {
             MATLOCATION.SIDE_1: (self.FRONTDISTANCE_FOR_COLOR_CHECK,-1,-1),
             MATLOCATION.CORNER_1: (self.WALLFRONTDISTANCE,self.WALLSIDEDISTANCE,-1),
-            MATLOCATION.SIDE_2: (100,20,-1),
+            MATLOCATION.SIDE_2: (100,20,15),
             MATLOCATION.CORNER_2: (self.WALLFRONTDISTANCE,self.WALLSIDEDISTANCE,-1),
-            MATLOCATION.SIDE_3: (100,20,-1),
+            MATLOCATION.SIDE_3: (100,20,15),
             MATLOCATION.CORNER_3: (self.WALLFRONTDISTANCE,self.WALLSIDEDISTANCE,-1),
-            MATLOCATION.SIDE_4: (100,20,-1),
+            MATLOCATION.SIDE_4: (100,20,15),
             MATLOCATION.CORNER_4: (self.WALLFRONTDISTANCE,self.WALLSIDEDISTANCE,-1),
         }
 
@@ -74,11 +74,11 @@ class MatIntelligence(ShutdownInterface):
             # left, right are not known at this point.
             MATLOCATION.SIDE_1: (self.FRONTDISTANCE_FOR_COLOR_CHECK,-1,-1),
             MATLOCATION.CORNER_1: (self.WALLFRONTDISTANCE,-1,self.WALLSIDEDISTANCE),
-            MATLOCATION.SIDE_2: (100,-1,20),
+            MATLOCATION.SIDE_2: (100,15,20),
             MATLOCATION.CORNER_2: (self.WALLFRONTDISTANCE,-1,self.WALLSIDEDISTANCE),
-            MATLOCATION.SIDE_3: (100,-1,20),
+            MATLOCATION.SIDE_3: (100,15,20),
             MATLOCATION.CORNER_3: (self.WALLFRONTDISTANCE,-1,self.WALLSIDEDISTANCE),
-            MATLOCATION.SIDE_4: (100,-1,20),
+            MATLOCATION.SIDE_4: (100,15,20),
             MATLOCATION.CORNER_4: (self.WALLFRONTDISTANCE,-1,self.WALLSIDEDISTANCE),
         }
 

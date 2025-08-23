@@ -44,12 +44,17 @@ def main():
         roundwalker.intelligence.report_direction_side1(MATDIRECTION.CLOCKWISE_DIRECTION)
         roundwalker.intelligence.set_location(MATLOCATION.SIDE_1)
         roundwalker.intelligence.set_default_distances(default_distances_clockwise)
-
+        roundwalker.intelligence.location_complete()
         roundwalker.intelligence.print_mat_intelligence()
 
         def run_gyro_walk():
 
-            roundwalker.full_gyro_walk()
+            # roundwalker.full_gyro_walk()
+            logger.info("=========start walking ............")
+            roundwalker.handle_gyro_corner(recommended_angle=roundwalker.RECOMENDED_CORNER_STEERING,
+                                           final_yaw=-roundwalker.CORNER_YAW_ANGLE,
+                                           current_speed=roundwalker.CORNER_GYRO_SPEED
+                                           )
 
             pi_inf.drive_stop()
             pi_inf.reset_steering()

@@ -2,7 +2,7 @@
 import logging
 import argparse
 from time import sleep
-from hardware.hardware_interface import HardwareInterface
+from hardware.hardware_interface import HardwareInterface, RobotState
 from utils.helpers import HelperFunctions
 
 def main():
@@ -29,6 +29,7 @@ def main():
         while True:
             # Read orientation data
             (roll,pitch,yaw)  = pi_inf.get_orientation()
+            state:RobotState = pi_inf.read_state()
             pi_inf.clear_messages()
 
             logger.info("roll: %0.2f,pitch:%0.2f , yaw:%0.2f", roll-default_roll,
@@ -36,6 +37,8 @@ def main():
             pi_inf.display_message(f"Roll: {(roll-default_roll):.2f}")
             pi_inf.display_message(f"Pitch: {(pitch-default_pitch):.2f}")
             pi_inf.display_message(f"Yaw: {(yaw-default_yaw):.2f}",forceflush=True)
+            logger.info("State: Front: %.2f, Left: %.2f, Right: %.2f", 
+                        state.front, state.left, state.right)
             pi_inf.force_flush_messages()
             sleep(1)
 

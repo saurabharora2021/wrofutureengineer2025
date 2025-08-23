@@ -31,9 +31,9 @@ class PinConfig:
         },
         2: {  # V2 - Legobot2 with PCB board
             'BUZZER_PIN': 13,
-            'LED1_RED_PIN': 25,
-            'LED1_GREEN_PIN': 5,
-            'LED1_BLUE_PIN': 6,
+            'LED1_RED_PIN': 12,
+            'LED1_GREEN_PIN': 6,
+            'LED1_BLUE_PIN': 5,
             'BUTTON_PIN': 19,
             'RIGHT_SENSOR_TRIG_PIN': 23,
             'RIGHT_SENSOR_ECHO_PIN': 21,

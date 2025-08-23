@@ -1,7 +1,7 @@
 """ This modules implements the Challenge 1 Walker for the WRO2025 Robot."""
 import logging
 import time
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple, List
 from hardware.hardware_interface import HardwareInterface
 from hardware.hardware_interface import RobotState
 from round1.distance_function import DistanceCalculator
@@ -26,7 +26,8 @@ class Walker:
     MAX_ANGLE = 20
     MAX_STEERING_ANGLE = 24.4
     MAX_DELTA_ANGLE = 8
-    YAW_CORRECTION = 0.9
+    YAW_CORRECTION = 0.75
+    DISTANCE_CORRECTION = 4
 
     output_inf: HardwareInterface
 
@@ -93,7 +94,7 @@ class Walker:
         delta_yaw = 0
         # If Delta is high move towards the center, move by 10cm otherwise too high correction.
         if abs(deltadistance)> 20 or right <= 20 or left <= 20:
-            correction = 5 #10 if front > 130 else 5
+            correction = self.DISTANCE_CORRECTION #10 if front > 130 else 5
             if left < right:
                 logger.info("Adjusting left distance, moving to right")
                 left += correction
@@ -297,13 +298,13 @@ class Walker:
             if self._current_distance != (0, 0):
                 logger.info("Condition met with current distance: %s", self._current_distance)
                 return False
-            if state.left == self._left_max or state.right == self._right_max:
-                #lets not try to fix this.
-                return True
-            if prev_distance - (state.left + state.right) < 10:
-                #normal case why bother
-                return True
-            return False
+            # if state.left == self._left_max or state.right == self._right_max:
+            #     #lets not try to fix this.
+            #     return True
+            # if prev_distance - (state.left + state.right) < 10:
+            #     #normal case why bother
+            #     return True
+            return True
 
         self.intelligence.register_callback(report_distances_side)
 
@@ -515,7 +516,7 @@ class Walker:
 
         turn_angle = gyrohelper.walk_func(current_angle=state.yaw,
                                               left_distance=state.left, right_distance=state.right)
-        self.output_inf.add_screen_logger_message(gyrohelper.get_log_data())
+        self.log_data(gyrohelper)
         self.turn_steering_with_logging(turn_angle,delta_angle=20,
                                         max_turn_angle=self.MAX_STEERING_ANGLE,
                                              current_speed=self.MIN_SPEED)
@@ -538,7 +539,7 @@ class Walker:
             state = self.read_state()
             turn_angle = gyrohelper.walk_func(current_angle=state.yaw,
                                               left_distance=state.left, right_distance=state.right)
-            self.output_inf.add_screen_logger_message(gyrohelper.get_log_data())
+            self.log_data(gyrohelper)
             if not turned and abs(state.yaw - def_turn_angle) < turn_max_delta :
                 logger.info("Turned achieve lets check distance=====")
                 turned = True
@@ -560,6 +561,13 @@ class Walker:
 
         self.intelligence.location_complete()
         self.intelligence.unregister_callback()
+
+    def log_data(self,helper:Optional[EquiWalkerHelper]=None):
+        """Log the data from the helper if provided."""
+        if helper is not None:
+            messages: List[str] = helper.get_log_data()
+            messages.append(f"Loc: {directiontostr(self.intelligence.get_location())}, " )
+            self.output_inf.add_screen_logger_message(messages)
 
     def start_walking(self, speed: float):
         """Start the walking movement, public for testing only"""
@@ -654,7 +662,8 @@ class Walker:
         turn_angle = helper.walk_func(
                         left_distance=current_left,
                             right_distance=current_right, current_angle=state.yaw)
-        self.output_inf.add_screen_logger_message(helper.get_log_data())
+
+        self.log_data(helper)
 
         if lenient is True and turn_angle is not None:
             turn_angle = turn_angle * 0.5
@@ -720,7 +729,7 @@ class Walker:
                     turn_angle = gyrohelper.walk_func(left_distance=state.left,
                                                   right_distance=state.right,
                                                   current_angle=state.yaw)
-                    self.output_inf.add_screen_logger_message(gyrohelper.get_log_data())
+                    self.log_data(gyrohelper)
 
                     self.turn_steering_with_logging(turn_angle,current_speed=self.MIN_SPEED)
                     time.sleep(0.005)

@@ -122,8 +122,6 @@ class WalkerN(Walker):
                     recommended_angle, final_yaw, current_speed)
 
         self.distance_calculator.reset()
-        #TODO:tmp for testings
-        self.start_walking(self.CORNER_GYRO_SPEED)
 
         (def_front, min_left, min_right) = self.intelligence.get_learned_distances()
 
@@ -141,7 +139,8 @@ class WalkerN(Walker):
                 current_angle=state.yaw
             )
 
-        self.turn_steering_with_logging(turn_angle,current_speed=current_speed,delta_angle=10)
+        self.turn_steering_with_logging(turn_angle,current_speed=current_speed,delta_angle=20,
+                                        max_turn_angle=self.MAX_STEERING_ANGLE)
 
         state = self.output_inf.read_state()
 
@@ -158,10 +157,13 @@ class WalkerN(Walker):
             turn_angle = fixedturnwalker.walk_func(
                 left_distance=state.left,
                 right_distance=state.right,
-                current_angle=state.yaw
+                current_angle=state.yaw,
             )
 
-            self.turn_steering_with_logging(turn_angle,current_speed=current_speed)
+            self.turn_steering_with_logging(turn_angle,current_speed=current_speed,
+                                delta_angle=15,
+                                max_turn_angle=self.MAX_STEERING_ANGLE,
+                                )
             state = self.read_state()
 
         logger.info("Completed gyro corner walk to yaw: %.2f", state.yaw)

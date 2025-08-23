@@ -3,7 +3,7 @@ import logging
 import argparse
 import threading
 from time import sleep
-from round1.logicround1 import Walker
+from round1.logicroundn import WalkerN
 from hardware.validator import RobotValidator
 from hardware.hardware_interface import HardwareInterface
 
@@ -45,7 +45,7 @@ def main():
         logger.warning("Test Successful")
         pi_inf.force_flush_messages()
 
-        challenge1walker = Walker(pi_inf,nooflaps=1)
+        challenge1walker = WalkerN(pi_inf,nooflaps=2)
 
         #action button.
         pi_inf.wait_for_action()

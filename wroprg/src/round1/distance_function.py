@@ -21,9 +21,10 @@ class DistanceCalculator:
         """
         Resets the distance calculator to its initial state.
         """
-        self.current_speed = 0
+        # self.current_speed = 0
         self.start_time = time.time()
         self.distance = 0
+        logger.info("Resetting distance...")
 
     def stop(self):
         """

@@ -285,6 +285,11 @@ class MatIntelligence(ShutdownInterface):
                     self._current_min_distances[0], self._current_min_distances[1])
         return self._location
 
+    def set_roundno(self, roundno:int) -> None:
+        """Set the current round number, primarily for testing."""
+        self._roundno = roundno
+        logger.info("Round number set to: %d", self._roundno)
+
     def reprocess_map(self):
         """Reprocess the map based on the current readings."""
         logger.info("Reprocessing map...")
@@ -311,10 +316,10 @@ class MatIntelligence(ShutdownInterface):
                         total = next_distance[1] + next_distance[2]
                         if total > 50 and total < 130:
                             # we have a longer side, lets walk less
-                            learned_distance = (100,next_distance[1],next_distance[2])
+                            learned_distance = (110,next_distance[1],next_distance[2])
                         elif total < 65 and total > 35:
                             #we have a shorter side , lets walk more
-                            learned_distance = (70,next_distance[1],next_distance[2])
+                            learned_distance = (80,next_distance[1],next_distance[2])
 
                         self._learned_distances[location] = learned_distance
                         logger.info("Changed Learned distances for size %s: %s", location,

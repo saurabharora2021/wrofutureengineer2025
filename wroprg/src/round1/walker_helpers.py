@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 MAX_ANGLE = 30
 MIN_GYRO_DELTA = 0.05 # Minimum gyro delta angle in degrees
-DELTA_DISTANCE_CM = 0.1
+DELTA_DISTANCE_CM = 0.5
 class PIDController:
     """Simple PID controller."""
 
@@ -254,13 +254,16 @@ class FixedTurnWalker(GyroWalkerwithMinDistanceHelper):
         if self.min_right != -1 and right_distance < self.min_right:
             distance_error += self.min_right - right_distance
 
+        # Gyro correction
+        delta_angle = current_angle - self.def_turn_angle
+
         #small error we continue to turn as per plan
         if abs(distance_error) < DELTA_DISTANCE_CM:
             self.pid.reset()
+            if abs(delta_angle) < 10:
+                #lets reduce the steering angle
+                return self.fixed_turn_angle/2
             return self.fixed_turn_angle
-
-        # Gyro correction
-        delta_angle = current_angle - self.def_turn_angle
 
         gyro_correction = self.kgyro * delta_angle
 

@@ -1,12 +1,16 @@
 """Unified Hardware Interface for WRO Future Engineer 2025 project."""
 
+import os
 from collections import deque
 import threading
 import logging
 import time
+import cv2
+from picamera2 import Picamera2
 from typing import List, NamedTuple, Optional
 from base.shutdown_handling import ShutdownInterface
 from hardware.hardwareconfig import HardwareConfig
+from hardware.pin_config import PinConfig
 from hardware.legodriver import BuildHatDriveBase
 from hardware.measurements import Measurement, MeasurementsLogger, logger
 from hardware.orientation import OrientationEstimator
@@ -26,6 +30,9 @@ class HardwareInterface(ShutdownInterface):
     Provides unified access to all hardware components.
     Includes methods for both LEGO driver and Raspberry Pi interface.
     """
+
+    CAMERA_OUTPUT_DIR:str= "output"
+    SAVE_CAMERA_IMAGE:bool = True
 
     def __init__(self,stabilize:bool) -> None:
         self._rpi = RpiInterface(stabilize)
@@ -108,6 +115,10 @@ class HardwareInterface(ShutdownInterface):
     def led1_red(self) -> None:
         """Turn on the LED1 red."""
         self._rpi.led1_red()
+
+    def camera_enabled(self) -> bool:
+        """Check if the camera is enabled."""
+        return PinConfig.CAMERA_ENABLED
 
     def led1_blue(self) -> None:
         """Turn on the LED1 blue."""
@@ -311,6 +322,8 @@ class HardwareInterface(ShutdownInterface):
 
 class MeasurementsManager(ShutdownInterface):
     """Class to read and store measurements from hardware sensors in a separate thread."""
+
+    picam2:Optional[Picamera2] = None
     def __init__(self, hardware_interface: HardwareInterface):
         self.measurements: deque[Measurement] = deque(maxlen=5)  # Store last 5 measurements
         self._reading_thread: threading.Thread | None = None
@@ -337,6 +350,7 @@ class MeasurementsManager(ShutdownInterface):
 
     def _read_hardware_loop(self) -> None:
         """Thread target: read hardware every 0.5 seconds."""
+        frame_count = 0
         while not self._stop_event.is_set():
             if self._hardware_interface is not None:
                 state:RobotState = self._hardware_interface.read_state()
@@ -351,6 +365,19 @@ class MeasurementsManager(ShutdownInterface):
                 self._rpi.log_message(front=state.front, left=state.left,
                                                            right=state.right,current_yaw=yaw,
                                                current_steering=steering_angle)
+                if PinConfig.CAMERA_ENABLED:
+                    frame_rgb = self.picam2.capture_array()         # Capture frame (RGB888)
+                    frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+
+                    # Save frame to output folder
+                    if self._hardware_interface.SAVE_CAMERA_IMAGE and PinConfig.CAMERA_ENABLED:
+                        outputdir:str = self._hardware_interface.CAMERA_OUTPUT_DIR
+                        filename = os.path.join(outputdir,
+                                     f"frame_{frame_count:05d}.jpg")
+                        frame_count+=1
+                        cv2.imwrite(filename, frame_bgr)
+                        print(f"Saved {filename}")
+
             time.sleep(0.25)
 
     def start_reading(self) -> None:
@@ -361,6 +388,13 @@ class MeasurementsManager(ShutdownInterface):
             self._reading_thread = threading.Thread(target=self._read_hardware_loop, daemon=True)
             self._reading_thread.start()
             self._hardware_interface.disable_logger()
+            if PinConfig.CAMERA_ENABLED:
+                self._rpi.start_camera()
+                self.picam2 = self._rpi.get_camera()                
+                if self._hardware_interface.SAVE_CAMERA_IMAGE:
+                    outputdir:str = self._hardware_interface.CAMERA_OUTPUT_DIR
+                    os.makedirs(outputdir, exist_ok=True)
+
 
     def stop_reading(self) -> None:
         """Stop the background thread for reading hardware."""

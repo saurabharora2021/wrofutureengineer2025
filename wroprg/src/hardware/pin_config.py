@@ -45,6 +45,7 @@ class PinConfig:
             'FRONT_SENSOR_ECHO_PIN': 22,
             'FRONT_DISTANCE_MAX_DISTANCE': 2,
             'JUMPER_PIN': 26,
+            'CAMERA_ENABLED': True,  # Set to True if camera is connected and used.
         },
         3: {  # V3 - 3D printed chassis
             'BUZZER_PIN': 17,
@@ -80,6 +81,7 @@ class PinConfig:
     FRONT_SENSOR_ECHO_PIN = 0
     FRONT_DISTANCE_MAX_DISTANCE = 0
     JUMPER_PIN = 0 # Used for a jumper to change program detection.
+    CAMERA_ENABLED:bool= False  # Set to True if camera is connected and used.
 
 
     # Common settings for all chassis versions

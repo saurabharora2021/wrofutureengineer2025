@@ -1,6 +1,7 @@
 **/application.log
 **/application.log.*
 **/measurement*.csv
+wroprg/src/output/**
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

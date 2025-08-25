@@ -7,6 +7,8 @@ from board import SCL, SDA
 import busio
 import adafruit_ssd1306
 import adafruit_mpu6050
+from picamera2 import Picamera2
+from libcamera import controls
 from gpiozero import Buzzer, RGBLED, DistanceSensor, Button, Device
 from gpiozero.pins.pigpio import PiGPIOFactory
 from PIL import Image, ImageDraw, ImageFont
@@ -30,6 +32,7 @@ class RpiInterface(ShutdownInterface):
     jumper_pin: Optional[Button] = None
     _screenlogger: Optional[ScreenLogger] = None
     display_loglines = True
+    picam2: Optional[Picamera2] = None
 
 
     def __init__(self,stabilize:bool) -> None:
@@ -116,6 +119,38 @@ class RpiInterface(ShutdownInterface):
                                                         PinConfig.FRONT_DISTANCE_MAX_DISTANCE)
             self.jumper_pin = Button(PinConfig.JUMPER_PIN, hold_time=1)
 
+
+        if PinConfig.CAMERA_ENABLED:
+            #setup camera library
+            self.picam2 = Picamera2()
+
+            # Configure for native 1332x990 (binned) mode
+            video_config = self.picam2.create_video_configuration(
+                main={"size": (1332, 990), "format": "RGB888"},
+                buffer_count=3,
+                controls={
+                    # Target 4 FPS => frame duration ~250,000 microseconds
+                    "FrameDurationLimits": (250000, 250000),
+                },
+            )
+            self.picam2.configure(video_config)
+
+            # Optional autofocus / exposure control
+            try:
+                # Use string key to avoid ControlId objects that some versions treat as strings
+                self.picam2.set_controls({
+                    "AfMode": controls.AfModeEnum.Continuous,  # Ignore if fixed-focus
+                })
+            except Exception as e:
+                print(f"Warning: set_controls(AfMode) failed: {e}")
+
+            # Ensure 4 FPS if not set in config (some platforms require this after configure)
+            try:
+                self.picam2.set_controls({"FrameDurationLimits": (250000, 250000)})
+            except Exception as e:
+                print(f"Warning: could not set FrameDurationLimits: {e}")
+
+
         logger.info("RpiInterface initialized successfully.")
 
         if stabilize:
@@ -141,6 +176,15 @@ class RpiInterface(ShutdownInterface):
                     logger.warning("Waiting for distance sensors to stabilize...")
                     time.sleep(1)
                 counter += 1
+
+    def start_camera(self):
+        """start camera"""
+        if self.picam2 is not None:
+            self.picam2.start()
+
+    def get_camera(self) -> Picamera2:
+        """Get the camera instance."""
+        return self.picam2
 
     def get_screen_logger(self) -> ScreenLogger:
         """Get the logger for the RpiInterface."""
@@ -239,6 +283,8 @@ class RpiInterface(ShutdownInterface):
             self.flush_pending_messages()
         except Exception as e:  # pylint: disable=broad-except
             logger.error("Error flushing OLED messages during shutdown: %s", e)
+        if self.picam2 is not None:
+            self.picam2.stop()
         try:
             self.buzzer.off()
         except Exception as e:  # pylint: disable=broad-except

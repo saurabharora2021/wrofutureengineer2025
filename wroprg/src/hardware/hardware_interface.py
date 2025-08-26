@@ -5,9 +5,9 @@ from collections import deque
 import threading
 import logging
 import time
+from typing import List, NamedTuple, Optional
 import cv2
 from picamera2 import Picamera2
-from typing import List, NamedTuple, Optional
 from base.shutdown_handling import ShutdownInterface
 from hardware.hardwareconfig import HardwareConfig
 from hardware.pin_config import PinConfig
@@ -58,7 +58,7 @@ class HardwareInterface(ShutdownInterface):
                                                bottom_color_sensor_port='C',
                                                front_distance_sensor_port='B')
             elif HardwareConfig.CHASSIS_VERSION == 2:
-                self._lego_drive_base = BuildHatDriveBase(front_motor_port='D', back_motor_port='A',
+                self._lego_drive_base = BuildHatDriveBase(front_motor_port='D', back_motor_port='B',
                                                bottom_color_sensor_port='C',
                                                front_distance_sensor_port=None)
                 self._measurements_manager = MeasurementsManager(self)
@@ -350,7 +350,7 @@ class MeasurementsManager(ShutdownInterface):
 
     def _read_hardware_loop(self) -> None:
         """Thread target: read hardware every 0.5 seconds."""
-        frame_count = 0
+        start_time = time.time()
         while not self._stop_event.is_set():
             if self._hardware_interface is not None:
                 state:RobotState = self._hardware_interface.read_state()
@@ -358,9 +358,10 @@ class MeasurementsManager(ShutdownInterface):
                 roll, pitch, yaw = self._hardware_interface.get_orientation()
                 # Create a new measurement with the current timestamp
                 timestamp = time.time()
+                counter = int((timestamp - start_time)*1000)
                 measurement = Measurement(state.left, state.right, state.front,
                                           steering_angle,
-                                          roll, pitch, yaw,timestamp)
+                                          roll, pitch, yaw,counter)
                 self.add_measurement(measurement)
                 self._rpi.log_message(front=state.front, left=state.left,
                                                            right=state.right,current_yaw=yaw,
@@ -373,8 +374,7 @@ class MeasurementsManager(ShutdownInterface):
                     if self._hardware_interface.SAVE_CAMERA_IMAGE and PinConfig.CAMERA_ENABLED:
                         outputdir:str = self._hardware_interface.CAMERA_OUTPUT_DIR
                         filename = os.path.join(outputdir,
-                                     f"frame_{frame_count:05d}.jpg")
-                        frame_count+=1
+                                     f"frame_{counter:05d}.jpg")
                         cv2.imwrite(filename, frame_bgr)
                         print(f"Saved {filename}")
 
@@ -390,7 +390,7 @@ class MeasurementsManager(ShutdownInterface):
             self._hardware_interface.disable_logger()
             if PinConfig.CAMERA_ENABLED:
                 self._rpi.start_camera()
-                self.picam2 = self._rpi.get_camera()                
+                self.picam2 = self._rpi.get_camera()
                 if self._hardware_interface.SAVE_CAMERA_IMAGE:
                     outputdir:str = self._hardware_interface.CAMERA_OUTPUT_DIR
                     os.makedirs(outputdir, exist_ok=True)

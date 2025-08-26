@@ -5,6 +5,7 @@ import threading
 import logging
 import time
 from typing import List, NamedTuple, Optional
+from typing import Any, Dict
 from base.shutdown_handling import ShutdownInterface
 from hardware.hardwareconfig import HardwareConfig
 from hardware.pin_config import PinConfig
@@ -32,6 +33,8 @@ class HardwareInterface(ShutdownInterface):
     CAMERA_OUTPUT_DIR:str= "output"
     SAVE_CAMERA_IMAGE:bool = True
 
+    _camera_state: RobotState | None = None
+
     def __init__(self,stabilize:bool) -> None:
         self._rpi = RpiInterface(stabilize)
         self._lego_drive_base: Optional[BuildHatDriveBase] = None
@@ -39,6 +42,10 @@ class HardwareInterface(ShutdownInterface):
         self._front_distance_kf: Optional[DumpKalmanFilter] = None
 
         self._orientation_estimator = None
+
+    def set_camera_distance(self,state:RobotState):
+        """Set the camera distance state."""
+        self._camera_state = state
 
     def clear_messages(self) -> None:
         """clear display messages"""
@@ -312,6 +319,10 @@ class HardwareInterface(ShutdownInterface):
         left = self._get_left_distance()
         right = self.get_right_distance()
         yaw = self.get_orientation()[2]
+        if self._camera_state is not None:
+            front = self._camera_state.front if self._camera_state.front > 0 else front
+            left = self._camera_state.left  if self._camera_state.left > 0 else left
+            right = self._camera_state.right if self._camera_state.right > 0 else right
         return RobotState(front=front, left=left, right=right, yaw=yaw)
 
     def disable_logger(self) -> None:
@@ -351,17 +362,23 @@ class MeasurementsManager(ShutdownInterface):
         start_time = time.time()
         while not self._stop_event.is_set():
             if self._hardware_interface is not None:
-                state:RobotState = self._hardware_interface.read_state()
+                metrics: Dict[str, Any] = {}
+                state: RobotState = self._hardware_interface.read_state()
                 steering_angle = self._hardware_interface.get_steering_angle()
                 roll, pitch, yaw = self._hardware_interface.get_orientation()
                 # Create a new measurement with the current timestamp
                 timestamp = time.time()
                 counter = int((timestamp - start_time)*1000)
-                measurement = Measurement(state.left, state.right, state.front,
-                                          steering_angle,
-                                          roll, pitch, yaw,counter)
+    
                 if PinConfig.CAMERA_ENABLED:
-                    self.camera_measurements.measure_distance(measurement)
+                    (front,left,right, metrics) = self.camera_measurements.measure_distance(counter)
+                    self._hardware_interface.set_camera_distance(RobotState(\
+                            front=front,left=left,right=right,yaw=0.0))
+                    state = self._hardware_interface.read_state()
+
+                measurement = Measurement(state.left, state.right, state.front,
+                            steering_angle,
+                            roll, pitch, yaw,counter,extra_metrics=metrics)
 
                 self.add_measurement(measurement)
                 self._rpi.log_message(front=state.front, left=state.left,

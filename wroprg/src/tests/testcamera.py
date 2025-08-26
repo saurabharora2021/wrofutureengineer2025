@@ -1,6 +1,6 @@
 # file: cam_save_native.py
-import cv2
 import os
+import cv2
 from picamera2 import Picamera2
 from libcamera import controls
 

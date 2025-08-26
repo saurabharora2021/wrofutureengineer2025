@@ -1,13 +1,10 @@
 """Unified Hardware Interface for WRO Future Engineer 2025 project."""
 
-import os
 from collections import deque
 import threading
 import logging
 import time
 from typing import List, NamedTuple, Optional
-import cv2
-from picamera2 import Picamera2
 from base.shutdown_handling import ShutdownInterface
 from hardware.hardwareconfig import HardwareConfig
 from hardware.pin_config import PinConfig
@@ -16,6 +13,7 @@ from hardware.measurements import Measurement, MeasurementsLogger, logger
 from hardware.orientation import OrientationEstimator
 from hardware.rpi_interface import RpiInterface
 from hardware.statsfunctions import DumpKalmanFilter
+from hardware.camerameasurements import CameraDistanceMeasurements
 
 logger = logging.getLogger(__name__)
 
@@ -323,7 +321,7 @@ class HardwareInterface(ShutdownInterface):
 class MeasurementsManager(ShutdownInterface):
     """Class to read and store measurements from hardware sensors in a separate thread."""
 
-    picam2:Optional[Picamera2] = None
+    camera_measurements:Optional[CameraDistanceMeasurements] = None
     def __init__(self, hardware_interface: HardwareInterface):
         self.measurements: deque[Measurement] = deque(maxlen=5)  # Store last 5 measurements
         self._reading_thread: threading.Thread | None = None
@@ -367,16 +365,8 @@ class MeasurementsManager(ShutdownInterface):
                                                            right=state.right,current_yaw=yaw,
                                                current_steering=steering_angle)
                 if PinConfig.CAMERA_ENABLED:
-                    frame_rgb = self.picam2.capture_array()         # Capture frame (RGB888)
-                    frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
 
-                    # Save frame to output folder
-                    if self._hardware_interface.SAVE_CAMERA_IMAGE and PinConfig.CAMERA_ENABLED:
-                        outputdir:str = self._hardware_interface.CAMERA_OUTPUT_DIR
-                        filename = os.path.join(outputdir,
-                                     f"frame_{counter:05d}.jpg")
-                        cv2.imwrite(filename, frame_bgr)
-                        print(f"Saved {filename}")
+                    self.camera_measurements.measure_distance(measurement)
 
             time.sleep(0.25)
 
@@ -389,11 +379,9 @@ class MeasurementsManager(ShutdownInterface):
             self._reading_thread.start()
             self._hardware_interface.disable_logger()
             if PinConfig.CAMERA_ENABLED:
-                self._rpi.start_camera()
-                self.picam2 = self._rpi.get_camera()
-                if self._hardware_interface.SAVE_CAMERA_IMAGE:
-                    outputdir:str = self._hardware_interface.CAMERA_OUTPUT_DIR
-                    os.makedirs(outputdir, exist_ok=True)
+                self.camera_measurements = CameraDistanceMeasurements(
+                                        self._rpi.get_camera())
+                self.camera_measurements.start()
 
 
     def stop_reading(self) -> None:

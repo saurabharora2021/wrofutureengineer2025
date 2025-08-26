@@ -40,6 +40,6 @@ class CameraDistanceMeasurements:
 
 
         #lets add extra metrics , for now we will just use the timestamp
-        measurement.extra_metrics['camera.front'] = "0"
-        measurement.extra_metrics['camera.right'] = "0"
-        measurement.extra_metrics['camera.left'] = "0"
+        measurement.extra_metrics['c.front'] = "0"
+        measurement.extra_metrics['c.right'] = "0"
+        measurement.extra_metrics['c.left'] = "0"

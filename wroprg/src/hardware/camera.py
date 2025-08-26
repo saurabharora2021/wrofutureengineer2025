@@ -45,7 +45,7 @@ class MyCamera:
         else:
             self._cv_capture = cv2.VideoCapture(camera_index) # type: ignore[attr-defined]
 
-    def start_camera(self):
+    def start(self):
         """Start the camera."""
         if HAS_PICAMERA2:
             self._pi_capture.start()
@@ -55,7 +55,7 @@ class MyCamera:
     def capture(self):
         """capture frame"""
         if HAS_PICAMERA2:
-            return self._pi_capture()
+            return self._pi_capture_m()
         return self._cv_capture_m()
 
     def _cv_capture_m(self):

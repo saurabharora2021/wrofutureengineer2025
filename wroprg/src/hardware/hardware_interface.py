@@ -360,13 +360,14 @@ class MeasurementsManager(ShutdownInterface):
                 measurement = Measurement(state.left, state.right, state.front,
                                           steering_angle,
                                           roll, pitch, yaw,counter)
+                if PinConfig.CAMERA_ENABLED:
+                    self.camera_measurements.measure_distance(measurement)
+
                 self.add_measurement(measurement)
                 self._rpi.log_message(front=state.front, left=state.left,
                                                            right=state.right,current_yaw=yaw,
                                                current_steering=steering_angle)
-                if PinConfig.CAMERA_ENABLED:
 
-                    self.camera_measurements.measure_distance(measurement)
 
             time.sleep(0.25)
 

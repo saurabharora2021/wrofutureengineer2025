@@ -117,12 +117,16 @@ class CameraDistanceMeasurements:
 
         return (center_black_percentage, left_black_percentage, right_black_percentage, \
                 center, left, right)
-    
+
     def _colour_to_distance(self,color_percentage:float)-> float:
 
         if color_percentage < 50.0:
-            return -1
-        elif color_percentage > 80.0:
-            return 10
-        elif color_percentage > 50:
-            return 20
+            return -1.0
+        elif color_percentage > 95.0:
+            return 5.0
+        elif color_percentage > 85.0:
+            return 10.0
+        elif color_percentage > 75.0:
+            return 20.0
+        elif color_percentage > 50.0:
+            return 30.0

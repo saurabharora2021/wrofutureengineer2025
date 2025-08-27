@@ -38,18 +38,25 @@ class RobotValidator:
         left_distance = state.left
         right_distance = state.right
         logger.info("Left Distance: %.2f, Right Distance: %.2f", left_distance, right_distance)
-        if (left_distance <= 0 or right_distance <= 0 or
-            left_distance >= self.hardware_inf.get_left_distance_max() or
-              right_distance >= self.hardware_inf.get_right_distance_max()):
-            logger.error("Invalid distances: Left=%.2f, Right=%.2f.",
-                              left_distance, right_distance)
+        valid_distance = 0
+        if left_distance > 0 and left_distance < self.hardware_inf.get_left_distance_max():
+            valid_distance += 1
+            logger.info("Left distance is valid: %.2f cm", left_distance)
+        if right_distance > 0 and right_distance < self.hardware_inf.get_right_distance_max():
+            valid_distance += 1
+            logger.info("Right distance is valid: %.2f cm", right_distance)
+        if valid_distance == 0:
+            logger.error("Both left and right distance sensors are invalid.")
             return False
         #Mat Logic, at starting point , size of mat is 100cm. so left and right distance should
         # not be greater than 100cm, since bot also has some width.
-        if left_distance + right_distance > 105:
+        if left_distance + right_distance > 200:
             logger.error("Invalid distances: Left=%.2f, Right=%.2f. Total distance is greater" \
-                        " than 105cm.", left_distance, right_distance)
+                        " than 200cm.", left_distance, right_distance)
             return False
+
+        self.hardware_inf.log_message(state.front, left_distance, right_distance,current_yaw=0,
+                                           current_steering=self.hardware_inf.get_steering_angle())
 
         # Lets check if Raspberry Pi is not throttling
         # We need to check if the Raspberry Pi is throttling, which can happen due to overheating

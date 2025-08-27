@@ -201,7 +201,7 @@ class WalkerN(Walker):
 
         (min_front,left_def,right_def) = self.intelligence.get_learned_distances()
 
-        current_state = self.read_state()
+        current_state = self.read_state(camera_read=True)
 
         if gyroreset:
             def_yaw = current_state.yaw
@@ -230,9 +230,10 @@ class WalkerN(Walker):
                                             defaultspeed=speed,
                                             weak_gyro=False,
                                             speedcheck=True,
-                                            keep_walking=condition_met)
+                                            keep_walking=condition_met,
+                                            camera_read=True)
 
-        current_state = self.read_state()
+        current_state = self.read_state(camera_read=True)
 
         self.intelligence.location_complete()
         return current_state.yaw

@@ -2,18 +2,9 @@
 Utility functions for the Round 1.
 """
 import logging
-from utils.mat import mat_color,MATDIRECTION
+from utils.mat import mat_color
 
 logger = logging.getLogger(__name__)
-
-def directiontostr(direction):
-    """Convert direction to string."""
-    if direction == MATDIRECTION.CLOCKWISE_DIRECTION:
-        return "Clockwise"
-    elif direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
-        return "Anti-clockwise"
-    else:
-        return "Unknown"
 
 def clamp_angle(val:float,max_angle:float)-> float:
     """Clamp the value between -max_angle and max_angle."""

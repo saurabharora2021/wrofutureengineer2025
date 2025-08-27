@@ -8,7 +8,8 @@ from hardware.hardware_interface import HardwareInterface
 class HelperFunctions:
     """A class containing helper functions for the WRO Future Engineer 2025 project."""
 
-    def __init__(self, log_file: str, debugflag: bool,stabilize:bool=True) -> None:
+    def __init__(self, log_file: str, debugflag: bool,stabilize:bool=True,
+                                                screen_logger=True) -> None:
         """Initialize the HelperFunctions Logger class."""
 
         # Initialize instance attributes
@@ -37,7 +38,10 @@ class HelperFunctions:
         self._hardware_interface = HardwareInterface(stabilize)
         self._shutdown_manager.add_interface(self._hardware_interface)
 
-        self.add_screen_logger(self._hardware_interface)
+        if screen_logger:
+            self.add_screen_logger(self._hardware_interface)
+        else:
+            self.add_new_logger(self._hardware_interface)
 
         self._hardware_interface.full_initialization()
 
@@ -72,6 +76,28 @@ class HelperFunctions:
 
         # Add the custom handler to the logger
         oledscreen_handler = ScreenOledHandler(inf)
+        oledscreen_handler.setLevel(logging.WARNING)  # Set the level for the Oled display
+        oled_formatter = logging.Formatter("%(message)s")  # Format for the Oled display
+        oledscreen_handler.setFormatter(oled_formatter)
+        logger.addHandler(oledscreen_handler)
+
+    def add_new_logger(self, inf: HardwareInterface) -> None:
+        """Add a new logger for the OLED display."""
+        logger = logging.getLogger()
+        class ScreenNewOledHandler(logging.Handler):
+            """ Inner class to handle logging to oled display."""
+            def __init__(self, oled_interface: HardwareInterface):
+                super().__init__()
+                self.oled_control_interface = oled_interface
+
+            def emit(self, record):
+                msg = self.format(record)
+                self.oled_control_interface.add_screen_logger_message([msg])
+                if record.levelno >= logging.ERROR:
+                    self.oled_control_interface.buzzer_beep()  # Beep on error messages
+
+        # Add the custom handler to the logger
+        oledscreen_handler = ScreenNewOledHandler(inf)
         oledscreen_handler.setLevel(logging.WARNING)  # Set the level for the Oled display
         oled_formatter = logging.Formatter("%(message)s")  # Format for the Oled display
         oledscreen_handler.setFormatter(oled_formatter)

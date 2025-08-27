@@ -6,11 +6,11 @@ from hardware.hardware_interface import HardwareInterface
 from hardware.hardware_interface import RobotState
 from round1.distance_function import DistanceCalculator
 from round1.walker_helpers import EquiWalkerHelper, GyroWalkerwithMinDistanceHelper
-from round1.utilityfunctions import clamp_angle, directiontostr, check_bottom_color
+from round1.utilityfunctions import clamp_angle, check_bottom_color
 from round1.matintelligence import MatIntelligence
 from utils.threadingfunctions import ConditionCheckerThread
 from utils.mat import MATDIRECTION, MATGENERICLOCATION, MATLOCATION
-from utils.mat import color_to_direction,vote_directions
+from utils.mat import color_to_direction,vote_directions,locationtostr,directiontostr
 
 
 logger = logging.getLogger(__name__)
@@ -49,26 +49,27 @@ class Walker:
         self._prev_turn_angle = -99999
         self.distance_calculator = DistanceCalculator()
 
-    def read_state(self) -> RobotState:
+    def read_state(self,camera_read:bool=False) -> RobotState:
         """Read the current state of the robot."""
 
         state:RobotState  = self.output_inf.read_state()
         logger.warning("F:%.2f, L:%.2f, R:%.2f, Y:%.2f, CF:%.2f, CL:%.2f, CR:%.2f",
                        state.front, state.left, state.right, state.yaw,
                        state.camera_front, state.camera_left, state.camera_right)
-        if state.camera_left > 0 and state.camera_left < state.left:
-            #set left using camera left
-            state.left = state.camera_left
-            logger.info("Using camera left distance: %.2f", state.left)
-        if state.camera_right > 0 and state.camera_right < state.right:
-            #set right using camera right
-            state.right = state.camera_right
-            logger.info("Using camera right distance: %.2f", state.right)
-        if state.camera_front > 0 and state.camera_front < state.front:
-            #set front using camera front
-            state.front = state.camera_front
-            logger.info("Using camera front distance: %.2f", state.front)
-        self.intelligence.add_readings(state.front, state.left, state.right)
+        if camera_read is True:
+            if state.camera_left > 0 and state.camera_left < state.left:
+                #set left using camera left
+                state.left = state.camera_left
+                logger.info("Using camera left distance: %.2f", state.left)
+            if state.camera_right > 0 and state.camera_right < state.right:
+                #set right using camera right
+                state.right = state.camera_right
+                logger.info("Using camera right distance: %.2f", state.right)
+            if state.camera_front > 0 and state.camera_front < state.front:
+                #set front using camera front
+                state.front = state.camera_front
+                logger.info("Using camera front distance: %.2f", state.front)
+            self.intelligence.add_readings(state.front, state.left, state.right)
         return state
 
     def center_bot_correction(self,front:float, left:float,
@@ -284,7 +285,7 @@ class Walker:
             steering = 5 if steering > 0 else -5
             self.output_inf.turn_steering(steering)
 
-        current_state = self.read_state()
+        current_state = self.read_state(camera_read=True)
 
         if gyroreset:
             def_yaw = current_state.yaw
@@ -321,7 +322,7 @@ class Walker:
 
         self.intelligence.register_callback(report_distances_side)
 
-        current_state = self.read_state()
+        current_state = self.read_state(camera_read=True)
         while current_state.front > min_front:
 
             logger.info("Starting round handle side...")
@@ -330,8 +331,9 @@ class Walker:
                                               gyrodefault=current_yaw,
                                               defaultspeed=self.DEFAULT_SPEED,
                                               weak_gyro=False,
-                                              keep_walking=condition_met)
-            current_state = self.read_state()
+                                              keep_walking=condition_met,
+                                              camera_read=True)
+            current_state = self.read_state(camera_read=True)
             #Either you have found a new less point, or current left and right are
             #  less the previous time to correct and center
             if current_state.front > min_front:
@@ -579,7 +581,7 @@ class Walker:
         """Log the data from the helper if provided."""
         if helper is not None:
             messages: List[str] = helper.get_log_data()
-            messages.append(f"Loc: {directiontostr(self.intelligence.get_location())}, " )
+            messages.append(f"Loc: {locationtostr(self.intelligence.get_location())}, " )
             self.output_inf.add_screen_logger_message(messages)
 
     def start_walking(self, speed: float):
@@ -600,7 +602,8 @@ class Walker:
                                          keep_walking:Optional[Callable[[RobotState], bool]]=None,
                                          force_change:bool=False,
                                          weak_gyro=False,is_unknown_direction=False,
-                                         base_helper: Optional[EquiWalkerHelper] = None) ->  None:
+                                         base_helper: Optional[EquiWalkerHelper] = None,
+                                         camera_read=False) ->  None:
         """Handle the straight walking logic.
            keep_walking: Callable Function with argument as (front,left,right),yaw
         """
@@ -619,7 +622,7 @@ class Walker:
 
         (_,left_def,right_def) = self.intelligence.get_learned_distances()
 
-        state = self.read_state()
+        state = self.read_state(camera_read)
 
         if keep_walking is None:
             def noopcond(_state: RobotState) -> bool:
@@ -637,7 +640,7 @@ class Walker:
             self.start_walking(defaultspeed)
         else:
             self.start_walking(self.MIN_SPEED)
-        state = self.read_state()
+        state = self.read_state(camera_read)
 
         prev_turn_angle = 0
 
@@ -655,7 +658,7 @@ class Walker:
             else:
                 prev_turn_angle = turn_angle
 
-            state = self.read_state()
+            state = self.read_state(camera_read)
 
         self.output_inf.buzzer_beep()
 

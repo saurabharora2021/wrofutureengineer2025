@@ -102,6 +102,13 @@ class HardwareInterface(ShutdownInterface):
 
     # --- Raspberry Pi Interface Methods ---
 
+    def log_message(self, front: float, left: float, right: float, current_yaw: float,
+                                                            current_steering: float) -> None:
+        """Log the sensor readings and robot state."""
+        if self._rpi is None:
+            raise RuntimeError("Raspberry Pi interface not initialized.")
+        self._rpi.log_message(front, left, right, current_yaw, current_steering)
+
     def get_orientation(self):
         """Get the current (roll, pitch, yaw) in degrees."""
         if self._orientation_estimator is None:

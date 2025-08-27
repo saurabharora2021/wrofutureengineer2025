@@ -20,19 +20,18 @@ logger = logging.getLogger(__name__)
 
 class RobotState(NamedTuple):
     """Container for the robot state."""
-    front: float
-    left: float
-    right: float
-    yaw: float
+    front: float =0
+    left: float = 0
+    right: float =0
+    camera_front:float = 0
+    camera_left:float = 0
+    camera_right:float = 0
+    yaw: float = 0
 class HardwareInterface(ShutdownInterface):
     """
     Provides unified access to all hardware components.
     Includes methods for both LEGO driver and Raspberry Pi interface.
     """
-
-    CAMERA_OUTPUT_DIR:str= "output"
-    SAVE_CAMERA_IMAGE:bool = True
-
     _camera_state: RobotState | None = None
 
     def __init__(self,stabilize:bool) -> None:
@@ -320,9 +319,10 @@ class HardwareInterface(ShutdownInterface):
         right = self.get_right_distance()
         yaw = self.get_orientation()[2]
         if self._camera_state is not None:
-            front = self._camera_state.front if self._camera_state.front > 0 else front
-            left = self._camera_state.left  if self._camera_state.left > 0 else left
-            right = self._camera_state.right if self._camera_state.right > 0 else right
+            return RobotState(front=front, left=left, right=right, yaw=yaw,
+                              camera_front=self._camera_state.front,
+                              camera_left=self._camera_state.left,
+                              camera_right=self._camera_state.right)
         return RobotState(front=front, left=left, right=right, yaw=yaw)
 
     def disable_logger(self) -> None:
@@ -369,7 +369,7 @@ class MeasurementsManager(ShutdownInterface):
                 # Create a new measurement with the current timestamp
                 timestamp = time.time()
                 counter = int((timestamp - start_time)*1000)
-    
+
                 if PinConfig.CAMERA_ENABLED:
                     (front,left,right, metrics) = self.camera_measurements.measure_distance(counter)
                     self._hardware_interface.set_camera_distance(RobotState(\

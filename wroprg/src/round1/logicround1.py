@@ -53,8 +53,21 @@ class Walker:
         """Read the current state of the robot."""
 
         state:RobotState  = self.output_inf.read_state()
-        logger.warning("F:%.2f, L:%.2f, R:%.2f, Y:%.2f , ",
-                       state.front, state.left, state.right, state.yaw)
+        logger.warning("F:%.2f, L:%.2f, R:%.2f, Y:%.2f, CF:%.2f, CL:%.2f, CR:%.2f",
+                       state.front, state.left, state.right, state.yaw,
+                       state.camera_front, state.camera_left, state.camera_right)
+        if state.camera_left > 0 and state.camera_left < state.left:
+            #set left using camera left
+            state.left = state.camera_left
+            logger.info("Using camera left distance: %.2f", state.left)
+        if state.camera_right > 0 and state.camera_right < state.right:
+            #set right using camera right
+            state.right = state.camera_right
+            logger.info("Using camera right distance: %.2f", state.right)
+        if state.camera_front > 0 and state.camera_front < state.front:
+            #set front using camera front
+            state.front = state.camera_front
+            logger.info("Using camera front distance: %.2f", state.front)
         self.intelligence.add_readings(state.front, state.left, state.right)
         return state
 

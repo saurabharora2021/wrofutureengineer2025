@@ -30,9 +30,10 @@ class OrientationEstimator(ShutdownInterface):
     Estimates roll, pitch, and yaw using MPU6050 data and a complementary blend
     with simple Kalman smoothing on accelerometer-derived angles.
     """
-    def __init__(self, get_accel, get_gyro, dt=0.01):
+    def __init__(self, get_accel, get_gyro,get_magnet, dt=0.01):
         self.get_accel = get_accel      # returns (ax, ay, az) in m/s^2
         self.get_gyro = get_gyro        # returns (gx, gy, gz) in rad/s (Adafruit lib)
+        self.get_magnet = get_magnet    # returns (mx, my, mz) in uT
         self.dt = dt
         self.last_time = time.perf_counter()
 

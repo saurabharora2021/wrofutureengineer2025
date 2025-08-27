@@ -7,6 +7,7 @@ from board import SCL, SDA
 import busio
 import adafruit_ssd1306
 import adafruit_mpu6050
+import qmc5883l
 from gpiozero import Buzzer, RGBLED, DistanceSensor, Button, Device
 from gpiozero.pins.pigpio import PiGPIOFactory
 from PIL import Image, ImageDraw, ImageFont
@@ -48,6 +49,9 @@ class RpiInterface(ShutdownInterface):
 
         # Initialize MPU6050 sensor
         self.mpu = adafruit_mpu6050.MPU6050(i2c)
+
+        #Intialize magenetometer sensor
+        self.magnetometer = qmc5883l.QMC5883L(i2c)
 
         # Create the SSD1306 OLED class.
         self.oled = adafruit_ssd1306.SSD1306_I2C(PinConfig.SCREEN_WIDTH,
@@ -343,3 +347,7 @@ class RpiInterface(ShutdownInterface):
         """Get the gyroscope data from the MPU6050 sensor."""
         gyro = self.mpu.gyro
         return gyro
+    def get_magnetometer(self) -> Tuple[float, float, float]:
+        """Get the magnetometer data from the QMC5883L sensor."""
+        mag = self.magnetometer.magnetic
+        return mag

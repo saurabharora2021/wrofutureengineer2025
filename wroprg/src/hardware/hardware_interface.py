@@ -76,7 +76,8 @@ class HardwareInterface(ShutdownInterface):
                 )
                 self._orientation_estimator = OrientationEstimator(
                         get_accel=self.get_acceleration,
-                        get_gyro=self.get_gyro
+                        get_gyro=self.get_gyro,
+                        get_magnet= self.get_magnetometer,
                 )
 
             else:
@@ -218,6 +219,15 @@ class HardwareInterface(ShutdownInterface):
             return self._rpi.get_acceleration()
         else:
             raise ValueError("Unsupported chassis version for acceleration sensor.")
+
+    def get_magnetometer(self) -> tuple[float, float, float]:
+        """Get the magnetometer data from the QMC5883L sensor."""
+        if HardwareConfig.CHASSIS_VERSION == 1:
+            raise ValueError("not Supported qmc5883l")
+        if HardwareConfig.CHASSIS_VERSION == 2:
+            return self._rpi.get_magnetometer()
+        else:
+            raise ValueError("Unsupported chassis version for magnetometer sensor.")
 
     def get_gyro(self) -> tuple[float, float, float]:
         """Get the gyroscope data from the MPU6050 sensor."""

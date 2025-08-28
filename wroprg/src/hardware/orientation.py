@@ -30,9 +30,10 @@ class OrientationEstimator(ShutdownInterface):
     Estimates roll, pitch, and yaw using MPU6050 data and a complementary blend
     with simple Kalman smoothing on accelerometer-derived angles.
     """
-    def __init__(self, get_accel, get_gyro, dt=0.01):
+    def __init__(self, get_accel, get_gyro, get_mag=None, dt=0.01):
         self.get_accel = get_accel      # returns (ax, ay, az) in m/s^2
         self.get_gyro = get_gyro        # returns (gx, gy, gz) in rad/s (Adafruit lib)
+        self.get_mag = get_mag          # returns (mx, my, mz) in uT; optional
         self.dt = dt
         self.last_time = time.perf_counter()
 
@@ -51,11 +52,19 @@ class OrientationEstimator(ShutdownInterface):
 
         # Complementary filter blend factor
         self._alpha = 0.98
+        self._alpha_yaw = 0.97  # yaw blend with magnetometer when available
 
-        # Calibration offsets
+            # Calibration offsets
         self.roll_offset = 0.0
         self.pitch_offset = 0.0
         self.yaw_offset = 0.0
+
+        # Magnetometer calibration (hard-iron bias) and declination
+        self.mag_bias_x = 0.0
+        self.mag_bias_y = 0.0
+        self.mag_bias_z = 0.0
+        # Optional soft-iron scaling could be added later
+        self.mag_declination_deg = 0.0  # set your local declination if needed
 
 
         #lets start the thread to read sensor data
@@ -112,7 +121,7 @@ class OrientationEstimator(ShutdownInterface):
         roll_pred = self.roll + math.degrees(gx) * dt
         pitch_pred = self.pitch + math.degrees(gy) * dt
 
-        # Yaw: only gyro with bias correction (no accel correction available)
+    # Yaw: start with gyro prediction; will fuse magnetometer if available
         # Adapt bias slowly when stationary
         stationary = abs(gx) < self.stationary_threshold and \
                      abs(gy) < self.stationary_threshold and \
@@ -137,17 +146,74 @@ class OrientationEstimator(ShutdownInterface):
 
         # Apply the single, unified bias correction
         corrected_gz = gz - self.yaw_bias
-        self.yaw += math.degrees(corrected_gz) * dt
+        yaw_pred = self.yaw + math.degrees(corrected_gz) * dt
 
         # Measurement: roll/pitch from accelerometer (smoothed)
         accel_roll, accel_pitch = self._accel_to_angles(ax, ay, az)
         accel_roll = self.kalman_roll.update(accel_roll)
         accel_pitch = self.kalman_pitch.update(accel_pitch)
 
-        # Complementary fusion
+        # Complementary fusion for roll/pitch
         a = self._alpha
         self.roll = a * roll_pred + (1.0 - a) * accel_roll
         self.pitch = a * pitch_pred + (1.0 - a) * accel_pitch
+
+        # Magnetometer fusion for yaw (tilt-compensated heading)
+        if callable(self.get_mag):
+            try:
+                mx, my, mz = self.get_mag()
+                # Apply simple hard-iron bias compensation
+                mx -= self.mag_bias_x
+                my -= self.mag_bias_y
+                mz -= self.mag_bias_z
+
+                yaw_mag = self._tilt_compensated_heading(ax, ay, az, mx, my, mz)
+                # Add magnetic declination
+                yaw_mag = self._wrap_angle_deg(yaw_mag + self.mag_declination_deg)
+
+                # Fuse yaw using circular-aware blending
+                self.yaw = self._fuse_angles_deg(yaw_pred, yaw_mag, self._alpha_yaw)
+            except Exception:  # pylint: disable=broad-except
+                # Fallback to gyro-only if magnetometer read fails
+                self.yaw = self._wrap_angle_deg(yaw_pred)
+        else:
+            self.yaw = self._wrap_angle_deg(yaw_pred)
+
+    @staticmethod
+    def _wrap_angle_deg(angle: float) -> float:
+        """Wrap angle to [-180, 180)."""
+        a = (angle + 180.0) % 360.0 - 180.0
+        # Map -180 to 180 if needed to keep continuity (optional)
+        return a
+
+    @staticmethod
+    def _angle_diff_deg(a: float, b: float) -> float:
+        """Compute smallest signed difference a-b in degrees within [-180,180)."""
+        d = (a - b + 180.0) % 360.0 - 180.0
+        return d
+
+    def _fuse_angles_deg(self, pred: float, meas: float, alpha: float) -> float:
+        """Complementary fuse two angles in degrees considering wrap-around."""
+        err = self._angle_diff_deg(meas, pred)
+        fused = pred + (1.0 - alpha) * err
+        return self._wrap_angle_deg(fused)
+
+    def _tilt_compensated_heading(self, ax: float, ay: float, az: float,
+                                  mx: float, my: float, mz: float) -> float:
+        """Compute tilt-compensated magnetic heading in degrees [-180,180)."""
+        # Compute roll/pitch in radians from accel
+        roll_deg, pitch_deg = self._accel_to_angles(ax, ay, az)
+        roll = math.radians(roll_deg)
+        pitch = math.radians(pitch_deg)
+
+        # Tilt compensation
+        # Reference: AN4248 / common formulas
+        mx2 = mx * math.cos(pitch) + mz * math.sin(pitch)
+        my2 = mx * math.sin(roll) * math.sin(pitch) + my * math.cos(roll) - \
+              mz * math.sin(roll) * math.cos(pitch)
+
+        heading = math.degrees(math.atan2(my2, mx2))
+        return self._wrap_angle_deg(heading)
 
     def reset(self, roll: float = 0.0, pitch: float = 0.0, yaw: float = 0.0,
                 ) -> None:
@@ -209,3 +275,14 @@ class OrientationEstimator(ShutdownInterface):
         self.yaw_bias = math.radians(offset_yaw)
 
         return offset_roll, offset_pitch, offset_yaw
+
+    # --- Optional helpers to set magnetic calibration ---
+    def set_mag_bias(self, bx: float, by: float, bz: float) -> None:
+        """Set hard-iron bias (in same units as sensor, typically uT)."""
+        self.mag_bias_x = bx
+        self.mag_bias_y = by
+        self.mag_bias_z = bz
+
+    def set_mag_declination(self, declination_deg: float) -> None:
+        """Set local magnetic declination in degrees."""
+        self.mag_declination_deg = declination_deg

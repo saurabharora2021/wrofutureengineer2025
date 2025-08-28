@@ -7,6 +7,7 @@ from board import SCL, SDA
 import busio
 import adafruit_ssd1306
 import adafruit_mpu6050
+from qmc5883l import QMC5883L
 from gpiozero import Buzzer, RGBLED, DistanceSensor, Button, Device
 from gpiozero.pins.pigpio import PiGPIOFactory
 from PIL import Image, ImageDraw, ImageFont
@@ -48,6 +49,8 @@ class RpiInterface(ShutdownInterface):
 
         # Initialize MPU6050 sensor
         self.mpu = adafruit_mpu6050.MPU6050(i2c)
+
+        self.compass = QMC5883L(i2c)
 
         # Create the SSD1306 OLED class.
         self.oled = adafruit_ssd1306.SSD1306_I2C(PinConfig.SCREEN_WIDTH,
@@ -148,6 +151,14 @@ class RpiInterface(ShutdownInterface):
                     logger.warning("Waiting for distance sensors to stabilize...")
                     time.sleep(1)
                 counter += 1
+
+    def get_compass(self) -> QMC5883L:
+        """Get the raw compass device (backwards compatibility)."""
+        return self.compass
+
+    def get_magnetometer(self) -> Tuple[float, float, float]:
+        """Get the current magnetometer reading (uT) as (mx, my, mz)."""
+        return self.compass.magnetic
 
     def get_camera(self) -> MyCamera:
         """Get the camera instance."""

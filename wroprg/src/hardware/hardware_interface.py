@@ -77,7 +77,7 @@ class HardwareInterface(ShutdownInterface):
                 self._orientation_estimator = OrientationEstimator(
                         get_accel=self.get_acceleration,
                         get_gyro=self.get_gyro,
-                        get_magnet= self.get_magnetometer,
+                        get_mag=self.get_magnetometer
                 )
 
             else:
@@ -238,6 +238,15 @@ class HardwareInterface(ShutdownInterface):
             return self._rpi.get_gyro()
         else:
             raise ValueError("Unsupported chassis version for gyroscope sensor.")
+
+    def get_magnetometer(self):
+        """Get the magnetometer instance."""
+        if HardwareConfig.CHASSIS_VERSION == 1:
+            raise ValueError("not Supported qmc5883l")
+        elif HardwareConfig.CHASSIS_VERSION == 2:
+            return self._rpi.get_magnetometer()
+        else:
+            raise ValueError("Unsupported chassis version for magnetometer.")
 
     def reset_gyro(self)-> None:
         """Reset the yaw angle to zero."""

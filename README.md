@@ -1,4 +1,4 @@
-# WRO Future Engineers 2025 – Reference Robot
+# WRO Future Engineers 2025 – Yo-Wroom
 
 > *Full-mark scoring autonomous vehicle design for the WRO 2025 Future Engineers category, using Raspberry Pi based control platforms.*
 

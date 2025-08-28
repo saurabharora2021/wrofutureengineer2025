@@ -2,14 +2,16 @@
 import time
 import logging
 import os
-
+import json
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
 class Measurement:
     """Class to represent a single measurement from the hardware sensors."""
     def __init__(self, left_distance: float, right_distance: float, front_distance: float,
-                 steering_angle: float, roll: float, pitch: float, yaw: float, timestamp: float):
+                 steering_angle: float, roll: float, pitch: float, yaw: float, timestamp: float,
+                 extra_metrics: Optional[Dict[str, Any]] = None):
         self._left_distance = left_distance
         self._right_distance = right_distance
         self._front_distance = front_distance
@@ -18,6 +20,8 @@ class Measurement:
         self._pitch = pitch
         self._yaw = yaw
         self._timestamp = timestamp
+        # Store extra metrics as a dict; serialize to JSON on write
+        self._extra_metrics: Dict[str, Any] = extra_metrics or {}
 
     @property
     def left_distance(self) -> float:
@@ -59,6 +63,11 @@ class Measurement:
         """Get the yaw angle measurement."""
         return self._yaw
 
+    @property
+    def extra_metrics(self) -> Dict[str, Any]:
+        """Get extra metrics as a dictionary."""
+        return self._extra_metrics
+
     def __repr__(self):
         return (
             f"Measurement("\
@@ -69,7 +78,8 @@ class Measurement:
             f"roll={self.roll}, "\
             f"pitch={self.pitch}, "\
             f"yaw={self.yaw}, "\
-            f"timestamp={self.timestamp})"
+            f"timestamp={self.timestamp}, "\
+            f"extra_metrics={self.extra_metrics})"
         )
 
 
@@ -94,11 +104,14 @@ class MeasurementsLogger:
         self.open_file()
         if self._file is not None:
             self._file.write("left_distance,right_distance,front_distance,steering_angle,"\
-                             "roll,pitch,yaw,timestamp\n")
+                             "roll,pitch,yaw,timestamp,extra_metrics\n")
             self._file.flush()
     def write_measurement(self, measurement: Measurement) -> None:
         """Write a single measurement to the file, rounding to 2 decimal places."""
         if self._file is not None:
+            # Serialize extra metrics to a JSON string and CSV-escape quotes
+            json_str = json.dumps(measurement.extra_metrics, separators=(',', ':'))
+            json_escaped = json_str.replace('"', '""')
             line = (
                 f"{measurement.left_distance:.2f},"
                 f"{measurement.right_distance:.2f},"
@@ -107,7 +120,8 @@ class MeasurementsLogger:
                 f"{measurement.roll:.2f},"
                 f"{measurement.pitch:.2f},"
                 f"{measurement.yaw:.2f},"
-                f"{measurement.timestamp:.2f}\n"
+                f"{measurement.timestamp:.2f},"
+                f"\"{json_escaped}\"\n"
             )
             self._file.write(line)
             self._file.flush()

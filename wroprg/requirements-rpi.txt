@@ -7,6 +7,7 @@ pillow
 pigpio
 Rpi.GPIO
 adafruit-circuitpython-mpu6050
+circuitpython-qmc5883l
 pytest
 # On Raspberry Pi, install these via apt:
 # sudo apt install python3-picamera2 libcap-dev python3-libcamera python3-opencv

@@ -82,3 +82,33 @@ def vote_directions(list_of_directions: list[MATDIRECTION]) -> MATDIRECTION:
     most_common_direction, _ = direction_counter.most_common(1)[0]
     logger.info("Most common direction: %s", most_common_direction)
     return most_common_direction
+
+def directiontostr(direction):
+    """Convert direction to string."""
+    if direction == MATDIRECTION.CLOCKWISE_DIRECTION:
+        return "Clockwise"
+    elif direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
+        return "Anti-clockwise"
+    else:
+        return "Unknown"
+
+def locationtostr(location:MATLOCATION)-> str:
+    """Convert location to string."""
+    if location == MATLOCATION.SIDE_1:
+        return "Side 1"
+    elif location == MATLOCATION.SIDE_2:
+        return "Side 2"
+    elif location == MATLOCATION.SIDE_3:
+        return "Side 3"
+    elif location == MATLOCATION.SIDE_4:
+        return "Side 4"
+    elif location == MATLOCATION.CORNER_1:
+        return "Corner 1"
+    elif location == MATLOCATION.CORNER_2:
+        return "Corner 2"
+    elif location == MATLOCATION.CORNER_3:
+        return "Corner 3"
+    elif location == MATLOCATION.CORNER_4:
+        return "Corner 4"
+    else:
+        return "Unknown"

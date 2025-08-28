@@ -3,7 +3,6 @@ import logging
 from typing import Optional,List
 import time
 from abc import ABC
-from hardware.hardware_interface import HardwareInterface
 from round1.utilityfunctions import clamp_angle
 
 logger = logging.getLogger(__name__)
@@ -11,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 MAX_ANGLE = 30
 MIN_GYRO_DELTA = 0.05 # Minimum gyro delta angle in degrees
-DELTA_DISTANCE_CM = 0.1
+DELTA_DISTANCE_CM = 0.5
 class PIDController:
     """Simple PID controller."""
 
@@ -57,7 +56,6 @@ class PIDController:
         # Combine PID terms
         output = p_term + i_term + d_term
 
-        logger.info("PID angle: %.2f", output)
         return clamp_angle(output, MAX_ANGLE)
 
 class EquiWalkerHelper(ABC):
@@ -68,7 +66,6 @@ class EquiWalkerHelper(ABC):
                  kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
                  kgyro: float = -5.0, def_turn_angle: float = 0.0,
                  fused_distance_weight: float = 0.5, fused_gyro_weight: float = 0.5,
-                 hardware: Optional[HardwareInterface]=None,
                  min_left: float = 10.00, min_right: float = 10.00) -> None:
 # Default before tuning
 # ki: float = -0.1
@@ -84,13 +81,18 @@ class EquiWalkerHelper(ABC):
         self.min_left = min_left
         self.min_right = min_right
         self.pid = PIDController(kp, ki, kd)
-        self.hardware: Optional[HardwareInterface] = hardware
         logger.info("EquiWalkerHelper initialized ...")
         logger.info("EquiWalkerHelper distances: left=%.2f, right=%.2f", def_distance_left,
                      def_distance_right)
-        logger.info("EquiWalkerHelper parameters: kgyro=%.2f, def_turn_angle=%.2f, \
-                    fused_distance_weight=%.2f, fused_gyro_weight=%.2f",
+        logger.info("EquiWalkerHelper parameters: kgyro=%.2f, def_turn_angle=%.2f,"\
+                    +"fused_distance_weight=%.2f, fused_gyro_weight=%.2f",
                     kgyro, def_turn_angle, fused_distance_weight, fused_gyro_weight)
+        self._messages:List[str] = []
+
+    def get_log_data(self)->List[str]:
+        """Get the log data."""
+        return self._messages
+
 
     def log_walk_data(self,distance_error:float,gyro_error:float,fused_error:float,
                       turn:float) -> None:
@@ -100,12 +102,10 @@ class EquiWalkerHelper(ABC):
             f"Fuse: {fused_error:.2f} Tu:{turn:.2f}",
             ""
         ]
-        if self.hardware is not None:
-            self.hardware.add_screen_logger_message(message)
-            logger.info("Walk data logged: %s", message)
-        else:
-            logger.error("Hardware interface not set, cannot log walk data.")
-            logger.info(message)
+        logger.info("Walker: Error D :%.2f G :%.2f Fuse: %.2f Tu:%.2f",
+                    distance_error, gyro_error, fused_error, turn)
+        self._messages = message
+
 
     def process_error(self, distance_error: float, gyro_correction: float) -> Optional[float]:
         """Process the errors and return the steering angle."""
@@ -116,8 +116,6 @@ class EquiWalkerHelper(ABC):
         # Deadband to avoid small corrections
         if abs(fused_error) < 0.1:
             return None
-
-        logger.info("Fused Error: %.2f", fused_error)
 
         # Use shared PID logic
         turn = self.pid.calculate(fused_error)
@@ -166,11 +164,12 @@ class EquiWalkerHelper(ABC):
 class GyroWalkerwithMinDistanceHelper(EquiWalkerHelper):
     """Helper class for Gyro Walker logic with distance."""
 
-    def __init__(self,  kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
+    def __init__(self,
+                 max_left_distance: float, max_right_distance: float,
+                 kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
                  kgyro: float = -6.0,
                  def_turn_angle: float = 0.0, min_left: float = -1, min_right: float = -1,
                  fused_distance_weight: float = 0.6, fused_gyro_weight: float = 0.4,
-                 hardware: Optional[HardwareInterface]=None
                  ) -> None:
         # Call base class __init__ with default values for required parameters
         logger.info("GyroWalkerwithMinDistanceHelper minleft %.2f , minright %.2f",
@@ -179,8 +178,8 @@ class GyroWalkerwithMinDistanceHelper(EquiWalkerHelper):
         super().__init__(
             def_distance_left=0.0,
             def_distance_right=0.0,
-            max_left_distance=200.0,
-            max_right_distance=200.0,
+            max_left_distance=max_left_distance,
+            max_right_distance=max_right_distance,
             kp=kp,
             ki=ki,
             kd=kd,
@@ -188,7 +187,6 @@ class GyroWalkerwithMinDistanceHelper(EquiWalkerHelper):
             def_turn_angle=def_turn_angle,
             fused_distance_weight=fused_distance_weight,
             fused_gyro_weight=fused_gyro_weight,
-            hardware=hardware,
             min_left=min_left,
             min_right=min_right
         )
@@ -216,3 +214,97 @@ class GyroWalkerwithMinDistanceHelper(EquiWalkerHelper):
             return None
 
         return self.process_error(distance_error, gyro_correction)
+class FixedTurnWalker(GyroWalkerwithMinDistanceHelper):
+    """ This follows a fixed turning angle till min distance is violated."""
+
+    def __init__(self,
+                 max_left_distance: float, max_right_distance: float,
+                 fixed_turn_angle: float,
+                 kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
+                 kgyro: float = -6.0,
+                 def_turn_angle: float = 0.0, min_left: float = -1, min_right: float = -1,
+                 fused_distance_weight: float = 0.6, fused_gyro_weight: float = 0.4,
+                 ) -> None:
+        # Call base class __init__ with default values for required parameters
+        logger.info("FixedTurnWalker minleft %.2f , minright %.2f",
+                    min_left, min_right)
+
+        super().__init__(
+            max_left_distance=max_left_distance,
+            max_right_distance=max_right_distance,
+            kp=kp,
+            ki=ki,
+            kd=kd,
+            kgyro=kgyro,
+            def_turn_angle=def_turn_angle,
+            fused_distance_weight=fused_distance_weight,
+            fused_gyro_weight=fused_gyro_weight,
+            min_left=min_left,
+            min_right=min_right
+        )
+        self.fixed_turn_angle = fixed_turn_angle
+
+    def walk_func(self, left_distance: float, right_distance: float,
+                               current_angle: float) -> Optional[float]:
+        """Calculate the steering angle using sensor fusion PID control."""
+        # Distance correction
+        distance_error = 0.0
+        if self.min_left != -1 and left_distance < self.min_left:
+            distance_error += self.min_left - left_distance
+        if self.min_right != -1 and right_distance < self.min_right:
+            distance_error += self.min_right - right_distance
+
+        # Gyro correction
+        delta_angle = current_angle - self.def_turn_angle
+
+        #small error we continue to turn as per plan
+        if abs(distance_error) < DELTA_DISTANCE_CM:
+            self.pid.reset()
+            if abs(delta_angle) < 10:
+                #lets reduce the steering angle
+                return self.fixed_turn_angle/2
+            return self.fixed_turn_angle
+
+        gyro_correction = self.kgyro * delta_angle
+
+
+        # Deadband to avoid small corrections
+        if abs(delta_angle) < MIN_GYRO_DELTA:
+            self.pid.reset()
+            return None
+
+        return self.process_error(distance_error, gyro_correction)
+
+
+def main():
+    """Main function for testing."""
+
+    # Set up console logging
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s')
+    console_handler.setFormatter(formatter)
+    logging.getLogger().addHandler(console_handler)
+    logging.getLogger().setLevel(logging.INFO)
+
+    # Initialize walker helpers with example parameters
+    equi_walker = EquiWalkerHelper(
+        def_distance_left=40.0,
+        def_distance_right=54.0,
+        max_left_distance=200.0,
+        max_right_distance=200.0,
+        def_turn_angle=0.0,
+    )
+    #F:134.56, L:40.42, R:56.55, Y:5.50
+
+    # Simulate sensor readings
+    left_distance = 40.42
+    right_distance = 56.55
+    current_angle = 5.50
+
+    print("EquiWalkerHelper turn:", equi_walker.walk_func(left_distance,
+                                                           right_distance, current_angle))
+    print(equi_walker.get_log_data())
+
+if __name__ == "__main__":
+    main()

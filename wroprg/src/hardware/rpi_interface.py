@@ -13,6 +13,7 @@ from PIL import Image, ImageDraw, ImageFont
 from hardware.screenlogger import ScreenLogger
 from hardware.pin_config import PinConfig
 from hardware.hardwareconfig import HardwareConfig
+from hardware.camera import MyCamera
 from base.shutdown_handling import ShutdownInterface
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ class RpiInterface(ShutdownInterface):
     jumper_pin: Optional[Button] = None
     _screenlogger: Optional[ScreenLogger] = None
     display_loglines = True
+    camera: Optional[MyCamera] = None
 
 
     def __init__(self,stabilize:bool) -> None:
@@ -116,6 +118,11 @@ class RpiInterface(ShutdownInterface):
                                                         PinConfig.FRONT_DISTANCE_MAX_DISTANCE)
             self.jumper_pin = Button(PinConfig.JUMPER_PIN, hold_time=1)
 
+
+        if PinConfig.CAMERA_ENABLED:
+            #setup camera library
+            self.camera = MyCamera()
+
         logger.info("RpiInterface initialized successfully.")
 
         if stabilize:
@@ -141,6 +148,10 @@ class RpiInterface(ShutdownInterface):
                     logger.warning("Waiting for distance sensors to stabilize...")
                     time.sleep(1)
                 counter += 1
+
+    def get_camera(self) -> MyCamera:
+        """Get the camera instance."""
+        return self.camera
 
     def get_screen_logger(self) -> ScreenLogger:
         """Get the logger for the RpiInterface."""
@@ -239,6 +250,8 @@ class RpiInterface(ShutdownInterface):
             self.flush_pending_messages()
         except Exception as e:  # pylint: disable=broad-except
             logger.error("Error flushing OLED messages during shutdown: %s", e)
+        if self.camera is not None:
+            self.camera.close()
         try:
             self.buzzer.off()
         except Exception as e:  # pylint: disable=broad-except

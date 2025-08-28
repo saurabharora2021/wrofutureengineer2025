@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class BuildHatDriveBase(ShutdownInterface):
     """ This class implements the Drive Base using Build Hat motors and sensors."""
 
-    MAX_STEERING_DEGREE: Final = 45
+    MAX_STEERING_DEGREE: Final = 41
     # Negative gear ratio indicates that positive steering input results in a negative motor
     # rotation due to the physical gear setup.
     STEERING_GEAR_RATIO: Final = -1.67
@@ -114,6 +114,10 @@ class BuildHatDriveBase(ShutdownInterface):
 
         # Calculate how much to move from current position
         move_degrees = target_position - current_position
+
+        if abs(move_degrees) < 1:
+            logger.info("Front motor is already at target position, ignoring small delta.")
+            return
         logger.info("Turning front motor to %s (move %s degrees)", target_position, move_degrees)
         self.front_motor.run_for_degrees(move_degrees, speed=steering_speed, blocking=True)
 

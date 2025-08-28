@@ -25,7 +25,7 @@ class ScreenLogger:
     def log_message(self, front: float, left: float, right: float, current_yaw: float,
                                                             current_steering: float)->Image.Image:
         """Log the message to the screen."""
-        logger.info("Front: %.2f, Left: %.2f, Right: %.2f, Yaw: %.2f, Steering: %.2f",
+        logger.debug("Front: %.2f, Left: %.2f, Right: %.2f, Yaw: %.2f, Steering: %.2f",
                                              front, left, right, current_yaw, current_steering)
         self.draw.rectangle((0, 0, PinConfig.SCREEN_WIDTH, PinConfig.SCREEN_HEIGHT),
                             outline=0, fill=0)

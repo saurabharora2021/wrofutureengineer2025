@@ -32,7 +32,6 @@ class HardwareInterface(ShutdownInterface):
     Provides unified access to all hardware components.
     Includes methods for both LEGO driver and Raspberry Pi interface.
     """
-    _camera_state: RobotState | None = None
 
     def __init__(self,stabilize:bool) -> None:
         self._rpi = RpiInterface(stabilize)
@@ -41,10 +40,6 @@ class HardwareInterface(ShutdownInterface):
         self._front_distance_kf: Optional[DumpKalmanFilter] = None
 
         self._orientation_estimator = None
-
-    def set_camera_distance(self,state:RobotState):
-        """Set the camera distance state."""
-        self._camera_state = state
 
     def clear_messages(self) -> None:
         """clear display messages"""
@@ -335,11 +330,12 @@ class HardwareInterface(ShutdownInterface):
         left = self._get_left_distance()
         right = self.get_right_distance()
         yaw = self.get_orientation()[2]
-        if self._camera_state is not None:
+        if PinConfig.CAMERA_ENABLED:
+            (camera_front, camera_left, camera_right, _) = self.camera_measurements.get_distance()
             return RobotState(front=front, left=left, right=right, yaw=yaw,
-                              camera_front=self._camera_state.front,
-                              camera_left=self._camera_state.left,
-                              camera_right=self._camera_state.right)
+                              camera_front=camera_front,
+                              camera_left=camera_left,
+                              camera_right=camera_right)
         return RobotState(front=front, left=left, right=right, yaw=yaw)
 
     def disable_logger(self) -> None:
@@ -388,9 +384,8 @@ class MeasurementsManager(ShutdownInterface):
                 counter = int((timestamp - start_time)*1000)
 
                 if PinConfig.CAMERA_ENABLED and self.camera_measurements is not None:
-                    (front,left,right, metrics) = self.camera_measurements.measure_distance(counter)
-                    self._hardware_interface.set_camera_distance(RobotState(\
-                            front=front,left=left,right=right,yaw=0.0))
+                    (_,_,_, metrics) = self.camera_measurements.get_distance()
+
                     state = self._hardware_interface.read_state()
 
                 measurement = Measurement(state.left, state.right, state.front,
@@ -403,7 +398,7 @@ class MeasurementsManager(ShutdownInterface):
                                                current_steering=steering_angle)
 
 
-            time.sleep(0.2)
+            time.sleep(0.25)
 
     def start_reading(self) -> None:
         """Start the background thread for reading hardware."""
@@ -431,4 +426,7 @@ class MeasurementsManager(ShutdownInterface):
         self.stop_reading()
         self.measurements.clear()
         self._mlogger.close_file()
+        if self.camera_measurements is not None:
+            self.camera_measurements.shutdown()
+            self.camera_measurements = None
         logger.info("MeasurementsReader shutdown complete.")

@@ -20,7 +20,7 @@ class Walker:
     DEFAULT_SPEED=40
     WALK_TO_CORNER_SPEED = 30
     MIN_SPEED= 15
-
+    WALLFRONTFORWALL=60.0
     WALLFRONTENDDISTANCE=30.0
     KNOWN_COLORS = ("blue", "orange")
     MAX_ANGLE = 20
@@ -57,19 +57,25 @@ class Walker:
                        state.front, state.left, state.right, state.yaw,
                        state.camera_front, state.camera_left, state.camera_right)
         if camera_read is True:
+            left = state.left
+            right = state.right
+            front = state.front
             if state.camera_left > 0 and state.camera_left < state.left:
                 #set left using camera left
-                state.left = state.camera_left
-                logger.info("Using camera left distance: %.2f", state.left)
+                left = state.camera_left
+                logger.info("Using camera left distance: %.2f", left)
             if state.camera_right > 0 and state.camera_right < state.right:
                 #set right using camera right
-                state.right = state.camera_right
-                logger.info("Using camera right distance: %.2f", state.right)
+                right = state.camera_right
+                logger.info("Using camera right distance: %.2f", right)
             if state.camera_front > 0 and state.camera_front < state.front:
                 #set front using camera front
-                state.front = state.camera_front
-                logger.info("Using camera front distance: %.2f", state.front)
-            self.intelligence.add_readings(state.front, state.left, state.right)
+                front = state.camera_front
+                logger.info("Using camera front distance: %.2f", front)
+            state = RobotState(front=front, left=left, right=right,camera_front=state.camera_front,\
+                               camera_left=state.camera_left,camera_right=state.camera_right, \
+                                yaw=state.yaw)
+        self.intelligence.add_readings(state.front, state.left, state.right)
         return state
 
     def center_bot_correction(self,front:float, left:float,
@@ -402,23 +408,23 @@ class Walker:
         if current_direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
             # lets assume this is AntiClockwise and side1 is complete,
             # we have reached corner1
-            if state.right > 50:
+            if state.right > 45:
                 logger.info("Based on current right distance, turn 65")
                 def_turn_angle=max(70, 65-current_angle)
             else:
                 logger.info("Based on current right distance, turn 55")
                 def_turn_angle=max(60, 55-current_angle)
-            if state.front < 80:
+            if state.front < 75:
                 #too close to front wall,add another 5 to turn
                 def_turn_angle+=5
         else:
-            if state.left < 50:
+            if state.left < 45:
                 logger.info("Based on current left distance, turn -65")
                 def_turn_angle=min(-65, -60-current_angle*1.5)
             else:
                 logger.info("Based on current left distance, turn -55")
-                def_turn_angle=min(-55 , -50-current_angle*1.5)
-            if state.front < 80:
+                def_turn_angle=min(-53 , -50-current_angle*1.5)
+            if state.front < 75:
                 #too close to front wall,add another 5 to turn
                 def_turn_angle-=5
         if self.intelligence.get_round_number() == 1:
@@ -532,7 +538,7 @@ class Walker:
         turn_angle = gyrohelper.walk_func(current_angle=state.yaw,
                                               left_distance=state.left, right_distance=state.right)
         self.log_data(gyrohelper)
-        self.turn_steering_with_logging(turn_angle,delta_angle=20,
+        self.turn_steering_with_logging(turn_angle,delta_angle=30,
                                         max_turn_angle=self.MAX_STEERING_ANGLE,
                                              current_speed=self.MIN_SPEED)
 
@@ -574,7 +580,7 @@ class Walker:
         self.stop_walking()
         logger.info("End corner walk...")
 
-        self.intelligence.location_complete()
+        self.intelligence.location_complete(state)
         self.intelligence.unregister_callback()
 
     def log_data(self,helper:Optional[EquiWalkerHelper]=None):
@@ -695,6 +701,8 @@ class Walker:
         self.stop_walking()
 
         logger.info("Time to check color")
+        #lets reduce the gyro correction
+        def_turn_angle = def_turn_angle * 0.5
 
         min_left = 40
         min_right = 40
@@ -782,7 +790,7 @@ class Walker:
             def cond1(state:RobotState):
                 return state.left + state.right < 150
 
-            self.handle_straight_walk_to_distance(min_front=self.WALLFRONTENDDISTANCE,
+            self.handle_straight_walk_to_distance(min_front=self.WALLFRONTFORWALL,
                                                     min_left=state.left,
                                                     min_right=state.right,
                                                     gyrodefault=def_turn_angle,

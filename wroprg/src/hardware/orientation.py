@@ -33,7 +33,8 @@ class OrientationEstimator(ShutdownInterface):
     def __init__(self, get_accel, get_gyro, get_mag=None, dt=0.01):
         self.get_accel = get_accel      # returns (ax, ay, az) in m/s^2
         self.get_gyro = get_gyro        # returns (gx, gy, gz) in rad/s (Adafruit lib)
-        self.get_mag = get_mag          # returns (mx, my, mz) in uT; optional
+        # self.get_mag = get_mag          # returns (mx, my, mz) in uT; optional
+        self.get_mag = None
         self.dt = dt
         self.last_time = time.perf_counter()
 

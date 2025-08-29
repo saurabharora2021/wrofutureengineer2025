@@ -4,6 +4,7 @@ from collections import Counter, deque
 from typing import Callable, Optional
 import threading
 import time
+from hardware.hardware_interface import RobotState
 from utils.mat import MATDIRECTION, MATLOCATION, MATGENERICLOCATION
 from utils.mat import location_to_genericlocation
 
@@ -208,10 +209,14 @@ class MatIntelligence(ShutdownInterface):
         else:
             return (-1,-1,-1)
 
-    def _mid_distance(self) -> float|None:
+    def _mid_distance(self,state:RobotState=None) -> float|None:
         """Get the mid distance for the current location."""
         if self._current_min_distances is not None:
             mid= (self._current_min_distances[0] + self._current_min_distances[1]) / 2
+            if state is not None:
+                mid2 = (state.left + state.right) / 2
+                if mid2 < mid and mid2 > 0:
+                    mid = mid2
             return mid
         return None
 
@@ -232,7 +237,7 @@ class MatIntelligence(ShutdownInterface):
                 logger.info("Not learning distances for location: %s", location)
 
 
-    def location_complete(self) -> MATLOCATION:
+    def location_complete(self,state:RobotState = None) -> MATLOCATION:
         """Change the current location of the Mat Walker."""
         logger.info("Location complete: %s, current dis:%s",self._location,
                             self._current_min_distances)
@@ -242,7 +247,7 @@ class MatIntelligence(ShutdownInterface):
 
         if location_to_genericlocation(self._location) == MATGENERICLOCATION.SIDE:
             # We are at a side, so we can learn the distances.
-            mid = self._mid_distance()
+            mid = self._mid_distance(state)
             logger.info("location complete: side mid:%s", mid)
             if mid is not None:
                 if mid >50:

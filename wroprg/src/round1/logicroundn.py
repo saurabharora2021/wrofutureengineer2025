@@ -100,12 +100,9 @@ class WalkerN(Walker):
                 current_speed=self.CORNER_GYRO_SPEED
             )
 
-           
-
             #go to side 2-3-4
             self.handle_side_walk_n(gyroreset=False,def_yaw=current_yaw_angle,
                                     speed=self.DEFAULT_GYRO_SPEED)
-            
             self.stop_walking()
             return
 

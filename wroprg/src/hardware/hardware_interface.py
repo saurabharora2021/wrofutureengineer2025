@@ -387,7 +387,7 @@ class MeasurementsManager(ShutdownInterface):
                 timestamp = time.time()
                 counter = int((timestamp - start_time)*1000)
 
-                if PinConfig.CAMERA_ENABLED:
+                if PinConfig.CAMERA_ENABLED and self.camera_measurements is not None:
                     (front,left,right, metrics) = self.camera_measurements.measure_distance(counter)
                     self._hardware_interface.set_camera_distance(RobotState(\
                             front=front,left=left,right=right,yaw=0.0))
@@ -403,7 +403,7 @@ class MeasurementsManager(ShutdownInterface):
                                                current_steering=steering_angle)
 
 
-            time.sleep(0.25)
+            time.sleep(0.2)
 
     def start_reading(self) -> None:
         """Start the background thread for reading hardware."""

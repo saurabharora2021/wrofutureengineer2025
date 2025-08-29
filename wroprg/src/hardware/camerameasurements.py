@@ -113,7 +113,7 @@ class CameraDistanceMeasurements:
         right_black_percentage = (cv2.countNonZero(black_pixels) /
                                   (bottom_half.shape[0] * bottom_half.shape[1])) * 100
 
-        if center != -1 or left != -1 or right != -1:
+        if center_black_percentage != -1 or left_black_percentage != -1 or right_black_percentage != -1:
             logger.info("Camera Percentage: Center: %.2f, Left: %.2f, Right: %.2f",
                         center_black_percentage, left_black_percentage, right_black_percentage)
     

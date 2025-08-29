@@ -7,7 +7,9 @@ from board import SCL, SDA
 import busio
 import adafruit_ssd1306
 import adafruit_mpu6050
+import adafruit_tca9548a
 from qmc5883l import QMC5883L
+import adafruit_vl53l0x
 from gpiozero import Buzzer, RGBLED, DistanceSensor, Button, Device
 from gpiozero.pins.pigpio import PiGPIOFactory
 from PIL import Image, ImageDraw, ImageFont
@@ -26,6 +28,11 @@ class RpiInterface(ShutdownInterface):
     MAX_STABILIZATION_CHECKS = 5
     LINE_HEIGHT = 10  # pixels per line
     FONT_SIZE = 10 # font size for messages
+    LEFT_LASER_CHANNEL = 7
+    RIGHT_LASER_CHANNEL = 2
+    DEVICE_I2C_CHANNEL=6
+
+    USE_LASER_DISTANCE=True
 
 
     front_distance_sensor: Optional[DistanceSensor] = None
@@ -47,14 +54,25 @@ class RpiInterface(ShutdownInterface):
         #Setup I2c devices.
         i2c = busio.I2C(SCL,SDA)  # uses board.SCL and board.SDA
 
-        # Initialize MPU6050 sensor
-        self.mpu = adafruit_mpu6050.MPU6050(i2c)
+        tca = adafruit_tca9548a.TCA9548A(i2c)
 
-        self.compass = QMC5883L(i2c)
+        for channel in range(8):
+            if tca[channel].try_lock():
+                logger.info("Channel {}:".format(channel))
+                addresses = tca[channel].scan()
+                logger.info([hex(address) for address in addresses if address != 0x70])
+                tca[channel].unlock()
+
+        device_channel= tca[self.DEVICE_I2C_CHANNEL]
+
+        # Initialize MPU6050 sensor
+        self.mpu = adafruit_mpu6050.MPU6050(device_channel)
+
+        self.compass = QMC5883L(device_channel)
 
         # Create the SSD1306 OLED class.
         self.oled = adafruit_ssd1306.SSD1306_I2C(PinConfig.SCREEN_WIDTH,
-                                                 PinConfig.SCREEN_HEIGHT, i2c)
+                                                 PinConfig.SCREEN_HEIGHT, device_channel)
 
         # Clear display.
         self.oled.fill(0)
@@ -70,6 +88,13 @@ class RpiInterface(ShutdownInterface):
 
         self.pendingmessage: bool = False  # Initialize pendingmessage flag
         self.messages: List[str] = []  # Initialize messages list
+
+        #intialize laser distance sensor
+        left_channel = tca[self.LEFT_LASER_CHANNEL]
+        right_channel = tca[self.RIGHT_LASER_CHANNEL]
+
+        self.left_laser = adafruit_vl53l0x.VL53L0X(left_channel)
+        self.right_laser = adafruit_vl53l0x.VL53L0X(right_channel)
 
         #Logger is not setup yet, so we use print for initialization messages
         self.display_message("Initializing Pi Interface...")
@@ -152,10 +177,6 @@ class RpiInterface(ShutdownInterface):
                     time.sleep(1)
                 counter += 1
 
-    def get_compass(self) -> QMC5883L:
-        """Get the raw compass device (backwards compatibility)."""
-        return self.compass
-
     def get_magnetometer(self) -> Tuple[float, float, float]:
         """Get the current magnetometer reading (uT) as (mx, my, mz)."""
         return self.compass.magnetic
@@ -225,7 +246,21 @@ class RpiInterface(ShutdownInterface):
 
     def get_right_distance(self) -> float:
         """Get the distance from the distance sensor."""
-        return self.rightdistancesensor.distance * 100  # Convert to cm
+        ultrasonic = self.rightdistancesensor.distance * 100  # Convert to cm
+        if not self.USE_LASER_DISTANCE:
+            return ultrasonic
+        else: 
+            laser = self.right_laser.range / 10.0  # Convert mm to cm
+            return self._min_distance(ultrasonic,laser)
+    
+    def _min_distance(self,ultrasonic:float,laser:float)->float:
+        if laser < ultrasonic and laser > 0:
+            # logger.info("Using Laser for laser:%.2f ultra:%.2f",laser,ultrasonic)
+            return laser
+        elif ultrasonic > 0:
+            return ultrasonic
+        return 0
+
 
     def get_right_distance_max(self) -> float:
         """Get the maximum distance for the right distance sensor."""
@@ -233,7 +268,13 @@ class RpiInterface(ShutdownInterface):
 
     def get_left_distance(self) -> float:
         """Get the distance from the distance sensor."""
-        return self.leftdistancesensor.distance * 100  # Convert to cm
+
+        ultrasonic = self.leftdistancesensor.distance * 100  # Convert to cm
+        if not self.USE_LASER_DISTANCE:
+            return ultrasonic
+        else: 
+            laser = self.left_laser.range / 10.0  # Convert mm to cm
+            return self._min_distance(ultrasonic,laser)
 
     def get_left_distance_max(self) -> float:
         """Get the maximum distance for the left distance sensor."""
@@ -354,7 +395,3 @@ class RpiInterface(ShutdownInterface):
         """Get the gyroscope data from the MPU6050 sensor."""
         gyro = self.mpu.gyro
         return gyro
-    def get_magnetometer(self) -> Tuple[float, float, float]:
-        """Get the magnetometer data from the QMC5883L sensor."""
-        mag = self.magnetometer.magnetic
-        return mag

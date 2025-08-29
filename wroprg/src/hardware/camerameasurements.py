@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class CameraDistanceMeasurements:
     """Handles distance measurements using the camera."""
 
-    SAVE_CAMERA_IMAGE:bool = True
+    SAVE_CAMERA_IMAGE:bool = False
     CAMERA_OUTPUT_DIR:str= "output"
     SHOW_IMAGE:bool = False
 

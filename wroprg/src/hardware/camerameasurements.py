@@ -12,6 +12,7 @@ class CameraDistanceMeasurements:
     """Handles distance measurements using the camera."""
 
     SAVE_CAMERA_IMAGE:bool = False
+    SAVE_CAMERA_IMAGE_ON_CORRECTION:bool = True
     CAMERA_OUTPUT_DIR:str= "output"
     SHOW_IMAGE:bool = False
 
@@ -22,7 +23,7 @@ class CameraDistanceMeasurements:
     def start(self):
         """Start the camera."""
         self.camera.start()
-        if self.SAVE_CAMERA_IMAGE:
+        if self.SAVE_CAMERA_IMAGE or self.SAVE_CAMERA_IMAGE_ON_CORRECTION:
             outputdir:str = self.CAMERA_OUTPUT_DIR
             os.makedirs(outputdir, exist_ok=True)
 
@@ -35,8 +36,11 @@ class CameraDistanceMeasurements:
 
         frame = self.camera.capture()
 
+        (center_p,left_p,right_p,center_d,left_d,right_d) = self._measure_border(frame)
+
         # Save frame to output folder
-        if self.SAVE_CAMERA_IMAGE:
+        if self.SAVE_CAMERA_IMAGE or (self.SAVE_CAMERA_IMAGE_ON_CORRECTION and \
+                                      (center_d != -1 or left_d != -1 or right_d != -1)):
             counter = timestamp
             outputdir:str = self.CAMERA_OUTPUT_DIR
             filename = os.path.join(outputdir,
@@ -44,7 +48,6 @@ class CameraDistanceMeasurements:
             cv2.imwrite(filename, frame)
             print(f"Saved {filename}")
 
-        (center_p,left_p,right_p,center_d,left_d,right_d) = self._measure_border(frame)
 
         #lets add extra metrics , for now we will just use the timestamp
         extra_metrics['c.frontp'] = center_p
@@ -110,10 +113,11 @@ class CameraDistanceMeasurements:
                                   (bottom_half.shape[0] * bottom_half.shape[1])) * 100
         right = self._colour_to_distance(right_black_percentage)
 
-        logger.info("Camera Percentage: Center: %.2f, Left: %.2f, Right: %.2f",
-                    center_black_percentage, left_black_percentage, right_black_percentage)
-        logger.info("Camera Distance: Center: %.2f, Left: %.2f, Right: %.2f",
-                    center, left, right)
+        if center != -1 or left != -1 or right != -1:
+            logger.info("Camera Percentage: Center: %.2f, Left: %.2f, Right: %.2f",
+                        center_black_percentage, left_black_percentage, right_black_percentage)
+            logger.info("Camera Distance: Center: %.2f, Left: %.2f, Right: %.2f",
+                        center, left, right)
 
         return (center_black_percentage, left_black_percentage, right_black_percentage, \
                 center, left, right)
@@ -130,3 +134,4 @@ class CameraDistanceMeasurements:
             return 20.0
         elif color_percentage > 50.0:
             return 30.0
+        return -1.0

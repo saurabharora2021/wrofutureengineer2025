@@ -79,48 +79,56 @@ class CameraDistanceMeasurements:
 
         # Calculate distances for each section
         # left section
-        left = img_rgb[:, :section_width]
+        left_image = img_rgb[:, :section_width]
         if self.SHOW_IMAGE:
-            cv2.imshow('Left Section', left)
+            cv2.imshow('Left Section', left_image)
 
         # center section
-        center = img_rgb[:, section_width:3 * section_width]
+        center_image = img_rgb[:, section_width:3 * section_width]
         if self.SHOW_IMAGE:
-            cv2.imshow('Center Section', center)
+            cv2.imshow('Center Section', center_image)
 
         # right section
-        right = img_rgb[:, 3 * section_width:]
+        right_image = img_rgb[:, 3 * section_width:]
         if self.SHOW_IMAGE:
-            cv2.imshow('Right Section', right)
+            cv2.imshow('Right Section', right_image)
+
+        center_distance = -1
+        left_distance = -1
+        right_distance = -1
 
         #in the bottom 50% image find black percentage.
-        bottom_image = center[height // 2:, :]
+        bottom_image = center_image[height // 2:, :]
         black_pixels = cv2.inRange(bottom_image, (0, 0, 0), (50, 50, 50))
         center_black_percentage = (cv2.countNonZero(black_pixels) /
                                    (bottom_image.shape[0] * bottom_image.shape[1])) * 100
-        #TODO: handle this better
-        center = -1
 
-        bottom_half = left[height // 2:, :]
+        bottom_half = left_image[height // 2:, :]
         black_pixels = cv2.inRange(bottom_half, (0, 0, 0), (50, 50, 50))
         left_black_percentage = (cv2.countNonZero(black_pixels) /
                                   (bottom_half.shape[0] * bottom_half.shape[1])) * 100
-        left = self._colour_to_distance(left_black_percentage)
 
-        bottom_half = right[height // 2:, :]
+        bottom_half = right_image[height // 2:, :]
         black_pixels = cv2.inRange(bottom_half, (0, 0, 0), (50, 50, 50))
         right_black_percentage = (cv2.countNonZero(black_pixels) /
                                   (bottom_half.shape[0] * bottom_half.shape[1])) * 100
-        right = self._colour_to_distance(right_black_percentage)
 
         if center != -1 or left != -1 or right != -1:
             logger.info("Camera Percentage: Center: %.2f, Left: %.2f, Right: %.2f",
                         center_black_percentage, left_black_percentage, right_black_percentage)
-            logger.info("Camera Distance: Center: %.2f, Left: %.2f, Right: %.2f",
-                        center, left, right)
+    
+        #Do colour based distance detections.
+        if center_black_percentage > 50:
+            center_distance = self._colour_to_distance(center_black_percentage)
+        else:
+            left_distance = self._colour_to_distance(left_black_percentage)
+            right_distance = self._colour_to_distance(right_black_percentage)
+
+        logger.info("Camera Distance: Center: %.2f, Left: %.2f, Right: %.2f",
+                        center_distance, left_distance, right_distance)
 
         return (center_black_percentage, left_black_percentage, right_black_percentage, \
-                center, left, right)
+                center_distance, left_distance, right_distance)
 
     def _colour_to_distance(self,color_percentage:float)-> float:
 

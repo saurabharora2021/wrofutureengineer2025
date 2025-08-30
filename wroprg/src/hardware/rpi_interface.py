@@ -243,6 +243,14 @@ class RpiInterface(ShutdownInterface):
         self.action_button.wait_for_active()
         logger.info("Action button pressed!")
 
+    def get_right_lidar_distance(self) -> float:
+        """Get the distance from the right lidar sensor."""
+        return self.right_laser.range / 10.0  # Convert mm to cm
+    
+    def get_left_lidar_distance(self) -> float:
+        """Get the distance from the left lidar sensor"""
+        return self.left_laser.range / 10.0  # Convert mm to cm
+
 
     def get_right_distance(self) -> float:
         """Get the distance from the distance sensor."""
@@ -251,14 +259,17 @@ class RpiInterface(ShutdownInterface):
             return ultrasonic
         else: 
             laser = self.right_laser.range / 10.0  # Convert mm to cm
-            return self._min_distance(ultrasonic,laser)
-    
-    def _min_distance(self,ultrasonic:float,laser:float)->float:
+            return self._min_distance(ultrasonic,laser,"right")
+
+    def _min_distance(self,ultrasonic:float,laser:float,sensor:str)->float:
         if laser < ultrasonic and laser > 0:
             # logger.info("Using Laser for laser:%.2f ultra:%.2f",laser,ultrasonic)
             return laser
         elif ultrasonic > 0:
             return ultrasonic
+        elif laser > 0:
+            return laser
+        logger.info("No value for sensor %s",sensor)
         return 0
 
 
@@ -274,7 +285,7 @@ class RpiInterface(ShutdownInterface):
             return ultrasonic
         else: 
             laser = self.left_laser.range / 10.0  # Convert mm to cm
-            return self._min_distance(ultrasonic,laser)
+            return self._min_distance(ultrasonic, laser, "left")
 
     def get_left_distance_max(self) -> float:
         """Get the maximum distance for the left distance sensor."""

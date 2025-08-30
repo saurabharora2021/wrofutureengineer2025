@@ -2,6 +2,9 @@
 import math
 import time
 import logging
+import json
+import os
+from pathlib import Path
 from base.shutdown_handling import ShutdownInterface
 from utils.threadingfunctions import ConstantUpdateThread
 
@@ -74,14 +77,54 @@ class OrientationEstimator(ShutdownInterface):
         self._stationary_gz_samples = []
         self._stationary_sample_limit = 50  # Number of samples to average for bias
 
+        # Persistent calibration settings
+        self._calibration_path: Path = Path.home() / ".wro_orientation_cal.json"
+        self._recal_interval_sec: float = 2 * 60 * 60  # 2 hours
+        self._cal_loaded: bool = False
+
     def shutdown(self):
         """Shutdown readings"""
         self._thread.stop()
 
     def start_readings(self):
         """Start Reading"""
-        #Lets calibrate the devices.
-        self.calibrate_imu()
+        # Try to load calibration; recalibrate if missing or older than 2 hours
+        need_recal = True
+        try:
+            if self._calibration_path.exists():
+                # Prefer timestamp inside file; fall back to mtime
+                with open(self._calibration_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                ts = float(data.get("timestamp", 0.0))
+                if ts <= 0.0:
+                    ts = self._calibration_path.stat().st_mtime
+                age = time.time() - ts
+                if age < self._recal_interval_sec:
+                    # Apply loaded calibration
+                    self.roll_offset = float(data.get("roll_offset_deg_per_s", 0.0))
+                    self.pitch_offset = float(data.get("pitch_offset_deg_per_s", 0.0))
+                    self.yaw_offset = float(data.get("yaw_offset_deg_per_s", 0.0))
+                    # Set primary yaw bias (rad/s) from yaw_offset
+                    self.yaw_bias = math.radians(self.yaw_offset)
+                    # Optional magnetometer calibration if present
+                    self.mag_bias_x = float(data.get("mag_bias_x", 0.0))
+                    self.mag_bias_y = float(data.get("mag_bias_y", 0.0))
+                    self.mag_bias_z = float(data.get("mag_bias_z", 0.0))
+                    self.mag_declination_deg = float(data.get("mag_declination_deg", 0.0))
+                    need_recal = False
+                    self._cal_loaded = True
+                    logger.info("Loaded IMU calibration from %s (age: %.0fs)",
+                                self._calibration_path, age)
+        except Exception as e:
+            logger.warning("Failed to load calibration: %s", e)
+
+        if need_recal:
+            logger.info("Calibrating IMU (no/old calibration)...")
+            self.calibrate_imu()
+            try:
+                self._save_calibration()
+            except Exception as e:
+                logger.warning("Failed to save calibration: %s", e)
 
         self._thread.start()
 
@@ -277,13 +320,24 @@ class OrientationEstimator(ShutdownInterface):
 
         return offset_roll, offset_pitch, offset_yaw
 
-    # --- Optional helpers to set magnetic calibration ---
-    def set_mag_bias(self, bx: float, by: float, bz: float) -> None:
-        """Set hard-iron bias (in same units as sensor, typically uT)."""
-        self.mag_bias_x = bx
-        self.mag_bias_y = by
-        self.mag_bias_z = bz
-
-    def set_mag_declination(self, declination_deg: float) -> None:
-        """Set local magnetic declination in degrees."""
-        self.mag_declination_deg = declination_deg
+    # --- Persistence helpers ---
+    def _save_calibration(self) -> None:
+        """Persist gyro (and optional mag) calibration to JSON file."""
+        data = {
+            "roll_offset_deg_per_s": float(self.roll_offset),
+            "pitch_offset_deg_per_s": float(self.pitch_offset),
+            "yaw_offset_deg_per_s": float(self.yaw_offset),
+            "mag_bias_x": float(self.mag_bias_x),
+            "mag_bias_y": float(self.mag_bias_y),
+            "mag_bias_z": float(self.mag_bias_z),
+            "mag_declination_deg": float(self.mag_declination_deg),
+            "timestamp": float(time.time()),
+            "recal_interval_sec": float(self._recal_interval_sec),
+        }
+        try:
+            self._calibration_path.parent.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+        with open(self._calibration_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        logger.info("Saved IMU calibration to %s", self._calibration_path)

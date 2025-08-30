@@ -87,7 +87,7 @@ class WalkerN(Walker):
                                                         else -self.CORNER_YAW_ANGLE
         logger.info("Corner yaw angle: %.2f", corner_yaw_angle)
 
-        state = self.read_state()
+        state = self.read_state_side()
         logger.info("Full gyro walk current state: %s", state)
         current_yaw_angle = 0
 
@@ -171,7 +171,7 @@ class WalkerN(Walker):
                                 delta_angle=15,
                                 max_turn_angle=self.MAX_STEERING_ANGLE,
                                 )
-            state = self.read_state()
+            state = self.read_state_side()
 
         logger.info("Completed gyro corner walk to yaw: %.2f", state.yaw)
 
@@ -198,7 +198,7 @@ class WalkerN(Walker):
 
         (min_front,left_def,right_def) = self.intelligence.get_learned_distances()
 
-        current_state = self.read_state(camera_read=True)
+        current_state = self.read_state_side(camera_read=True)
 
         if gyroreset:
             def_yaw = current_state.yaw
@@ -230,7 +230,7 @@ class WalkerN(Walker):
                                             keep_walking=condition_met,
                                             camera_read=True)
 
-        current_state = self.read_state(camera_read=True)
+        current_state = self.read_state_side(camera_read=True)
 
         self.intelligence.location_complete()
         return current_state.yaw

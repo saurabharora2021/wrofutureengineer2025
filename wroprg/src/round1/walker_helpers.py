@@ -136,22 +136,24 @@ class EquiWalkerHelper(ABC):
 
         # Validate distances, if one distance is bad or missing.
         # overcorrect on the other side.
-        if left_distance >= self.max_left_distance or left_distance <= 0:
+        if left_distance >= self.max_left_distance or left_distance <= 0 or \
+              self.def_distance_left == self.max_left_distance:
             left_delta = 0.0
             right_delta=right_delta*2
-        if right_distance >= self.max_right_distance or right_distance <= 0:
+        if right_distance >= self.max_right_distance or right_distance <= 0 or \
+              self.def_distance_right == self.max_right_distance:
             right_delta = 0.0
             left_delta=left_delta*2
 
         # Control error: positive means steer right
         distance_error = left_delta - right_delta
 
-        if left_distance <= self.min_left:
+        if left_distance <= self.min_left and left_distance > 0:
             #close to wall, make delta negative
-            distance_error -=10
-        elif right_distance <= self.min_right:
+            distance_error -=5
+        elif right_distance <= self.min_right and right_distance > 0:
             #close to right wall, make delta more postive
-            distance_error += 10
+            distance_error += 5
 
         # Deadband to avoid small corrections
         if abs(distance_error) < DELTA_DISTANCE_CM and \

@@ -32,7 +32,6 @@ class RpiInterface(ShutdownInterface):
     DEVICE_I2C_CHANNEL=6
     DISTANCE_FUSION = True
 
-    USE_LASER_DISTANCE=True
     DISTANCE_SENSOR_DISTANCE = 12.5  # distance between sensors in cm
 
 
@@ -115,7 +114,9 @@ class RpiInterface(ShutdownInterface):
         right_channel = tca[self.RIGHT_LASER_CHANNEL]
 
         self.left_laser = adafruit_vl53l0x.VL53L0X(left_channel)
+        self.left_laser.measurement_timing_budget = 200000
         self.right_laser = adafruit_vl53l0x.VL53L0X(right_channel)
+        self.right_laser.measurement_timing_budget = 200000
 
         #Logger is not setup yet, so we use print for initialization messages
         self.display_message("Initializing Pi Interface...")

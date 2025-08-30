@@ -26,8 +26,6 @@ class HardwareInterface(ShutdownInterface):
 
         self._measurements_manager: Optional[MeasurementFileLog] = None
 
-
-        self._orientation_estimator: Optional[OrientationEstimator] = None
         self._measurements_manager = MeasurementFileLog(self)
 
         self._orientation_estimator = OrientationEstimator(
@@ -188,7 +186,8 @@ class HardwareInterface(ShutdownInterface):
     def reset_gyro(self)-> None:
         """Reset the yaw angle to zero."""
         if self._orientation_estimator is not None:
-            self._orientation_estimator.reset()
+            # self._orientation_estimator.reset()
+            self._orientation_estimator.reset_yaw()
         else:
             raise RuntimeError("Orientation estimator not initialized.")
 

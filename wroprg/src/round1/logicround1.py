@@ -846,6 +846,7 @@ class Walker:
         lidar_left = self.output_inf.get_left_lidar_distance()
         lidar_right = self.output_inf.get_right_lidar_distance()
 
+        logger.info("Front Lidar L:%.2f,R:%.2f", lidar_left, lidar_right)
         if lidar_left + lidar_right < 150:
             logger.info("Both sides are present , we have not reached the corner, walk...")
 

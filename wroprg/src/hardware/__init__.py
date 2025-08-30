@@ -3,7 +3,8 @@ from .hardware_interface import HardwareInterface
 from .validator import RobotValidator
 from .robotstate import RobotState
 from .orientation import OrientationEstimator
+from .rpi_interface import RpiInterface
 
 # We want to expose the HardwareInterface and RobotValidator classes
 # to be used in other modules, so we define them in __all__.
-__all__ = ["HardwareInterface", "RobotValidator", "RobotState","OrientationEstimator"]
+__all__ = ["HardwareInterface", "RobotValidator", "RobotState","OrientationEstimator","RpiInterface"]

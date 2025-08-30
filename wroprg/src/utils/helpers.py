@@ -43,7 +43,7 @@ class HelperFunctions:
         else:
             self.add_new_logger(self._hardware_interface)
 
-        self._hardware_interface.full_initialization()
+        self._hardware_interface.wait_for_ready()
 
     def get_pi_interface(self) -> HardwareInterface:
         """Function to get the Raspberry Pi Hardware Interface."""

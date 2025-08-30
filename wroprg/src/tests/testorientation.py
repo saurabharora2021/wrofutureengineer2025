@@ -37,8 +37,8 @@ def main():
             pi_inf.display_message(f"Roll: {(roll-default_roll):.2f}")
             pi_inf.display_message(f"Pitch: {(pitch-default_pitch):.2f}")
             pi_inf.display_message(f"Yaw: {(yaw-default_yaw):.2f}",forceflush=True)
-            logger.info("State: Front: %.2f, Left: %.2f, Right: %.2f", 
-                        state.front, state.left, state.right)
+            logger.info("State: Front: %.2f, Left: %.2f, Right: %.2f Camera F:%.2f, Camera L:%.2f, Camera R:%.2f", 
+                        state.front, state.left, state.right, state.camera_front, state.camera_left, state.camera_right)
             pi_inf.force_flush_messages()
             sleep(1)
 

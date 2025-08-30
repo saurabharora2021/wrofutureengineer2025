@@ -32,6 +32,8 @@ class HardwareInterface(ShutdownInterface):
     Includes methods for both LEGO driver and Raspberry Pi interface.
     """
 
+    camera_measurements:Optional[CameraDistanceMeasurements] = None
+
     def __init__(self,stabilize:bool) -> None:
 
         self._lego_drive_base: Optional[BuildHatDriveBase] = None
@@ -49,7 +51,10 @@ class HardwareInterface(ShutdownInterface):
                 get_gyro=self.get_gyro,
                 get_mag=self.get_magnetometer
         )
-
+        if PinConfig.CAMERA_ENABLED:
+            self.camera_measurements = CameraDistanceMeasurements(
+                                    self._rpi.get_camera())
+            self.camera_measurements.start()
 
     def clear_messages(self) -> None:
         """clear display messages"""
@@ -194,6 +199,8 @@ class HardwareInterface(ShutdownInterface):
             logger.warning("LEGO Drive Base not initialized, skipping shutdown.")
         else:
             self._lego_drive_base.shutdown()
+        if self.camera_measurements is not None:
+            self.camera_measurements.shutdown()
 
         self._rpi.shutdown()
         if self._orientation_estimator is not None:
@@ -344,7 +351,6 @@ class HardwareInterface(ShutdownInterface):
 class MeasurementsManager(ShutdownInterface):
     """Class to read and store measurements from hardware sensors in a separate thread."""
 
-    camera_measurements:Optional[CameraDistanceMeasurements] = None
     def __init__(self, hardware_interface: HardwareInterface):
         self.measurements: deque[Measurement] = deque(maxlen=5)  # Store last 5 measurements
         self._reading_thread: threading.Thread | None = None
@@ -382,8 +388,9 @@ class MeasurementsManager(ShutdownInterface):
                 timestamp = time.time()
                 counter = int((timestamp - start_time)*1000)
 
-                if PinConfig.CAMERA_ENABLED and self.camera_measurements is not None:
-                    (_,_,_, metrics) = self.camera_measurements.get_distance()
+                if PinConfig.CAMERA_ENABLED and self._hardware_interface.camera_measurements \
+                                                    is not None:
+                    (_,_,_, metrics) = self._hardware_interface.camera_measurements.get_distance()
 
                     state = self._hardware_interface.read_state()
 
@@ -407,11 +414,6 @@ class MeasurementsManager(ShutdownInterface):
             self._reading_thread = threading.Thread(target=self._read_hardware_loop, daemon=True)
             self._reading_thread.start()
             self._hardware_interface.disable_logger()
-            if PinConfig.CAMERA_ENABLED:
-                self.camera_measurements = CameraDistanceMeasurements(
-                                        self._rpi.get_camera())
-                self.camera_measurements.start()
-
 
     def stop_reading(self) -> None:
         """Stop the background thread for reading hardware."""
@@ -425,7 +427,4 @@ class MeasurementsManager(ShutdownInterface):
         self.stop_reading()
         self.measurements.clear()
         self._mlogger.close_file()
-        if self.camera_measurements is not None:
-            self.camera_measurements.shutdown()
-            self.camera_measurements = None
         logger.info("MeasurementsReader shutdown complete.")

@@ -1,10 +1,12 @@
 """This module contains threading functions"""
 import threading
 import time
+import logging
 from typing import Callable
 
 from base.shutdown_handling import ShutdownInterface
 
+logger = logging.getLogger(__name__)
 class ConditionCheckerThread(threading.Thread):
     """Thread to periodically check a condition and execute a callback function.
        Shuts down after callback is called once.
@@ -65,7 +67,7 @@ class ConstantUpdateThread(threading.Thread, ShutdownInterface):
             try:
                 self.call_func()
             except Exception as e:  # pylint: disable=broad-except
-                print(f"Error in ConstantUpdateThread: {e}")
+                logger.error(f"Error in ConstantUpdateThread: {e}")
             time.sleep(self.interval)
         self._is_running = False
 

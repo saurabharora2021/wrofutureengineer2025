@@ -17,40 +17,48 @@ class MyCamera:
         if HAS_PICAMERA2:
             self._pi_capture = Picamera2()
 
-            # Configure for native 1332x990 (binned) mode
+            # Configure for ~30 FPS and BGR to avoid extra conversions
             video_config = self._pi_capture.create_video_configuration(
-                main={"size": (1332, 990), "format": "RGB888"},
+                main={"size": (1332, 990), "format": "BGR888"},
                 buffer_count=3,
                 controls={
-                    # Target 4 FPS => frame duration ~250,000 microseconds
-                    "FrameDurationLimits": (250000, 250000),
+                    # ~30 FPS => 33,333 microseconds per frame
+                    "FrameDurationLimits": (33333, 33333),
                 },
             )
             self._pi_capture.configure(video_config)
 
             # Optional autofocus / exposure control
             try:
-                # Use string key to avoid ControlId objects that some versions treat as strings
                 self._pi_capture.set_controls({
-                    "AfMode": controls.AfModeEnum.Continuous,  # Ignore if fixed-focus
+                    "AfMode": controls.AfModeEnum.Continuous,  # ignored on fixed-focus modules
                 })
             except Exception as e:
                 logger.warning("set_controls(AfMode) failed: %s", e)
 
-            # Ensure 4 FPS if not set in config (some platforms require this after configure)
+            # Re-apply 30 FPS after configure (some platforms require this)
             try:
-                self._pi_capture.set_controls({"FrameDurationLimits": (250000, 250000)})
+                self._pi_capture.set_controls({"FrameDurationLimits": (33333, 33333)})
             except Exception as e:
                 logger.warning("Warning: could not set FrameDurationLimits: %s", e)
         else:
-            self._cv_capture = cv2.VideoCapture(camera_index) # type: ignore[attr-defined]
+            self._cv_capture = cv2.VideoCapture(camera_index)  # type: ignore[attr-defined]
 
     def start(self):
         """Start the camera."""
         if HAS_PICAMERA2:
             self._pi_capture.start()
+            # Enforce 30 FPS after start
+            try:
+                self._pi_capture.set_controls({"FrameDurationLimits": (33333, 33333)})
+            except Exception as e:
+                logger.warning("Warning: could not enforce 30 FPS after start: %s", e)
         else:
             self._cv_capture.open()
+            try:
+                self._cv_capture.set(cv2.CAP_PROP_FPS, 30)
+            except Exception:
+                pass
 
     def capture(self):
         """capture frame"""
@@ -65,8 +73,8 @@ class MyCamera:
         return frame
 
     def _pi_capture_m(self):
-        frame_rgb = self._pi_capture.capture_array()         # Capture frame (RGB888)
-        frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+        # Capture directly in BGR (matches configured format) without color conversion
+        frame_bgr = self._pi_capture.capture_array("main")
         return frame_bgr
 
     def close(self):

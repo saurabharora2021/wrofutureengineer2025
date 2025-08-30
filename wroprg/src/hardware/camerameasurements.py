@@ -22,13 +22,13 @@ class CameraDistanceMeasurements(ShutdownInterface):
     """Handles distance measurements using the camera."""
 
     SAVE_CAMERA_IMAGE:bool = True
-    SAVE_CAMERA_IMAGE_ON_CORRECTION:bool = True
+    SAVE_CAMERA_IMAGE_ON_CORRECTION:bool = False
     CAMERA_OUTPUT_DIR:str= "output"
     SHOW_IMAGE:bool = False
-    MIN_FPS: int = 15
-    MAX_FPS: int = 30
+    MIN_FPS: int = 10
+    MAX_FPS: int = 20
     ORIENTATION_DEG: int = 180        # 0 or 180; swap L/R logically when 180
-    SHOW_DEBUG=True
+    SHOW_DEBUG=False
     # New: use 2/3 of the image height (tunable)
     ROI_HEIGHT_FRAC: float = 1.0/2.0  # portion of image height to analyze (e.g., 0.67)
 
@@ -179,9 +179,8 @@ class CameraDistanceMeasurements(ShutdownInterface):
         right_distance = -1.0
 
         if center_black_percentage > 50.0 and left_black_percentage > 50.0 and right_black_percentage > 50.0:
-            center_distance = self._colour_to_distance(center_black_percentage)
+            center_distance = self._colour_to_distance_center(center_black_percentage)
         else:
-            center_distance = self._colour_to_distance(center_black_percentage)
             left_distance = self._colour_to_distance(left_black_percentage)
             right_distance = self._colour_to_distance(right_black_percentage)
 
@@ -190,10 +189,10 @@ class CameraDistanceMeasurements(ShutdownInterface):
                                         or self.camera_right != -1)):
             self._save_image(roi,counter,"full")
 
-        logger.info(
-            "Camera Percentage: Center: %.2f, Left: %.2f, Right: %.2f",
-            center_black_percentage, left_black_percentage, right_black_percentage
-        )
+        # logger.info(
+        #     "Camera Percentage: Center: %.2f, Left: %.2f, Right: %.2f",
+        #     center_black_percentage, left_black_percentage, right_black_percentage
+        # )
 
         if (center_distance != -1 or left_distance != -1 or right_distance != -1) and self.SHOW_DEBUG:
             logger.info(
@@ -210,13 +209,27 @@ class CameraDistanceMeasurements(ShutdownInterface):
 
         if color_percentage < 50.0:
             return -1.0
+        elif color_percentage > 90.0:
+            return 5.0
+        elif color_percentage > 80.0:
+            return 10.0
+        elif color_percentage > 70.0:
+            return 20.0
+        elif color_percentage > 50.0:
+            return 30.0
+        return -1.0
+    
+    def _colour_to_distance_center(self,color_percentage:float)-> float:
+
+        if color_percentage < 60.0:
+            return -1.0
         elif color_percentage > 95.0:
             return 5.0
         elif color_percentage > 85.0:
             return 10.0
         elif color_percentage > 75.0:
             return 20.0
-        elif color_percentage > 50.0:
+        elif color_percentage > 60.0:
             return 30.0
         return -1.0
 

@@ -408,8 +408,8 @@ class MatIntelligence(ShutdownInterface):
     def _process_each_readings(self, front_distance:float, left_distance: float,
                                     right_distance: float) -> None:
         """Process each reading from the deque."""
-        logger.info("Processing reading: front=%.2f, left=%.2f, right=%.2f", front_distance,
-                                                        left_distance, right_distance)
+        # logger.info("Processing reading: front=%.2f, left=%.2f, right=%.2f", front_distance,
+        #                                                 left_distance, right_distance)
 
         if front_distance < 0 or left_distance < 0 or right_distance < 0:
             return  # Ignore negative distances

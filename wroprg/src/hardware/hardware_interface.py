@@ -54,7 +54,6 @@ class HardwareInterface(ShutdownInterface):
         if PinConfig.CAMERA_ENABLED:
             self.camera_measurements = CameraDistanceMeasurements(
                                     self._rpi.get_camera())
-            self.camera_measurements.start()
 
     def clear_messages(self) -> None:
         """clear display messages"""
@@ -88,14 +87,26 @@ class HardwareInterface(ShutdownInterface):
         if self._lego_drive_base is not None:
             self._lego_drive_base.wait_for_setup()
 
+
+    def get_right_lidar_distance(self) -> float:
+        """Get the distance from the right lidar sensor."""
+        return self._rpi.get_right_lidar_distance()
+
+    def get_left_lidar_distance(self) -> float:
+        """Get the distance from the left lidar sensor"""
+        return self._rpi.get_left_lidar_distance()
+
     def start_measurement_recording(self) -> None:
         """Start the measurements manager thread."""
         if self._measurements_manager is None:
             raise RuntimeError("Measurements manager not initialized. Call" \
                     " full_initialization() first.")
+
         if self._orientation_estimator is not None:
             self._orientation_estimator.start_readings()
         self._measurements_manager.start_reading()
+        if self.camera_measurements is not None:
+            self.camera_measurements.start()
 
     def add_comment(self, comment: str) -> None:
         """Add a comment to the measurements log."""
@@ -283,7 +294,7 @@ class HardwareInterface(ShutdownInterface):
             raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
         self._lego_drive_base.run_front(-speed)
 
-    def turn_steering(self, degrees: float, steering_speed: float=20) -> None:
+    def turn_steering(self, degrees: float, steering_speed: float=40) -> None:
         """
         Turn the steering by the specified degrees.
         Positive degrees turn right, negative turn left.

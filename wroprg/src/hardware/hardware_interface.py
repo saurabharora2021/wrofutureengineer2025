@@ -1,8 +1,9 @@
 """Unified Hardware Interface for WRO Future Engineer 2025 project."""
 
 import logging
-from typing import List, NamedTuple, Optional
+from typing import List, Optional
 from base.shutdown_handling import ShutdownInterface
+from hardware.robotstate import RobotState
 from hardware.legodriver import BuildHatDriveBase
 from hardware.measurements import MeasurementFileLog
 from hardware.orientation import OrientationEstimator
@@ -11,15 +12,6 @@ from hardware.camerameasurements import CameraDistanceMeasurements
 
 logger = logging.getLogger(__name__)
 
-class RobotState(NamedTuple):
-    """Container for the robot state."""
-    front: float =0
-    left: float = 0
-    right: float =0
-    camera_front:float = 0
-    camera_left:float = 0
-    camera_right:float = 0
-    yaw: float = 0
 class HardwareInterface(ShutdownInterface):
     """
     Provides unified access to all hardware components.

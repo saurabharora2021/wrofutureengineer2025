@@ -1,7 +1,8 @@
 """ This Module is used a define validation for the robot."""
 import logging
 
-from hardware.hardware_interface import HardwareInterface, RobotState
+from hardware.robotstate import RobotState
+from hardware.hardware_interface import HardwareInterface
 from utils import constants
 
 logger: logging.Logger = logging.getLogger(__name__)

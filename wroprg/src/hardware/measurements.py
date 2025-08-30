@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 import threading
 from collections import deque
 from base.shutdown_handling import ShutdownInterface
-from hardware.hardware_interface import HardwareInterface, RobotState
+from hardware.robotstate import RobotState
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +145,7 @@ class MeasurementsLogger:
 class MeasurementFileLog(ShutdownInterface):
     """Class to read and store measurements from hardware sensors in a separate thread."""
 
-    def __init__(self, hardware_interface: HardwareInterface):
+    def __init__(self, hardware_interface: "HardwareInterface"):
         self.measurements: deque[Measurement] = deque(maxlen=5)  # Store last 5 measurements
         self._reading_thread: threading.Thread | None = None
         self._stop_event = threading.Event()

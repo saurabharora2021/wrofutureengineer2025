@@ -3,7 +3,7 @@ import logging
 import time
 from typing import Callable, Optional, Tuple, List
 from hardware.hardware_interface import HardwareInterface
-from hardware.hardware_interface import RobotState
+from hardware.robotstate import RobotState
 from round1.distance_function import DistanceCalculator
 from round1.walker_helpers import EquiWalkerHelper, GyroWalkerwithMinDistanceHelper
 from round1.utilityfunctions import clamp_angle, check_bottom_color

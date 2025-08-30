@@ -2,7 +2,8 @@
 import logging
 import argparse
 from time import sleep
-from hardware.hardware_interface import HardwareInterface, RobotState
+from hardware.robotstate import RobotState
+from hardware.hardware_interface import HardwareInterface
 from utils.helpers import HelperFunctions
 
 def main():

@@ -1,7 +1,7 @@
 """ This modules implements the Challenge 1 Walker for the WRO2025 Robot."""
 import logging
 from hardware.hardware_interface import HardwareInterface
-from hardware.hardware_interface import RobotState
+from hardware.robotstate import RobotState
 from round1.walker_helpers import FixedTurnWalker
 from round1.logicround1 import Walker
 from utils import constants

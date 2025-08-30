@@ -4,12 +4,12 @@ from collections import Counter, deque
 from typing import Callable, Optional
 import threading
 import time
-from hardware.hardware_interface import RobotState
 from utils.mat import MATDIRECTION, MATLOCATION, MATGENERICLOCATION
 from utils.mat import location_to_genericlocation
 
 from base.shutdown_handling import ShutdownInterface
 from hardware.hardware_interface import HardwareInterface
+from hardware.robotstate import RobotState
 
 logger = logging.getLogger(__name__)
 class MatIntelligence(ShutdownInterface):

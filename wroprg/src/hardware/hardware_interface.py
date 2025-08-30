@@ -1,15 +1,10 @@
 """Unified Hardware Interface for WRO Future Engineer 2025 project."""
 
-from collections import deque
-import threading
 import logging
-import time
 from typing import List, NamedTuple, Optional
-from typing import Any, Dict
 from base.shutdown_handling import ShutdownInterface
-from hardware.pin_config import PinConfig
 from hardware.legodriver import BuildHatDriveBase
-from hardware.measurements import Measurement, MeasurementsLogger, logger
+from hardware.measurements import MeasurementFileLog
 from hardware.orientation import OrientationEstimator
 from hardware.rpi_interface import RpiInterface
 from hardware.camerameasurements import CameraDistanceMeasurements
@@ -31,27 +26,25 @@ class HardwareInterface(ShutdownInterface):
     Includes methods for both LEGO driver and Raspberry Pi interface.
     """
 
-    camera_measurements:Optional[CameraDistanceMeasurements] = None
-
     def __init__(self,stabilize:bool) -> None:
 
         self._lego_drive_base: Optional[BuildHatDriveBase] = None
         self._full_initialization()
         self._rpi = RpiInterface(stabilize)
 
-        self._measurements_manager: Optional[MeasurementsManager] = None
+        self._measurements_manager: Optional[MeasurementFileLog] = None
 
 
         self._orientation_estimator: Optional[OrientationEstimator] = None
-        self._measurements_manager = MeasurementsManager(self)
+        self._measurements_manager = MeasurementFileLog(self)
 
         self._orientation_estimator = OrientationEstimator(
                 get_accel=self.get_acceleration,
                 get_gyro=self.get_gyro,
                 get_mag=self.get_magnetometer
         )
-        if PinConfig.CAMERA_ENABLED:
-            self.camera_measurements = CameraDistanceMeasurements(
+
+        self.camera_measurements = CameraDistanceMeasurements(
                                     self._rpi.get_camera())
 
     def clear_messages(self) -> None:
@@ -90,8 +83,7 @@ class HardwareInterface(ShutdownInterface):
         if self._orientation_estimator is not None:
             self._orientation_estimator.start_readings()
         self._measurements_manager.start_reading()
-        if self.camera_measurements is not None:
-            self.camera_measurements.start()
+        self.camera_measurements.start()
 
     def add_comment(self, comment: str) -> None:
         """Add a comment to the measurements log."""
@@ -124,10 +116,6 @@ class HardwareInterface(ShutdownInterface):
     def led1_red(self) -> None:
         """Turn on the LED1 red."""
         self._rpi.led1_red()
-
-    def camera_enabled(self) -> bool:
-        """Check if the camera is enabled."""
-        return PinConfig.CAMERA_ENABLED
 
     def led1_blue(self) -> None:
         """Turn on the LED1 blue."""
@@ -190,8 +178,7 @@ class HardwareInterface(ShutdownInterface):
             logger.warning("LEGO Drive Base not initialized, skipping shutdown.")
         else:
             self._lego_drive_base.shutdown()
-        if self.camera_measurements is not None:
-            self.camera_measurements.shutdown()
+        self.camera_measurements.shutdown()
 
         self._rpi.shutdown()
         if self._orientation_estimator is not None:
@@ -303,95 +290,14 @@ class HardwareInterface(ShutdownInterface):
         left = self._get_left_distance()
         right = self.get_right_distance()
         yaw = self.get_orientation()[2]
-        if PinConfig.CAMERA_ENABLED:
-            (camera_front, camera_left, camera_right, _) = self.camera_measurements.get_distance()
-            return RobotState(front=front, left=left, right=right, yaw=yaw,
-                              camera_front=camera_front,
-                              camera_left=camera_left,
-                              camera_right=camera_right)
-        return RobotState(front=front, left=left, right=right, yaw=yaw)
+
+        (camera_front, camera_left, camera_right, _) = self.camera_measurements.get_distance()
+        return RobotState(front=front, left=left, right=right, yaw=yaw,
+                        camera_front=camera_front,
+                        camera_left=camera_left,
+                        camera_right=camera_right)
+        # return RobotState(front=front, left=left, right=right, yaw=yaw)
 
     def disable_logger(self) -> None:
         """Disable the logger."""
         self._rpi.disable_logger()
-
-class MeasurementsManager(ShutdownInterface):
-    """Class to read and store measurements from hardware sensors in a separate thread."""
-
-    def __init__(self, hardware_interface: HardwareInterface):
-        self.measurements: deque[Measurement] = deque(maxlen=5)  # Store last 5 measurements
-        self._reading_thread: threading.Thread | None = None
-        self._stop_event = threading.Event()
-        self._hardware_interface = hardware_interface
-        self._mlogger = MeasurementsLogger()
-        self._rpi = hardware_interface._rpi
-
-    def add_measurement(self, measurement: Measurement) -> None:
-        """Add a new measurement to the list."""
-        self.measurements.append(measurement)
-        self._mlogger.write_measurement(measurement)
-        logger.debug("Added measurement: %s", measurement)
-
-    def add_comment(self, comment: str) -> None:
-        """Add a comment to the measurements log."""
-        self._mlogger.write_comment(comment)
-
-    def get_latest_measurement(self) -> Measurement | None:
-        """Get the latest measurement."""
-        if self.measurements:
-            return self.measurements[-1]
-        return None
-
-    def _read_hardware_loop(self) -> None:
-        """Thread target: read hardware every 0.5 seconds."""
-        start_time = time.time()
-        while not self._stop_event.is_set():
-            if self._hardware_interface is not None:
-                metrics: Dict[str, Any] = {}
-                state: RobotState = self._hardware_interface.read_state()
-                steering_angle = self._hardware_interface.get_steering_angle()
-                roll, pitch, yaw = self._hardware_interface.get_orientation()
-                # Create a new measurement with the current timestamp
-                timestamp = time.time()
-                counter = int((timestamp - start_time)*1000)
-
-                if PinConfig.CAMERA_ENABLED and self._hardware_interface.camera_measurements \
-                                                    is not None:
-                    (_,_,_, metrics) = self._hardware_interface.camera_measurements.get_distance()
-
-                    state = self._hardware_interface.read_state()
-
-                measurement = Measurement(state.left, state.right, state.front,
-                            steering_angle,
-                            roll, pitch, yaw,counter,extra_metrics=metrics)
-
-                self.add_measurement(measurement)
-                self._rpi.log_message(front=state.front, left=state.left,
-                                                           right=state.right,current_yaw=yaw,
-                                               current_steering=steering_angle)
-
-
-            time.sleep(0.25)
-
-    def start_reading(self) -> None:
-        """Start the background thread for reading hardware."""
-        self._mlogger.writeheader()  # Write header to the measurements file
-        if self._reading_thread is None or not self._reading_thread.is_alive():
-            self._stop_event.clear()
-            self._reading_thread = threading.Thread(target=self._read_hardware_loop, daemon=True)
-            self._reading_thread.start()
-            self._hardware_interface.disable_logger()
-
-    def stop_reading(self) -> None:
-        """Stop the background thread for reading hardware."""
-        self._stop_event.set()
-        if self._reading_thread is not None:
-            self._reading_thread.join()
-            self._reading_thread = None
-
-    def shutdown(self) -> None:
-        """Shutdown the reader and stop the reading thread."""
-        self.stop_reading()
-        self.measurements.clear()
-        self._mlogger.close_file()
-        logger.info("MeasurementsReader shutdown complete.")

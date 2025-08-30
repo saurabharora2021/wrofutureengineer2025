@@ -2,7 +2,7 @@
 import logging
 import time
 from typing import List,Optional, Tuple
-
+import math
 from board import SCL, SDA
 import busio
 import adafruit_ssd1306
@@ -30,8 +30,11 @@ class RpiInterface(ShutdownInterface):
     LEFT_LASER_CHANNEL = 7
     RIGHT_LASER_CHANNEL = 2
     DEVICE_I2C_CHANNEL=6
+    DISTANCE_FUSION = True
 
     USE_LASER_DISTANCE=True
+    DISTANCE_SENSOR_DISTANCE = 12.5  # distance between sensors in cm
+
 
     _screenlogger: Optional[ScreenLogger] = None
     display_loglines = True
@@ -257,6 +260,26 @@ class RpiInterface(ShutdownInterface):
         self.action_button.wait_for_active()
         logger.info("Action button pressed!")
 
+    def _fuse_sensors(self,lidar_val, ultrasonic_val, lidar_weight=0.7, \
+                      ultrasonic_weight=0.3, max_diff=20):
+        """
+        Fuses LiDAR and ultrasonic readings using weighted average.
+        Rejects outliers if difference is too big.
+        """
+        if lidar_val > 0 and ultrasonic_val > 0:
+            if abs(lidar_val - ultrasonic_val) > max_diff:
+                # Trust LiDAR more if readings differ too much
+                return lidar_val
+            else:
+                # Weighted average
+                fused = (lidar_val * lidar_weight + ultrasonic_val * ultrasonic_weight) \
+                            / (lidar_weight + ultrasonic_weight)
+                return fused
+        else:
+            #if either is 0 return the other.
+            return lidar_val if lidar_val > 0 else ultrasonic_val
+
+
     def get_right_lidar_distance(self) -> float:
         """Get the distance from the right lidar sensor."""
         return self.right_laser.range / 10.0  # Convert mm to cm
@@ -268,11 +291,8 @@ class RpiInterface(ShutdownInterface):
     def get_right_distance(self) -> float:
         """Get the distance from the distance sensor."""
         ultrasonic = self.rightdistancesensor.distance * 100  # Convert to cm
-        if not self.USE_LASER_DISTANCE:
-            return ultrasonic
-        else:
-            laser = self.right_laser.range / 10.0  # Convert mm to cm
-            return self._min_distance(ultrasonic,laser,"right")
+        laser = self.right_laser.range / 10.0  # Convert mm to cm
+        return self._fuse_sensors(laser, ultrasonic)
 
     def _min_distance(self,ultrasonic:float,laser:float,sensor:str)->float:
         if laser < ultrasonic and laser > 0:
@@ -289,11 +309,57 @@ class RpiInterface(ShutdownInterface):
         """Get the distance from the distance sensor."""
 
         ultrasonic = self.leftdistancesensor.distance * 100  # Convert to cm
-        if not self.USE_LASER_DISTANCE:
-            return ultrasonic
-        else:
-            laser = self.left_laser.range / 10.0  # Convert mm to cm
-            return self._min_distance(ultrasonic, laser, "left")
+        laser = self.left_laser.range / 10.0  # Convert mm to cm
+
+        return self._fuse_sensors(laser, ultrasonic)
+
+    def get_left_wangle(self) -> float:
+        """Get the wall angle from the left wall."""
+        ultrasonic = self.leftdistancesensor.distance * 100  # Convert to cm
+        laser = self.left_laser.range / 10.0  # Convert mm to cm
+        return self._wall_angle(front_dist=laser,
+                           back_dist=ultrasonic)
+
+    def get_right_wangle(self)->float:
+        """Get the wall angle from the right wall"""
+        ultrasonic = self.rightdistancesensor.distance * 100  # Convert to cm
+        laser = self.right_laser.range / 10.0  # Convert mm to cm
+        return self._wall_angle(front_dist=laser,
+                           back_dist=ultrasonic)
+
+    def get_left_pdistance(self)->float:
+        """Get the perpendicular distance from the left wall."""
+        ultrasonic = self.leftdistancesensor.distance * 100  # Convert to cm
+        laser = self.left_laser.range / 10.0  # Convert mm to cm
+        return self._perpendicular_distance(front_dist=laser,
+                                             back_dist=ultrasonic)
+
+    def get_right_pdistance(self)->float:
+        """Get the perpendicular distance from the right wall."""
+        ultrasonic = self.rightdistancesensor.distance * 100  # Convert to cm
+        laser = self.right_laser.range / 10.0  # Convert mm to cm
+        return self._perpendicular_distance(front_dist=laser,
+                                             back_dist=ultrasonic)
+
+    def _wall_angle(self,front_dist, back_dist, \
+                        sensor_gap= DISTANCE_SENSOR_DISTANCE):
+        """
+        Computes angle of wall relative to robot.
+        front_dist = distance from front sensor (cm)
+        back_dist  = distance from back sensor (cm)
+        sensor_gap = distance between sensors (cm)
+        """
+        theta_rad = math.atan2(front_dist - back_dist, sensor_gap)
+        theta_deg = math.degrees(theta_rad)
+        return theta_deg
+
+
+    def _perpendicular_distance(self,front_dist, back_dist):
+        """
+        Returns average distance as approximation of perpendicular distance.
+        (Works best if wall is roughly straight)
+        """
+        return (front_dist + back_dist) / 2.0
 
     def get_front_distance(self) -> float:
         """Get the distance from the front distance sensor."""

@@ -15,7 +15,6 @@ from gpiozero.pins.pigpio import PiGPIOFactory
 from PIL import Image, ImageDraw, ImageFont
 from hardware.screenlogger import ScreenLogger
 from hardware.pin_config import PinConfig
-from hardware.hardwareconfig import HardwareConfig
 from hardware.camera import MyCamera
 from base.shutdown_handling import ShutdownInterface
 
@@ -34,9 +33,6 @@ class RpiInterface(ShutdownInterface):
 
     USE_LASER_DISTANCE=True
 
-
-    front_distance_sensor: Optional[DistanceSensor] = None
-    jumper_pin: Optional[Button] = None
     _screenlogger: Optional[ScreenLogger] = None
     display_loglines = True
     camera: Optional[MyCamera] = None
@@ -138,13 +134,13 @@ class RpiInterface(ShutdownInterface):
                                                  max_distance=PinConfig.LEFT_DISTANCE_MAX_DISTANCE)
 
                 # Initialize Optional Front Distance Sensor
-        if HardwareConfig.CHASSIS_VERSION == 2:
-            self.front_distance_sensor = DistanceSensor(echo=PinConfig.FRONT_SENSOR_ECHO_PIN,
+
+        self.front_distance_sensor = DistanceSensor(echo=PinConfig.FRONT_SENSOR_ECHO_PIN,
                                                         trigger=PinConfig.FRONT_SENSOR_TRIG_PIN,
                                                         partial=True,
                                                         max_distance=
                                                         PinConfig.FRONT_DISTANCE_MAX_DISTANCE)
-            self.jumper_pin = Button(PinConfig.JUMPER_PIN, hold_time=1)
+        self.jumper_pin = Button(PinConfig.JUMPER_PIN, hold_time=1)
 
 
         if PinConfig.CAMERA_ENABLED:
@@ -246,18 +242,17 @@ class RpiInterface(ShutdownInterface):
     def get_right_lidar_distance(self) -> float:
         """Get the distance from the right lidar sensor."""
         return self.right_laser.range / 10.0  # Convert mm to cm
-    
+
     def get_left_lidar_distance(self) -> float:
         """Get the distance from the left lidar sensor"""
         return self.left_laser.range / 10.0  # Convert mm to cm
-
 
     def get_right_distance(self) -> float:
         """Get the distance from the distance sensor."""
         ultrasonic = self.rightdistancesensor.distance * 100  # Convert to cm
         if not self.USE_LASER_DISTANCE:
             return ultrasonic
-        else: 
+        else:
             laser = self.right_laser.range / 10.0  # Convert mm to cm
             return self._min_distance(ultrasonic,laser,"right")
 
@@ -283,7 +278,7 @@ class RpiInterface(ShutdownInterface):
         ultrasonic = self.leftdistancesensor.distance * 100  # Convert to cm
         if not self.USE_LASER_DISTANCE:
             return ultrasonic
-        else: 
+        else:
             laser = self.left_laser.range / 10.0  # Convert mm to cm
             return self._min_distance(ultrasonic, laser, "left")
 
@@ -293,17 +288,10 @@ class RpiInterface(ShutdownInterface):
 
     def get_front_distance(self) -> float:
         """Get the distance from the front distance sensor."""
-        if self.front_distance_sensor is None:
-            raise ValueError("Front distance sensor is not initialized.")
-
-        # Check if the front distance sensor is initialized
         return self.front_distance_sensor.distance * 100  # Convert to cm
 
     def get_front_distance_max(self) -> float:
         """Get the maximum distance for the front distance sensor."""
-        if self.front_distance_sensor is None:
-            raise ValueError("Front distance sensor is not initialized.")
-
         # Check if the front distance sensor is initialized
         return PinConfig.FRONT_DISTANCE_MAX_DISTANCE * 100  # Convert to cm
 
@@ -339,16 +327,14 @@ class RpiInterface(ShutdownInterface):
             self.leftdistancesensor.close()
         except Exception as e:  # pylint: disable=broad-except
             logger.error("Error closing left distance sensor during shutdown: %s", e)
-        if self.front_distance_sensor is not None:
-            try:
-                self.front_distance_sensor.close()
-            except Exception as e:  # pylint: disable=broad-except
-                logger.error("Error closing front distance sensor during shutdown: %s", e)
-        if self.jumper_pin is not None:
-            try:
-                self.jumper_pin.close()
-            except Exception as e:  # pylint: disable=broad-except
-                logger.error("Error closing jumper pin during shutdown: %s", e)
+        try:
+            self.front_distance_sensor.close()
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error("Error closing front distance sensor during shutdown: %s", e)
+        try:
+            self.jumper_pin.close()
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error("Error closing jumper pin during shutdown: %s", e)
 
     def display_message(self, message: str, forceflush: bool = False) -> None:
         """
@@ -394,8 +380,6 @@ class RpiInterface(ShutdownInterface):
 
     def get_jumper_state(self) -> bool:
         """Get the state of the jumper pin."""
-        if self.jumper_pin is None:
-            raise ValueError("Jumper pin is not initialized.")
         return self.jumper_pin.is_active
 
     def get_acceleration(self) -> Tuple[float, float, float]:

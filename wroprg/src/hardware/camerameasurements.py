@@ -21,7 +21,7 @@ except Exception:
 class CameraDistanceMeasurements(ShutdownInterface):
     """Handles distance measurements using the camera."""
 
-    SAVE_CAMERA_IMAGE:bool = True
+    SAVE_CAMERA_IMAGE:bool = False
     SAVE_CAMERA_IMAGE_ON_CORRECTION:bool = False
     CAMERA_OUTPUT_DIR:str= "output"
     SHOW_IMAGE:bool = False
@@ -110,7 +110,8 @@ class CameraDistanceMeasurements(ShutdownInterface):
             img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             #rotate 180
             img_rgb =  cv2.rotate(img_rgb, cv2.ROTATE_180)
-            filename = os.path.join(self.CAMERA_OUTPUT_DIR, f"frame_{int(counter * 1000):013d}_{suffix}.jpg")
+            filename = os.path.join(self.CAMERA_OUTPUT_DIR, \
+                            f"frame_{int(counter * 1000):013d}_{suffix}.jpg")
             cv2.imwrite(filename, img_rgb)
             if self.SHOW_DEBUG:
                 logger.info("Saved: %s",filename)
@@ -172,13 +173,15 @@ class CameraDistanceMeasurements(ShutdownInterface):
         right_black_percentage  = (np.count_nonzero(right_mask)  / right_mask.size)  * 100.0
 
         if swap_lr:
-            left_black_percentage, right_black_percentage = right_black_percentage, left_black_percentage
+            left_black_percentage, right_black_percentage = \
+                    right_black_percentage, left_black_percentage
 
         center_distance = -1.0
         left_distance = -1.0
         right_distance = -1.0
 
-        if center_black_percentage > 50.0 and left_black_percentage > 50.0 and right_black_percentage > 50.0:
+        if center_black_percentage > 50.0 and left_black_percentage > 50.0 and \
+                                                    right_black_percentage > 50.0:
             center_distance = self._colour_to_distance_center(center_black_percentage)
         else:
             left_distance = self._colour_to_distance(left_black_percentage)
@@ -194,7 +197,8 @@ class CameraDistanceMeasurements(ShutdownInterface):
         #     center_black_percentage, left_black_percentage, right_black_percentage
         # )
 
-        if (center_distance != -1 or left_distance != -1 or right_distance != -1) and self.SHOW_DEBUG:
+        if (center_distance != -1 or left_distance != -1 or right_distance != -1) and \
+                        self.SHOW_DEBUG:
             logger.info(
                 "Camera Distance: Center: %.2f, Left: %.2f, Right: %.2f",
                 center_distance, left_distance, right_distance
@@ -218,7 +222,7 @@ class CameraDistanceMeasurements(ShutdownInterface):
         elif color_percentage > 50.0:
             return 30.0
         return -1.0
-    
+
     def _colour_to_distance_center(self,color_percentage:float)-> float:
 
         if color_percentage < 60.0:

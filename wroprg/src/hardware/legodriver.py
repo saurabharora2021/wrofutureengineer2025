@@ -2,8 +2,8 @@
 import logging
 import threading
 import time
-from typing import Final, Optional
-from buildhat import Motor, ColorSensor, DistanceSensor, Hat
+from typing import Final
+from buildhat import Motor, ColorSensor, Hat
 from base.shutdown_handling import ShutdownInterface
 
 # Module-level logger that can be used without self
@@ -18,17 +18,13 @@ class BuildHatDriveBase(ShutdownInterface):
     STEERING_GEAR_RATIO: Final = -1.67
     DELTA_ANGLE: float = 0.5
 
-    front_distance_sensor: Optional[DistanceSensor] = None
-
-    def __init__(self, front_motor_port: str, back_motor_port: str, bottom_color_sensor_port: str,
-                  front_distance_sensor_port: Optional[str]) -> None:
+    def __init__(self, front_motor_port: str, back_motor_port: str, bottom_color_sensor_port: str)\
+                                                                                     -> None:
         """Initialize the drive base with two motors."""
-
 
         self.front_motor_port = front_motor_port
         self.back_motor_port = back_motor_port
         self.bottom_color_sensor_port = bottom_color_sensor_port
-        self.front_distance_sensor_port = front_distance_sensor_port
         self.front_motor: Motor = None
         self.back_motor: Motor = None
         self.bottom_color_sensor: ColorSensor = None
@@ -61,19 +57,10 @@ class BuildHatDriveBase(ShutdownInterface):
         self.back_motor = Motor(self.back_motor_port)
         self.bottom_color_sensor = ColorSensor(self.bottom_color_sensor_port)
         self.bottom_color_sensor.on()
-        if self.front_distance_sensor_port is None:
-            self.front_distance_sensor = None
-            logger.info("Front Lego distance sensor is not connected.")
-        else:
-            # Initialize the front distance sensor if the port is provided
-            logger.info("Front distance sensor port: %s", self.front_distance_sensor_port)
-            self.front_distance_sensor = DistanceSensor(self.front_distance_sensor_port)
-            self.front_distance_sensor.on()
 
         logger.info("BuildHat success")
         logger.warning("Position front wheel:%s", self.front_motor.get_position())
         self.reset_front_motor()  # Reset the front motor position to zero.
-        self.current_position = 0.0
 
         endtime = time.time()
         logger.info("BuildHat loaded in %.2f seconds", endtime - starttime)
@@ -209,12 +196,6 @@ class BuildHatDriveBase(ShutdownInterface):
     def get_bottom_color_rgbi(self) -> list[float]:
         """Get the RGB values detected by the bottom sensor."""
         return self.bottom_color_sensor.get_color_rgbi()
-
-    def get_front_distance(self) -> float:
-        """Get the distance to the front obstacle in centimeter."""
-        if self.front_distance_sensor is None:
-            raise RuntimeError("Front distance sensor not initialized. Check the port connection.")
-        return self.front_distance_sensor.get_distance() / 10  # Convert from mm to cm
 
     def get_steering_angle(self) -> float:
         """Get the current steering angle in degrees."""

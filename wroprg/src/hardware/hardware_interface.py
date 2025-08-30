@@ -7,7 +7,6 @@ import time
 from typing import List, NamedTuple, Optional
 from typing import Any, Dict
 from base.shutdown_handling import ShutdownInterface
-from hardware.hardwareconfig import HardwareConfig
 from hardware.pin_config import PinConfig
 from hardware.legodriver import BuildHatDriveBase
 from hardware.measurements import Measurement, MeasurementsLogger, logger
@@ -65,22 +64,8 @@ class HardwareInterface(ShutdownInterface):
 
     def _full_initialization(self) -> None:
         """Initialize all hardware components."""
-        try:
-            if HardwareConfig.CHASSIS_VERSION == 1:
-                self._lego_drive_base = BuildHatDriveBase(front_motor_port='D', back_motor_port='A',
-                                               bottom_color_sensor_port='C',
-                                               front_distance_sensor_port='B')
-            elif HardwareConfig.CHASSIS_VERSION == 2:
-                self._lego_drive_base = BuildHatDriveBase(front_motor_port='D', back_motor_port='B',
-                                               bottom_color_sensor_port='C',
-                                               front_distance_sensor_port=None)
-
-            else:
-                raise ValueError("Unsupported chassis version")
-
-        except Exception as e:
-            logger.error("Failed to initialize drive base: %s", e)
-            raise RuntimeError(f"Drive base initialization failed: {e}") from e
+        self._lego_drive_base = BuildHatDriveBase(front_motor_port='D', back_motor_port='B',
+                                               bottom_color_sensor_port='C')
 
     def wait_for_ready(self):
         """Wait for complete hardware initialization."""
@@ -177,12 +162,7 @@ class HardwareInterface(ShutdownInterface):
         return self._rpi.get_left_distance_max()
     def get_front_distance_max(self) -> float:
         """Get the maximum distance from the front distance sensor."""
-        if HardwareConfig.CHASSIS_VERSION == 1:
-            raise ValueError("Chassis 1 doesnt support this function")
-        elif HardwareConfig.CHASSIS_VERSION == 2:
-            return self._rpi.get_front_distance_max()
-        else:
-            raise ValueError("Unsupported chassis version for front distance sensor.")
+        return self._rpi.get_front_distance_max()
 
     def display_message(self, message: str, forceflush: bool = False) -> None:
         """
@@ -227,31 +207,15 @@ class HardwareInterface(ShutdownInterface):
 
     def get_acceleration(self) -> tuple[float, float, float]:
         """Get the acceleration from the MPU6050 sensor."""
-        if HardwareConfig.CHASSIS_VERSION == 1:
-            raise ValueError("not Supported mpu6050")
-        if HardwareConfig.CHASSIS_VERSION == 2:
-            return self._rpi.get_acceleration()
-        else:
-            raise ValueError("Unsupported chassis version for acceleration sensor.")
+        return self._rpi.get_acceleration()
 
     def get_magnetometer(self) -> tuple[float, float, float]:
         """Get the magnetometer data from the QMC5883L sensor."""
-        if HardwareConfig.CHASSIS_VERSION == 1:
-            raise ValueError("not Supported qmc5883l")
-        if HardwareConfig.CHASSIS_VERSION == 2:
-            return self._rpi.get_magnetometer()
-        else:
-            raise ValueError("Unsupported chassis version for magnetometer sensor.")
+        return self._rpi.get_magnetometer()
 
     def get_gyro(self) -> tuple[float, float, float]:
         """Get the gyroscope data from the MPU6050 sensor."""
-        if HardwareConfig.CHASSIS_VERSION == 1:
-            raise ValueError("LEGO Drive Base not initialized. Call full_initialization()" \
-                " first.")
-        elif HardwareConfig.CHASSIS_VERSION == 2:
-            return self._rpi.get_gyro()
-        else:
-            raise ValueError("Unsupported chassis version for gyroscope sensor.")
+        return self._rpi.get_gyro()
 
     def reset_gyro(self)-> None:
         """Reset the yaw angle to zero."""
@@ -324,15 +288,7 @@ class HardwareInterface(ShutdownInterface):
 
     def _get_front_distance(self) -> float:
         """Get the distance to the front obstacle in centimeter."""
-        if HardwareConfig.CHASSIS_VERSION == 1:
-            if self._lego_drive_base is None:
-                raise ValueError("LEGO Drive Base not initialized. Call full_initialization()" \
-                " first.")
-            return self._lego_drive_base.get_front_distance()
-        elif HardwareConfig.CHASSIS_VERSION == 2:
-            return self._rpi.get_front_distance()
-        else:
-            raise ValueError("Unsupported chassis version for front distance sensor.")
+        return self._rpi.get_front_distance()
 
     def get_steering_angle(self) -> float:
         """Get the current steering angle in degrees."""

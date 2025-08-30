@@ -4,6 +4,7 @@ from hardware.hardware_interface import HardwareInterface
 from hardware.hardware_interface import RobotState
 from round1.walker_helpers import FixedTurnWalker
 from round1.logicround1 import Walker
+from utils import constants
 from utils.mat import MATDIRECTION, MATGENERICLOCATION
 
 logger = logging.getLogger(__name__)
@@ -25,10 +26,6 @@ class WalkerN(Walker):
         self._line_color: str|None = None
         #setting decimals for float datatype.
         self._current_distance = (0.1, 0.1)
-
-        # Cache sensor max values once
-        self._left_max = self.output_inf.get_left_distance_max()
-        self._right_max = self.output_inf.get_right_distance_max()
 
         self._nooflaps = nooflaps
 
@@ -215,7 +212,8 @@ class WalkerN(Walker):
             # Define the condition for stopping the walk
             # Either you have found the new minimum point or
             # previous distances are less than current distances by a good margin.
-            if state.left == self._left_max or state.right == self._right_max:
+            if state.left == constants.LEFT_DISTANCE_MAX or \
+                state.right == constants.RIGHT_DISTANCE_MAX:
                 #lets not try to fix this.
                 return False
             return True

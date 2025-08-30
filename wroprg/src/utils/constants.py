@@ -1,0 +1,5 @@
+"""Constanst for the project"""
+
+RIGHT_DISTANCE_MAX = 200
+LEFT_DISTANCE_MAX = 200
+FRONT_DISTANCE_MAX = 200

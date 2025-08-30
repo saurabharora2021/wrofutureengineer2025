@@ -15,6 +15,7 @@ from gpiozero.pins.pigpio import PiGPIOFactory
 from PIL import Image, ImageDraw, ImageFont
 from hardware.screenlogger import ScreenLogger
 from hardware.camera import MyCamera
+from utils import constants
 from base.shutdown_handling import ShutdownInterface
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -161,7 +162,6 @@ class RpiInterface(ShutdownInterface):
         self.jumper_pin = Button(self.JUMPER_PIN, hold_time=1)
 
 
-        
         #setup camera library
         self.camera = MyCamera()
 
@@ -177,12 +177,12 @@ class RpiInterface(ShutdownInterface):
             while counter< self.MAX_STABILIZATION_CHECKS and valid_distance is False:
                 valid_distance = True
                 if (self.get_right_distance() < 0.1 or
-                        self.get_right_distance() >= self.get_right_distance_max()):
+                        self.get_right_distance() >= constants.RIGHT_DISTANCE_MAX):
                     logger.info("Right distance sensor is not stable, %.2f cm",
                                     self.get_right_distance())
                     valid_distance = False
                 if (self.get_left_distance() < 0.1 or
-                        self.get_left_distance() >= self.get_left_distance_max()):
+                        self.get_left_distance() >= constants.LEFT_DISTANCE_MAX):
                     logger.info("Left distance sensor is not stable, %.2f cm",
                                     self.get_left_distance())
                     valid_distance = False
@@ -285,11 +285,6 @@ class RpiInterface(ShutdownInterface):
         logger.info("No value for sensor %s",sensor)
         return 0
 
-
-    def get_right_distance_max(self) -> float:
-        """Get the maximum distance for the right distance sensor."""
-        return self.RIGHT_DISTANCE_MAX_DISTANCE * 100  # Convert to cm
-
     def get_left_distance(self) -> float:
         """Get the distance from the distance sensor."""
 
@@ -300,10 +295,6 @@ class RpiInterface(ShutdownInterface):
             laser = self.left_laser.range / 10.0  # Convert mm to cm
             return self._min_distance(ultrasonic, laser, "left")
 
-    def get_left_distance_max(self) -> float:
-        """Get the maximum distance for the left distance sensor."""
-        return self.LEFT_DISTANCE_MAX_DISTANCE * 100  # Convert to cm
-
     def get_front_distance(self) -> float:
         """Get the distance from the front distance sensor."""
         return self.front_distance_sensor.distance * 100  # Convert to cm
@@ -312,7 +303,6 @@ class RpiInterface(ShutdownInterface):
         """Get the maximum distance for the front distance sensor."""
         # Check if the front distance sensor is initialized
         return self.FRONT_DISTANCE_MAX_DISTANCE * 100  # Convert to cm
-
 
     def shutdown(self) -> None:
         try:

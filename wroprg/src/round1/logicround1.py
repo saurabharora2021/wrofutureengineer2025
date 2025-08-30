@@ -9,6 +9,7 @@ from round1.walker_helpers import EquiWalkerHelper, GyroWalkerwithMinDistanceHel
 from round1.utilityfunctions import clamp_angle, check_bottom_color
 from round1.matintelligence import MatIntelligence
 from utils.threadingfunctions import ConditionCheckerThread
+from utils import constants
 from utils.mat import MATDIRECTION, MATGENERICLOCATION, MATLOCATION
 from utils.mat import color_to_direction,vote_directions,locationtostr,directiontostr
 
@@ -37,10 +38,6 @@ class Walker:
         #setting decimals for float datatype.
         self._current_distance = (0.1, 0.1)
 
-        # Cache sensor max values once
-        self._left_max = self.output_inf.get_left_distance_max()
-        self._right_max = self.output_inf.get_right_distance_max()
-
         self._nooflaps = nooflaps
         self.intelligence: MatIntelligence = MatIntelligence(roundcount=nooflaps,
                                                               hardware_interface=output_inf)
@@ -54,7 +51,7 @@ class Walker:
 
         state:RobotState  = self.output_inf.read_state()
         reset_state=False
-        self.intelligence.add_readings(state.front, state.left, state.right)                       
+        self.intelligence.add_readings(state.front, state.left, state.right)
         if camera_read is True:
             left = state.left
             right = state.right
@@ -103,7 +100,7 @@ class Walker:
 
         state:RobotState  = self.output_inf.read_state()
         reset_state=False
-        self.intelligence.add_readings(state.front, state.left, state.right)                       
+        self.intelligence.add_readings(state.front, state.left, state.right)
         if camera_read is True:
             left = state.left
             right = state.right
@@ -117,7 +114,7 @@ class Walker:
                 right = state.camera_right
                 reset_state = True
                 logger.info("Using camera right distance: %.2f", right)
-                
+
             elif direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION and state.camera_left > 0 \
                             and state.camera_left < state.left:
                 #set left using camera left
@@ -149,7 +146,7 @@ class Walker:
         """
         # If Delta is high move towards the center, move by 10cm otherwise too high correction.
 
-        if left == self._left_max and right < self._right_max:
+        if left == constants.LEFT_DISTANCE_MAX and right < constants.RIGHT_DISTANCE_MAX:
             if self.intelligence.get_direction() == MATDIRECTION.CLOCKWISE_DIRECTION:
                 #make sure your are away from the inside wall you can read.
                 left = max(25,left)
@@ -160,7 +157,7 @@ class Walker:
                 right = max(30,right)
                 return (True, 0, left, right)
 
-        if right == self._right_max and left < self._left_max:
+        if right == constants.RIGHT_DISTANCE_MAX and left < constants.LEFT_DISTANCE_MAX:
             if self.intelligence.get_direction() == MATDIRECTION.CLOCKWISE_DIRECTION:
                 # make sure you are 30 away from outside wall
                 right = max(30,right)
@@ -171,9 +168,8 @@ class Walker:
                 left = max(25,left)
                 return (True, 0, left, right)
 
-        deltadistance = right - left
         delta_yaw = 0
-        # If Delta is high move towards the center, move by 10cm otherwise too high correction.
+        # If we are very close to either wall turn.
         if right <= 20 or left <= 20:
             correction = self.DISTANCE_CORRECTION #10 if front > 130 else 5
             if left < right:
@@ -301,15 +297,18 @@ class Walker:
                 # total actual > total_learned
                 # we need to proportionally reduce actual
 
-                if actual_left == self._left_max or actual_right == self._right_max:
+                if actual_left <= constants.LEFT_DISTANCE_MAX or \
+                        actual_right == constants.RIGHT_DISTANCE_MAX:
                     # If we are at the max distance, we need to be careful
                     logger.info("At max distance, adjusting...")
-                    if actual_left == self._left_max and actual_right != self._right_max:
+                    if actual_left == constants.LEFT_DISTANCE_MAX and \
+                                actual_right != constants.RIGHT_DISTANCE_MAX:
                         #we can adjust the right distance
                         if actual_right > total_learned/2:
                             actual_right -= 5
                             prev_yaw = -self.YAW_CORRECTION
-                    elif actual_right == self._right_max and actual_left != self._left_max:
+                    elif actual_right == constants.RIGHT_DISTANCE_MAX and \
+                                        actual_left != constants.LEFT_DISTANCE_MAX:
                         #we can adjust the left distance
                         if actual_left > total_learned/2:
                             actual_left -= 5
@@ -380,11 +379,11 @@ class Walker:
                 logger.info("Condition met with current distance: %s", self._current_distance)
                 return False
             # if state.left == self._left_max or state.right == self._right_max:
-            #     #lets not try to fix this.
-            #     return True
+            # lets not try to fix this.
+            # return True
             if prev_distance - (state.left + state.right) > 10:
             #   distance is reducing.
-                 return False
+                return False
             return True
 
         self.intelligence.register_callback(report_distances_side)
@@ -393,7 +392,8 @@ class Walker:
         while current_state.front > min_front:
 
             logger.info("Starting round handle side...")
-            current_state = self.handle_straight_walk_to_distance(min_front=min_front,min_left=left_def,
+            current_state = self.handle_straight_walk_to_distance(min_front=min_front,\
+                                                                  min_left=left_def,
                                                   min_right=right_def,
                                               gyrodefault=current_yaw,
                                               defaultspeed=self.DEFAULT_SPEED,
@@ -423,7 +423,8 @@ class Walker:
                                 +" L: %.2f, R: %.2f, Yaw: %.2f",left_def,right_def,current_yaw)
                     prev_distance = current_state.left + current_state.right
                     current_yaw = def_yaw + yaw_delta
-                elif current_state.left == self._left_max or current_state.right == self._right_max:
+                elif current_state.left == constants.LEFT_DISTANCE_MAX or \
+                            current_state.right == constants.RIGHT_DISTANCE_MAX:
                     #we need to ignore this changes and moved ahead.
                     prev_distance = current_state.left + current_state.right
                 elif prev_distance - (current_state.left + current_state.right) > 10:
@@ -587,7 +588,8 @@ class Walker:
             self.output_inf.reset_gyro()
 
         gyrohelper: GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper(
-            max_left_distance=self._left_max,max_right_distance=self._right_max,
+            max_left_distance=constants.LEFT_DISTANCE_MAX,
+            max_right_distance=constants.RIGHT_DISTANCE_MAX,
             def_turn_angle=def_turn_angle, min_left=min_left, min_right=min_right)
 
         (def_front, _, _) = self.intelligence.get_learned_distances()
@@ -735,10 +737,10 @@ class Walker:
 
         if not is_unknown_direction:
             if left_def == -1:
-                current_left = self._left_max
+                current_left = constants.LEFT_DISTANCE_MAX
 
             if right_def == -1:
-                current_right = self._right_max
+                current_right = constants.RIGHT_DISTANCE_MAX
 
         turn_angle = helper.walk_func(
                         left_distance=current_left,
@@ -780,8 +782,8 @@ class Walker:
                                                 min_right=min_right,
                                                 kgyro=-4.0,
                                                 kp=-3.0,
-                                                max_left_distance=self._left_max,
-                                                max_right_distance=self._right_max
+                                                max_left_distance=constants.LEFT_DISTANCE_MAX,
+                                                max_right_distance=constants.RIGHT_DISTANCE_MAX
                                             )
 
             def set_line_color(c):
@@ -841,8 +843,8 @@ class Walker:
         #can we check.if one of the sides is not present?, that means we are at a corner.
         state = self.read_state_side()
 
-        lidar_left = self._hardware_interface.get_left_lidar_distance()
-        lidar_right = self._hardware_interface.get_right_lidar_distance()
+        lidar_left = self.output_inf.get_left_lidar_distance()
+        lidar_right = self.output_inf.get_right_lidar_distance()
 
         if lidar_left + lidar_right < 150:
             logger.info("Both sides are present , we have not reached the corner, walk...")
@@ -851,11 +853,11 @@ class Walker:
 
             def cond1(state:RobotState):
                 return state.left + state.right < 150 or \
-                    (self._hardware_interface.get_left_lidar_distance() + \
-                      self._hardware_interface.get_right_lidar_distance() < 150)
+                    (self.output_inf.get_left_lidar_distance() + \
+                      self.output_inf.get_right_lidar_distance() < 150)
 
             direction = self.intelligence.get_direction()
-            
+
             if direction == MATDIRECTION.CLOCKWISE_DIRECTION:
                 #only look at left wall
                 state = self.handle_straight_walk_to_distance(min_front=self.WALLFRONTFORWALL,
@@ -863,8 +865,8 @@ class Walker:
                                                     min_right=200,
                                                     gyrodefault=def_turn_angle,
                                                     defaultspeed=self.MIN_SPEED,
-                                                    keep_walking=cond1)    
-            
+                                                    keep_walking=cond1)
+
             elif direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
                 # only look at right wall
                 state = self.handle_straight_walk_to_distance(min_front=self.WALLFRONTFORWALL,
@@ -896,8 +898,8 @@ class Walker:
                 helper:EquiWalkerHelper = EquiWalkerHelper(
                     def_distance_left=min_left,
                     def_distance_right=min_right,
-                    max_left_distance=self._left_max,
-                    max_right_distance=self._right_max,
+                    max_left_distance=constants.LEFT_DISTANCE_MAX,
+                    max_right_distance=constants.RIGHT_DISTANCE_MAX,
                     def_turn_angle=gyrodefault,
                 )
             else:
@@ -905,8 +907,8 @@ class Walker:
                 helper:EquiWalkerHelper = EquiWalkerHelper(
                     def_distance_left=min_left,
                     def_distance_right=min_right,
-                    max_left_distance=self._left_max,
-                    max_right_distance=self._right_max,
+                    max_left_distance=constants.LEFT_DISTANCE_MAX,
+                    max_right_distance=constants.RIGHT_DISTANCE_MAX,
                     def_turn_angle=gyrodefault,
                     fused_gyro_weight=0.4,
                     kgyro=-4.0,
@@ -916,8 +918,8 @@ class Walker:
             helper:EquiWalkerHelper = EquiWalkerHelper(
                 def_distance_left=min_left,
                 def_distance_right=min_right,
-                max_left_distance=self._left_max,
-                max_right_distance=self._right_max,
+                max_left_distance=constants.LEFT_DISTANCE_MAX,
+                max_right_distance=constants.RIGHT_DISTANCE_MAX,
                 def_turn_angle=gyrodefault,
                 kp=-3,
                 fused_distance_weight=0.4

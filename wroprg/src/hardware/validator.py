@@ -2,6 +2,7 @@
 import logging
 
 from hardware.hardware_interface import HardwareInterface, RobotState
+from utils import constants
 
 logger: logging.Logger = logging.getLogger(__name__)
 class RobotValidator:
@@ -38,10 +39,10 @@ class RobotValidator:
         right_distance = state.right
         logger.info("Left Distance: %.2f, Right Distance: %.2f", left_distance, right_distance)
         valid_distance = 0
-        if left_distance > 0 and left_distance < self.hardware_inf.get_left_distance_max():
+        if left_distance > 0 and left_distance < constants.LEFT_DISTANCE_MAX:
             valid_distance += 1
             logger.info("Left distance is valid: %.2f cm", left_distance)
-        if right_distance > 0 and right_distance < self.hardware_inf.get_right_distance_max():
+        if right_distance > 0 and right_distance < constants.RIGHT_DISTANCE_MAX:
             valid_distance += 1
             logger.info("Right distance is valid: %.2f cm", right_distance)
         if valid_distance == 0:

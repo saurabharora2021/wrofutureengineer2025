@@ -133,24 +133,13 @@ class HardwareInterface(ShutdownInterface):
         """Wait for the action button to be pressed."""
         self._rpi.wait_for_action()
 
-    def get_right_distance(self) -> float:
+    def _get_right_distance(self) -> float:
         """Get the distance from the right distance sensor."""
         return self._rpi.get_right_distance()
-
-    def get_right_distance_max(self) -> float:
-        """Get the maximum distance from the right distance sensor."""
-        return self._rpi.get_right_distance_max()
 
     def _get_left_distance(self) -> float:
         """Get the distance from the left distance sensor."""
         return self._rpi.get_left_distance()
-
-    def get_left_distance_max(self) -> float:
-        """Get the maximum distance from the left distance sensor."""
-        return self._rpi.get_left_distance_max()
-    def get_front_distance_max(self) -> float:
-        """Get the maximum distance from the front distance sensor."""
-        return self._rpi.get_front_distance_max()
 
     def display_message(self, message: str, forceflush: bool = False) -> None:
         """
@@ -288,7 +277,7 @@ class HardwareInterface(ShutdownInterface):
         """Read the current state of the robot."""
         front = self._get_front_distance()
         left = self._get_left_distance()
-        right = self.get_right_distance()
+        right = self._get_right_distance()
         yaw = self.get_orientation()[2]
 
         (camera_front, camera_left, camera_right, _) = self.camera_measurements.get_distance()

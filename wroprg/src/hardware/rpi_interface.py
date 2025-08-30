@@ -34,7 +34,6 @@ class RpiInterface(ShutdownInterface):
 
     _screenlogger: Optional[ScreenLogger] = None
     display_loglines = True
-    camera: Optional[MyCamera] = None
 
     BUZZER_PIN = 13
     LED1_RED_PIN = 12
@@ -51,7 +50,6 @@ class RpiInterface(ShutdownInterface):
     FRONT_SENSOR_ECHO_PIN = 22
     FRONT_DISTANCE_MAX_DISTANCE = 2
     JUMPER_PIN =  26
-    CAMERA_ENABLED = True  # Set to True if camera is connected and used.
 
 
     # Common settings for all chassis versions
@@ -154,8 +152,7 @@ class RpiInterface(ShutdownInterface):
                                                  partial=True,
                                                  max_distance=self.LEFT_DISTANCE_MAX_DISTANCE)
 
-                # Initialize Optional Front Distance Sensor
-
+        # Initialize Front Distance Sensor
         self.front_distance_sensor = DistanceSensor(echo=self.FRONT_SENSOR_ECHO_PIN,
                                                         trigger=self.FRONT_SENSOR_TRIG_PIN,
                                                         partial=True,
@@ -164,9 +161,9 @@ class RpiInterface(ShutdownInterface):
         self.jumper_pin = Button(self.JUMPER_PIN, hold_time=1)
 
 
-        if self.CAMERA_ENABLED:
-            #setup camera library
-            self.camera = MyCamera()
+        
+        #setup camera library
+        self.camera = MyCamera()
 
         logger.info("RpiInterface initialized successfully.")
 

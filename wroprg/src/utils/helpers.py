@@ -3,7 +3,7 @@ import logging
 from base.shutdown_handling import ShutdownInterfaceManager
 from base.logger_setup import LoggerSetup
 from hardware.hardware_interface import HardwareInterface
-
+from utils.pihealth import PiHealth
 
 class HelperFunctions:
     """A class containing helper functions for the WRO Future Engineer 2025 project."""
@@ -102,3 +102,7 @@ class HelperFunctions:
         oled_formatter = logging.Formatter("%(message)s")  # Format for the Oled display
         oledscreen_handler.setFormatter(oled_formatter)
         logger.addHandler(oledscreen_handler)
+
+    def get_pi_health(self) -> PiHealth:
+        """Function to get the Raspberry Pi health monitor."""
+        return PiHealth(duration_seconds=5, threshold=75)

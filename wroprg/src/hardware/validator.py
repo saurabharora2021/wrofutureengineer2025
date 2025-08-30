@@ -1,5 +1,4 @@
 """ This Module is used a define validation for the robot."""
-import subprocess
 import logging
 
 from hardware.hardware_interface import HardwareInterface, RobotState
@@ -58,34 +57,5 @@ class RobotValidator:
         self.hardware_inf.log_message(state.front, left_distance, right_distance,current_yaw=0,
                                            current_steering=self.hardware_inf.get_steering_angle())
 
-        # Lets check if Raspberry Pi is not throttling
-        # We need to check if the Raspberry Pi is throttling, which can happen due to overheating
-        # or power issues.This needs to be done after the logger is set up, so we can log the
-        # results.
-        logger.info("Checking Raspberry Pi throttling status")
-        self.check_throttling()
-
         logger.info("Robot validation passed.")
         return True
-
-    def check_throttling(self) -> bool:
-        """Checks if the Raspberry Pi is throttled using vcgencmd. Returns True if throttled, 
-        False otherwise."""
-        try:
-            result = subprocess.run(['vcgencmd', 'get_throttled'], capture_output=True,
-                                    text=True,check=False)
-            if result.returncode == 0:
-                throttled_hex = result.stdout.strip().split('=')[-1]
-                throttled = int(throttled_hex, 16)
-                if throttled != 0:
-                    logger.error("Pi is throttled! get_throttled=%s", throttled_hex)
-                    return True
-                else:
-                    logger.info("Pi is not throttled.")
-                    return False
-            else:
-                logger.error("Failed to run vcgencmd get_throttled")
-                return False
-        except (subprocess.CalledProcessError, ValueError, OSError) as e:
-            logger.error("Error checking throttling: %s", e)
-            return False

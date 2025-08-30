@@ -88,7 +88,7 @@ class PinConfig:
     SCREEN_WIDTH = 128
     SCREEN_HEIGHT = 64
     SCREEN_UPDATE_INTERVAL = 0.5  # seconds
-    LED_TEST_DELAY = 0.25  # seconds
+    LED_TEST_DELAY = 0.05  # seconds
 
     @classmethod
     def _get_current_config(cls):

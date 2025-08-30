@@ -13,7 +13,6 @@ from hardware.legodriver import BuildHatDriveBase
 from hardware.measurements import Measurement, MeasurementsLogger, logger
 from hardware.orientation import OrientationEstimator
 from hardware.rpi_interface import RpiInterface
-from hardware.statsfunctions import DumpKalmanFilter
 from hardware.camerameasurements import CameraDistanceMeasurements
 
 logger = logging.getLogger(__name__)
@@ -35,12 +34,23 @@ class HardwareInterface(ShutdownInterface):
     _camera_state: RobotState | None = None
 
     def __init__(self,stabilize:bool) -> None:
-        self._rpi = RpiInterface(stabilize)
-        self._lego_drive_base: Optional[BuildHatDriveBase] = None
-        self._measurements_manager: Optional[MeasurementsManager] = None
-        self._front_distance_kf: Optional[DumpKalmanFilter] = None
 
-        self._orientation_estimator = None
+        self._lego_drive_base: Optional[BuildHatDriveBase] = None
+        self._full_initialization()
+        self._rpi = RpiInterface(stabilize)
+
+        self._measurements_manager: Optional[MeasurementsManager] = None
+
+
+        self._orientation_estimator: Optional[OrientationEstimator] = None
+        self._measurements_manager = MeasurementsManager(self)
+
+        self._orientation_estimator = OrientationEstimator(
+                get_accel=self.get_acceleration,
+                get_gyro=self.get_gyro,
+                get_mag=self.get_magnetometer
+        )
+
 
     def set_camera_distance(self,state:RobotState):
         """Set the camera distance state."""
@@ -54,7 +64,7 @@ class HardwareInterface(ShutdownInterface):
         else:
             return self._rpi.clear_messages()
 
-    def full_initialization(self) -> None:
+    def _full_initialization(self) -> None:
         """Initialize all hardware components."""
         try:
             if HardwareConfig.CHASSIS_VERSION == 1:
@@ -65,20 +75,6 @@ class HardwareInterface(ShutdownInterface):
                 self._lego_drive_base = BuildHatDriveBase(front_motor_port='D', back_motor_port='B',
                                                bottom_color_sensor_port='C',
                                                front_distance_sensor_port=None)
-                self._measurements_manager = MeasurementsManager(self)
-                self._front_distance_kf = DumpKalmanFilter(
-                    process_variance=1e-2,      # Larger, as distance changes faster
-                    measurement_variance=0.5,   # Moderate, as HC-SR04 is noisy
-                    estimated_error=1.0,        # Start with high uncertainty
-                    initial_value=self._rpi.get_front_distance(),
-                    max_value=self._rpi.get_front_distance_max()
-                      # Or your expected starting distance
-                )
-                self._orientation_estimator = OrientationEstimator(
-                        get_accel=self.get_acceleration,
-                        get_gyro=self.get_gyro,
-                        get_mag=self.get_magnetometer
-                )
 
             else:
                 raise ValueError("Unsupported chassis version")
@@ -86,6 +82,11 @@ class HardwareInterface(ShutdownInterface):
         except Exception as e:
             logger.error("Failed to initialize drive base: %s", e)
             raise RuntimeError(f"Drive base initialization failed: {e}") from e
+
+    def wait_for_ready(self):
+        """Wait for complete hardware initialization."""
+        if self._lego_drive_base is not None:
+            self._lego_drive_base.wait_for_setup()
 
     def start_measurement_recording(self) -> None:
         """Start the measurements manager thread."""
@@ -316,9 +317,7 @@ class HardwareInterface(ShutdownInterface):
                 " first.")
             return self._lego_drive_base.get_front_distance()
         elif HardwareConfig.CHASSIS_VERSION == 2:
-            if self._front_distance_kf is None:
-                raise ValueError("Kalman filter for front distance not initialized.")
-            return self._front_distance_kf.update(self._rpi.get_front_distance())
+            return self._rpi.get_front_distance()
         else:
             raise ValueError("Unsupported chassis version for front distance sensor.")
 
@@ -403,7 +402,7 @@ class MeasurementsManager(ShutdownInterface):
                                                current_steering=steering_angle)
 
 
-            time.sleep(0.2)
+            time.sleep(0.25)
 
     def start_reading(self) -> None:
         """Start the background thread for reading hardware."""

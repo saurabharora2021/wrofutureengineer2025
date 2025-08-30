@@ -37,7 +37,7 @@ User=piwro
 WorkingDirectory=$PROJECT_DIR/src
 ExecStart=$VENV_DIR/bin/python $PYTHON_SCRIPT
 Restart=on-failure
-RestartSec=5
+RestartSec=2
 
 [Install]
 WantedBy=multi-user.target

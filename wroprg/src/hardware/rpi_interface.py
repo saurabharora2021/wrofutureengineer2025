@@ -156,7 +156,7 @@ class RpiInterface(ShutdownInterface):
         if stabilize:
             logger.warning("Stabilize Distance Sensors...")
             # Stabilize distance sensors
-            time.sleep(1)  # Wait for sensors to stabilize
+            time.sleep(0.5)  # Wait for sensors to stabilize
             counter = 0
             valid_distance = False
 
@@ -211,7 +211,7 @@ class RpiInterface(ShutdownInterface):
         """Enable the logger."""
         self.display_loglines = True
 
-    def buzzer_beep(self, timer: float = 1) -> None:
+    def buzzer_beep(self, timer: float = 0.5) -> None:
         """Turn on the buzzer."""
         self.buzzer.on()
         time.sleep(timer)

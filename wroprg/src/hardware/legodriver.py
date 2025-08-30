@@ -1,5 +1,7 @@
 """ This module implements the Drive Base using Build Hat motors and sensors."""
 import logging
+import threading
+import time
 from typing import Final, Optional
 from buildhat import Motor, ColorSensor, DistanceSensor, Hat
 from base.shutdown_handling import ShutdownInterface
@@ -22,6 +24,25 @@ class BuildHatDriveBase(ShutdownInterface):
                   front_distance_sensor_port: Optional[str]) -> None:
         """Initialize the drive base with two motors."""
 
+
+        self.front_motor_port = front_motor_port
+        self.back_motor_port = back_motor_port
+        self.bottom_color_sensor_port = bottom_color_sensor_port
+        self.front_distance_sensor_port = front_distance_sensor_port
+        self.front_motor: Motor = None
+        self.back_motor: Motor = None
+        self.bottom_color_sensor: ColorSensor = None
+
+        # build hat takes lot of time to start, lets a separate thread and return.
+        try:
+            self.initthread = threading.Thread(target=self._buildhat_init)
+            self.initthread.start()
+        except Exception as e:
+            logger.error("Failed to start BuildHat initialization thread: %s", e)
+
+    def _buildhat_init(self) -> None:
+
+        starttime = time.time()
         logger.warning("BuildHat start..")
 
         # Build Hat has a history of issues to fail first initialization on reboot.
@@ -36,23 +57,33 @@ class BuildHatDriveBase(ShutdownInterface):
         logger.warning("BuildHat v: %s", _hat.get_vin())
 
 
-        self.front_motor = Motor(front_motor_port)
-        self.back_motor = Motor(back_motor_port)
-        self.bottom_color_sensor = ColorSensor(bottom_color_sensor_port)
+        self.front_motor = Motor(self.front_motor_port)
+        self.back_motor = Motor(self.back_motor_port)
+        self.bottom_color_sensor = ColorSensor(self.bottom_color_sensor_port)
         self.bottom_color_sensor.on()
-        if front_distance_sensor_port is None:
+        if self.front_distance_sensor_port is None:
             self.front_distance_sensor = None
             logger.info("Front Lego distance sensor is not connected.")
         else:
             # Initialize the front distance sensor if the port is provided
-            logger.info("Front distance sensor port: %s", front_distance_sensor_port)
-            self.front_distance_sensor = DistanceSensor(front_distance_sensor_port)
+            logger.info("Front distance sensor port: %s", self.front_distance_sensor_port)
+            self.front_distance_sensor = DistanceSensor(self.front_distance_sensor_port)
             self.front_distance_sensor.on()
 
         logger.info("BuildHat success")
         logger.warning("Position front wheel:%s", self.front_motor.get_position())
         self.reset_front_motor()  # Reset the front motor position to zero.
         self.current_position = 0.0
+
+        endtime = time.time()
+        logger.info("BuildHat loaded in %.2f seconds", endtime - starttime)
+
+    def wait_for_setup(self) -> None:
+        """Wait for the setup to complete."""
+        logger.info("Waiting for setup to complete...")
+        # Here you can implement any waiting logic if needed
+        self.initthread.join()
+        logger.info("Setup complete.")
 
     def reset_front_motor(self) -> None:
         """Reset the front motor position to zero."""

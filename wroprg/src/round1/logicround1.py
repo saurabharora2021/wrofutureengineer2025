@@ -56,6 +56,7 @@ class Walker:
         logger.warning("F:%.2f, L:%.2f, R:%.2f, Y:%.2f, CF:%.2f, CL:%.2f, CR:%.2f",
                        state.front, state.left, state.right, state.yaw,
                        state.camera_front, state.camera_left, state.camera_right)
+        self.intelligence.add_readings(state.front, state.left, state.right)                       
         if camera_read is True:
             left = state.left
             right = state.right
@@ -75,7 +76,6 @@ class Walker:
             state = RobotState(front=front, left=left, right=right,camera_front=state.camera_front,\
                                camera_left=state.camera_left,camera_right=state.camera_right, \
                                 yaw=state.yaw)
-        self.intelligence.add_readings(state.front, state.left, state.right)
         return state
 
     def center_bot_correction(self,front:float, left:float,

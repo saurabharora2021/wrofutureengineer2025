@@ -9,22 +9,22 @@ class PinConfig:
     All pin definitions should be stored here rather than in individual classes.
     """
 
-    BUZZER_PIN = 13,
-    LED1_RED_PIN = 12,
-    LED1_GREEN_PIN = 6,
-    LED1_BLUE_PIN =  5,
-    BUTTON_PIN =  19,
-    RIGHT_SENSOR_TRIG_PIN = 23,
-    RIGHT_SENSOR_ECHO_PIN = 21,
-    RIGHT_DISTANCE_MAX_DISTANCE = 2,
-    LEFT_SENSOR_TRIG_PIN =  20,
-    LEFT_SENSOR_ECHO_PIN = 24,
-    LEFT_DISTANCE_MAX_DISTANCE =  2,
-    FRONT_SENSOR_TRIG_PIN = 27,
-    FRONT_SENSOR_ECHO_PIN = 22,
-    FRONT_DISTANCE_MAX_DISTANCE = 2,
-    JUMPER_PIN =  26,
-    CAMERA_ENABLED = True,  # Set to True if camera is connected and used.
+    BUZZER_PIN = 13
+    LED1_RED_PIN = 12
+    LED1_GREEN_PIN = 6
+    LED1_BLUE_PIN =  5
+    BUTTON_PIN =  19
+    RIGHT_SENSOR_TRIG_PIN = 23
+    RIGHT_SENSOR_ECHO_PIN = 21
+    RIGHT_DISTANCE_MAX_DISTANCE = 2
+    LEFT_SENSOR_TRIG_PIN =  20
+    LEFT_SENSOR_ECHO_PIN = 24
+    LEFT_DISTANCE_MAX_DISTANCE =  2
+    FRONT_SENSOR_TRIG_PIN = 27
+    FRONT_SENSOR_ECHO_PIN = 22
+    FRONT_DISTANCE_MAX_DISTANCE = 2
+    JUMPER_PIN =  26
+    CAMERA_ENABLED = True  # Set to True if camera is connected and used.
 
 
     # Common settings for all chassis versions
@@ -55,4 +55,3 @@ class PinConfig:
                    cls.SCREEN_WIDTH, cls.SCREEN_HEIGHT,
                    cls.SCREEN_UPDATE_INTERVAL)
         logger.info("LED Test Delay: %0.2fs", cls.LED_TEST_DELAY)
-

@@ -49,7 +49,6 @@ class HardwareInterface(ShutdownInterface):
 
     DISTANCE_SENSOR_DISTANCE = 12.5  # cm distance between sensors
 
-    _screenlogger: Optional[ScreenLogger] = None
     display_loglines = True
 
     BUZZER_PIN = 13
@@ -100,7 +99,8 @@ class HardwareInterface(ShutdownInterface):
         self.compass = QMC5883L(device_channel)
 
         # OLED display
-        self.oled = adafruit_ssd1306.SSD1306_I2C(self.SCREEN_WIDTH, self.SCREEN_HEIGHT, device_channel)
+        self.oled = adafruit_ssd1306.SSD1306_I2C(self.SCREEN_WIDTH, self.SCREEN_HEIGHT,\
+                                                         device_channel)
         self.oled.fill(0)
         self.oled.show()
 
@@ -113,6 +113,8 @@ class HardwareInterface(ShutdownInterface):
 
         self.pendingmessage: bool = False
         self.messages: List[str] = []
+
+        self._screenlogger = ScreenLogger(width=self.SCREEN_WIDTH, height=self.SCREEN_HEIGHT)
 
         # Laser distance sensors via TCA channels
         left_channel = tca[self.LEFT_LASER_CHANNEL]
@@ -184,13 +186,15 @@ class HardwareInterface(ShutdownInterface):
             valid_distance = False
             while counter < self.MAX_STABILIZATION_CHECKS and not valid_distance:
                 valid_distance = True
-                if (self.get_right_distance() < 0.1 or
-                        self.get_right_distance() >= constants.RIGHT_DISTANCE_MAX):
-                    logger.info("Right distance sensor is not stable, %.2f cm", self.get_right_distance())
+                if (self._get_right_distance() < 0.1 or
+                        self._get_right_distance() >= constants.RIGHT_DISTANCE_MAX):
+                    logger.info("Right distance sensor is not stable, %.2f cm", \
+                                                        self._get_right_distance())
                     valid_distance = False
-                if (self.get_left_distance() < 0.1 or
-                        self.get_left_distance() >= constants.LEFT_DISTANCE_MAX):
-                    logger.info("Left distance sensor is not stable, %.2f cm", self.get_left_distance())
+                if (self._get_left_distance() < 0.1 or
+                        self._get_left_distance() >= constants.LEFT_DISTANCE_MAX):
+                    logger.info("Left distance sensor is not stable, %.2f cm", \
+                                                        self._get_left_distance())
                     valid_distance = False
                 if not valid_distance:
                     logger.warning("Waiting for distance sensors to stabilize...")
@@ -204,7 +208,7 @@ class HardwareInterface(ShutdownInterface):
             get_gyro=self.get_gyro,
             get_mag=self.get_magnetometer,
         )
-        self.camera_measurements = CameraDistanceMeasurements(self.get_camera())
+        self.camera_measurements = CameraDistanceMeasurements(self.camera)
 
     def _full_initialization(self) -> None:
         """Initialize all hardware components."""
@@ -226,18 +230,12 @@ class HardwareInterface(ShutdownInterface):
         """Get the distance from the left lidar sensor"""
         return self.left_laser.range / 10.0
 
-    # --- Fused wall distances (public wrappers) ---
-    def get_right_distance(self) -> float:
-        return self._get_right_distance()
-
-    def get_left_distance(self) -> float:
-        return self._get_left_distance()
-
     # --- Measurements and orientation management ---
     def start_measurement_recording(self) -> None:
         """Start the measurements manager thread."""
         if self._measurements_manager is None:
-            raise RuntimeError("Measurements manager not initialized. Call full_initialization() first.")
+            raise RuntimeError("Measurements manager not initialized. Call" \
+                                                            " full_initialization() first.")
         if self._orientation_estimator is not None:
             self._orientation_estimator.start_readings()
         self._measurements_manager.start_reading()
@@ -252,10 +250,10 @@ class HardwareInterface(ShutdownInterface):
     def log_message(self, front: float, left: float, right: float, current_yaw: float,
                     current_steering: float) -> None:
         """Log the sensor readings and robot state."""
-        image: Image.Image = self.get_screen_logger().log_message(
+        image: Image.Image = self._screenlogger.log_message(
             front, left, right, current_yaw, current_steering
         )
-        self.paint_display(image)
+        self._paint_display(image)
 
     def get_orientation(self) -> Tuple[float, float, float]:
         """Get the current (roll, pitch, yaw) in degrees."""
@@ -323,18 +321,18 @@ class HardwareInterface(ShutdownInterface):
         self.messages.append(message)
         self.messages = self.messages[-5:]
         if forceflush or (now - self._last_oled_update >= self.SCREEN_UPDATE_INTERVAL):
-            self.flush_pending_messages()
+            self._flush_pending_messages()
             self.pendingmessage = False
 
     def force_flush_messages(self) -> None:
         """Force flush the messages on the OLED screen."""
         if self.pendingmessage:
-            self.flush_pending_messages()
+            self._flush_pending_messages()
             self.pendingmessage = False
 
     def add_screen_logger_message(self, message: List[str]) -> None:
         """Add a message to the screen logger."""
-        self.get_screen_logger().add_message(message)
+        self._screenlogger.add_message(message)
 
     def get_jumper_state(self) -> bool:
         """Get the state of the jumper pin."""
@@ -350,7 +348,7 @@ class HardwareInterface(ShutdownInterface):
 
         # Shutdown Raspberry Pi peripherals
         try:
-            self.flush_pending_messages()
+            self._flush_pending_messages()
         except Exception as e:  # pylint: disable=broad-except
             logger.error("Error flushing OLED messages during shutdown: %s", e)
         try:
@@ -508,36 +506,20 @@ class HardwareInterface(ShutdownInterface):
         self.display_loglines = False
 
     # -------------------- Additional helpers from former RpiInterface --------------------
-    def get_camera(self) -> MyCamera:
-        return self.camera
-
-    def get_screen_logger(self) -> ScreenLogger:
-        if self._screenlogger is None:
-            self._screenlogger = ScreenLogger(width=self.SCREEN_WIDTH, height=self.SCREEN_HEIGHT)
-        return self._screenlogger
-
-    def paint_display(self, img: Image.Image) -> None:
+    def _paint_display(self, img: Image.Image) -> None:
         self.oled.image(img)
         self.oled.show()
 
-    def clear_messages(self) -> None:
-        self.messages.clear()
-
-    def flush_pending_messages(self) -> None:
+    def _flush_pending_messages(self) -> None:
         now = time.time()
         if self.display_loglines:
             self.draw.rectangle((0, 0, self.SCREEN_WIDTH, self.SCREEN_HEIGHT), outline=0, fill=0)
             for i, msg in enumerate(self.messages):
-                self.draw.text((0, i * HardwareInterface.LINE_HEIGHT), msg, font=self.font, fill=255)
+                self.draw.text((0, i * HardwareInterface.LINE_HEIGHT), msg, font=self.font,\
+                                                                    fill=255)
             self.oled.image(self.image)
             self.oled.show()
         self._last_oled_update = now
-
-    def enable_logger(self) -> None:
-        self.display_loglines = True
-
-    def get_front_distance_max(self) -> float:
-        return self.FRONT_DISTANCE_MAX_DISTANCE * 100
 
     def _fuse_sensors(
         self,
@@ -557,29 +539,42 @@ class HardwareInterface(ShutdownInterface):
         return lidar_val if lidar_val > 0 else ultrasonic_val
 
     def get_left_wangle(self) -> float:
+        """Left Wall angle"""
         ultrasonic = self.leftdistancesensor.distance * 100
         laser = self.left_laser.range / 10.0
         return self._wall_angle(front_dist=laser, back_dist=ultrasonic)
 
     def get_right_wangle(self) -> float:
+        """Right wall angle"""
         ultrasonic = self.rightdistancesensor.distance * 100
         laser = self.right_laser.range / 10.0
         return self._wall_angle(front_dist=laser, back_dist=ultrasonic)
 
     def get_left_pdistance(self) -> float:
+        """Left Perpendicular angle"""
         ultrasonic = self.leftdistancesensor.distance * 100
         laser = self.left_laser.range / 10.0
         return self._perpendicular_distance(front_dist=laser, back_dist=ultrasonic)
 
     def get_right_pdistance(self) -> float:
+        """Right Perpendicular angle"""
         ultrasonic = self.rightdistancesensor.distance * 100
         laser = self.right_laser.range / 10.0
         return self._perpendicular_distance(front_dist=laser, back_dist=ultrasonic)
 
-    def _wall_angle(self, front_dist: float, back_dist: float, sensor_gap: float = DISTANCE_SENSOR_DISTANCE) -> float:
+    def _wall_angle(self, front_dist: float, back_dist: float, sensor_gap: float \
+                                                = DISTANCE_SENSOR_DISTANCE) -> float:
+
+        #if any reading is bad, donot calculate angle
+        if front_dist < 1 or back_dist < 1 or front_dist > 100 or back_dist > 100:
+            return -1
         theta_rad = math.atan2(front_dist - back_dist, sensor_gap)
         theta_deg = math.degrees(theta_rad)
         return theta_deg
 
     def _perpendicular_distance(self, front_dist: float, back_dist: float) -> float:
+
+        #if any reading is bad, donot calculate angle
+        if front_dist < 1 or back_dist < 1 or front_dist > 100 or back_dist > 100:
+            return -1
         return (front_dist + back_dist) / 2.0

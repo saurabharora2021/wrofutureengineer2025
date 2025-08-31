@@ -186,7 +186,8 @@ class OrientationEstimator(ShutdownInterface):
         if stationary:
             self._stationary_gz_samples.append(gz)
             if len(self._stationary_gz_samples) >= self._stationary_sample_limit:
-                stationary_avg_bias = sum(self._stationary_gz_samples) / len(self._stationary_gz_samples)
+                stationary_avg_bias = sum(self._stationary_gz_samples) \
+                                                 / len(self._stationary_gz_samples)
                 self.yaw_bias = self.yaw_bias * 0.95 + stationary_avg_bias * 0.05
                 logger.info("Refined Stationary yaw bias to: %.4f rad/s", self.yaw_bias)
                 self._stationary_gz_samples.clear()
@@ -226,10 +227,11 @@ class OrientationEstimator(ShutdownInterface):
                     self._mag_yaw_lpf = yaw_mag
                 else:
                     err = self._angle_diff_deg(yaw_mag, self._mag_yaw_lpf)
-                    self._mag_yaw_lpf = self._wrap_angle_deg(self._mag_yaw_lpf + self._mag_yaw_lpf_alpha * err)
+                    self._mag_yaw_lpf = self._wrap_angle_deg(self._mag_yaw_lpf + \
+                                                    self._mag_yaw_lpf_alpha * err)
                 # Trust mag a bit more when stationary
                 alpha_yaw = 0.80 if not stationary else 0.60  # Trust mag more (was 0.85/0.70)
-                self.yaw = self._fuse_angles_deg(yaw_pred, self._mag_yaw_lpf, alpha_yaw, 
+                self.yaw = self._fuse_angles_deg(yaw_pred, self._mag_yaw_lpf, alpha_yaw,
                                                  sensitivity=self._mag_sensitivity_factor)
             except Exception:  # pylint: disable=broad-except
                 # Fallback to gyro-only if magnetometer read fails
@@ -257,7 +259,8 @@ class OrientationEstimator(ShutdownInterface):
         d = (a - b + 180.0) % 360.0 - 180.0
         return d
 
-    def _fuse_angles_deg(self, pred: float, meas: float, alpha: float, sensitivity: float = 1.0) -> float:
+    def _fuse_angles_deg(self, pred: float, meas: float, alpha: float,\
+                                                sensitivity: float = 1.0) -> float:
         """Complementary fuse two angles in degrees considering wrap-around."""
         err = self._angle_diff_deg(meas, pred)
         # Apply sensitivity scaling to make magnetometer corrections stronger
@@ -323,11 +326,11 @@ class OrientationEstimator(ShutdownInterface):
             self._yaw_zero_pending = True
             return
         if to_current:
-             self._yaw_zero_offset_deg = self.yaw
+            self._yaw_zero_offset_deg = self.yaw
         elif offset_deg is not None:
-             self._yaw_zero_offset_deg = self._wrap_angle_deg(offset_deg)
+            self._yaw_zero_offset_deg = self._wrap_angle_deg(offset_deg)
         else:
-             self._yaw_zero_offset_deg = 0.0
+            self._yaw_zero_offset_deg = 0.0
 
         logger.info("reset yaw: %.2f", self._yaw_zero_offset_deg)
 

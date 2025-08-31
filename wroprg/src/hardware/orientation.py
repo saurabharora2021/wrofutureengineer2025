@@ -37,6 +37,11 @@ class OrientationEstimator(ShutdownInterface):
     Estimates roll, pitch, and yaw using MPU6050 data and a complementary blend
     with simple Kalman smoothing on accelerometer-derived angles.
     """
+
+    # Based on 90 degreee turn right and left we can only 88 degree turn.
+    # lets correct yaw accordingly. scale it up.
+    DEGREE_90_CORRECTION = 90.0/88.0
+
     USE_COMPASS = False
     # When True, completely disable MPU6050 usage and drive yaw only from QMC5883L.
     USE_ONLY_COMPASS = False
@@ -64,8 +69,8 @@ class OrientationEstimator(ShutdownInterface):
         # Sensors on I2C
         if not self.USE_ONLY_COMPASS:
             self.mpu = adafruit_mpu6050.MPU6050(device_channel)
-            self.get_accel = self.get_acceleration      # returns (ax, ay, az) in m/s^2
-            self.get_gyro = self.get_gyroscope          # returns (gx, gy, gz) in rad/s (Adafruit lib)
+            self.get_accel = self.get_acceleration  # returns (ax, ay, az) in m/s^2
+            self.get_gyro = self.get_gyroscope # returns (gx, gy, gz) in rad/s (Adafruit lib)
         else:
             # Disable MPU entirely
             self.mpu = None
@@ -244,7 +249,8 @@ class OrientationEstimator(ShutdownInterface):
             if self._yaw_zero_pending:
                 self._yaw_zero_offset_deg = self.yaw
                 self._yaw_zero_pending = False
-                logger.info("Yaw zeroed at first update (compass-only): %.2f deg", self._yaw_zero_offset_deg)
+                logger.info("Yaw zeroed at first update (compass-only): %.2f deg", \
+                                                            self._yaw_zero_offset_deg)
             return
 
         # logger.info("Update orientation... %0.2f", dt)
@@ -364,7 +370,7 @@ class OrientationEstimator(ShutdownInterface):
         # Flip sign via mag_heading_sign if rotation sense disagrees with gyro
         #heading = math.degrees(math.atan2(self.mag_heading_sign * my2, mx2))
         # FIX #2: Correct atan2 for X-backward, Y-right coordinate system.
-        heading = math.degrees(math.atan2(self.mag_heading_sign * my2, -mx2))        
+        heading = math.degrees(math.atan2(self.mag_heading_sign * my2, -mx2))
         return self._wrap_angle_deg(heading)
 
     @staticmethod
@@ -420,11 +426,12 @@ class OrientationEstimator(ShutdownInterface):
 
     def get_yaw(self) -> float:
         """Return yaw in degrees relative to the zero-reference set by reset_yaw()."""
-        return self._wrap_angle_deg(self.yaw - self._yaw_zero_offset_deg)
+        return self._wrap_angle_deg(self.yaw - self._yaw_zero_offset_deg)*self.DEGREE_90_CORRECTION
 
     def get_orientation(self):
         """Returns (roll, pitch, yaw) in degrees. Yaw is relative to reset_yaw()."""
-        return self.roll, self.pitch, self._wrap_angle_deg(self.yaw - self._yaw_zero_offset_deg)
+        return self.roll, self.pitch, self._wrap_angle_deg(self.yaw - self._yaw_zero_offset_deg)\
+                                                        * self.DEGREE_90_CORRECTION
 
     def calibrate_imu(self, samples=200) -> tuple[float, float, float]:
         """

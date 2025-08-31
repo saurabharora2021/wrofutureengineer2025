@@ -25,21 +25,18 @@ def main():
         pi_inf.start_measurement_recording()
         sleep(2)
         pi_inf.reset_gyro()
-        (default_roll,default_pitch,default_yaw) = pi_inf.get_orientation()
+        default_yaw = pi_inf.get_yaw()
         logger.warning("Default Yaw: %.2f", default_yaw)
         while True:
             # Read orientation data
-            (roll,pitch,yaw)  = pi_inf.get_orientation()
+            yaw  = pi_inf.get_yaw()
             state:RobotState = pi_inf.read_state()
 
-            logger.info("roll: %0.2f,pitch:%0.2f , yaw:%0.2f", roll-default_roll,
-                                    pitch-default_pitch,yaw-default_yaw)
-            pi_inf.display_message(f"Roll: {(roll-default_roll):.2f}")
-            pi_inf.display_message(f"Pitch: {(pitch-default_pitch):.2f}")
-            pi_inf.display_message(f"Yaw: {(yaw-default_yaw):.2f}",forceflush=True)
+            logger.info("yaw:%0.2f", yaw)
+            pi_inf.display_message(f"Yaw: {yaw:.2f}",forceflush=True)
             logger.info("State: Front: %.2f, Left: %.2f, Right: %.2f Camera F:%.2f, Camera L:%.2f,\
-                            Camera R:%.2f", state.front, state.left, state.right, state.camera_front,\
-                            state.camera_left, state.camera_right)
+                            Camera R:%.2f", state.front, state.left, state.right, \
+                            state.camera_front,state.camera_left, state.camera_right)
             pi_inf.force_flush_messages()
             sleep(1)
 

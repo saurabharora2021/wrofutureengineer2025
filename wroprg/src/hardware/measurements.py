@@ -14,14 +14,12 @@ logger = logging.getLogger(__name__)
 class Measurement:
     """Class to represent a single measurement from the hardware sensors."""
     def __init__(self, left_distance: float, right_distance: float, front_distance: float,
-                 steering_angle: float, roll: float, pitch: float, yaw: float, timestamp: float,
+                 steering_angle: float, yaw: float, timestamp: float,
                  extra_metrics: Optional[Dict[str, Any]] = None):
         self._left_distance = left_distance
         self._right_distance = right_distance
         self._front_distance = front_distance
         self._steering_angle = steering_angle
-        self._roll = roll
-        self._pitch = pitch
         self._yaw = yaw
         self._timestamp = timestamp
         # Store extra metrics as a dict; serialize to JSON on write
@@ -53,16 +51,6 @@ class Measurement:
         return self._timestamp
 
     @property
-    def roll(self) -> float:
-        """Get the roll angle measurement."""
-        return self._roll
-
-    @property
-    def pitch(self) -> float:
-        """Get the pitch angle measurement."""
-        return self._pitch
-
-    @property
     def yaw(self) -> float:
         """Get the yaw angle measurement."""
         return self._yaw
@@ -79,8 +67,6 @@ class Measurement:
             f"right_distance={self.right_distance}, "\
             f"front_distance={self.front_distance}, "\
             f"steering_angle={self.steering_angle}, "\
-            f"roll={self.roll}, "\
-            f"pitch={self.pitch}, "\
             f"yaw={self.yaw}, "\
             f"timestamp={self.timestamp}, "\
             f"extra_metrics={self.extra_metrics})"
@@ -108,7 +94,7 @@ class MeasurementsLogger:
         self.open_file()
         if self._file is not None:
             self._file.write("left_distance,right_distance,front_distance,steering_angle,"\
-                             "roll,pitch,yaw,timestamp,extra_metrics\n")
+                             "yaw,timestamp,extra_metrics\n")
             self._file.flush()
     def write_measurement(self, measurement: Measurement) -> None:
         """Write a single measurement to the file, rounding to 2 decimal places."""
@@ -176,7 +162,7 @@ class MeasurementFileLog(ShutdownInterface):
                 metrics: Dict[str, Any] = {}
                 state: RobotState = self._hardware_interface.read_state()
                 steering_angle = self._hardware_interface.get_steering_angle()
-                roll, pitch, yaw = self._hardware_interface.get_orientation()
+                yaw = self._hardware_interface.get_yaw()
                 # Create a new measurement with the current timestamp
                 timestamp = time.time()
                 counter = int((timestamp - start_time)*1000)
@@ -185,7 +171,7 @@ class MeasurementFileLog(ShutdownInterface):
 
                 measurement = Measurement(state.left, state.right, state.front,
                             steering_angle,
-                            roll, pitch, yaw,counter,extra_metrics=metrics)
+                            yaw, counter, extra_metrics=metrics)
 
                 self.add_measurement(measurement)
                 self._hardware_interface.log_message(front=state.front, left=state.left,

@@ -230,8 +230,8 @@ class HardwareInterface(ShutdownInterface):
         if self._measurements_manager is None:
             raise RuntimeError("Measurements manager not initialized. Call" \
                                                             " full_initialization() first.")
-        if self._orientation_estimator is not None:
-            self._orientation_estimator.start_readings()
+
+        self._orientation_estimator.start_readings()
         self._measurements_manager.start_reading()
         self.camera_measurements.start()
 
@@ -249,11 +249,9 @@ class HardwareInterface(ShutdownInterface):
         )
         self._paint_display(image)
 
-    def get_orientation(self) -> Tuple[float, float, float]:
-        """Get the current (roll, pitch, yaw) in degrees."""
-        if self._orientation_estimator is None:
-            raise RuntimeError("Orientation estimator not initialized.")
-        return self._orientation_estimator.get_orientation()
+    def get_yaw(self) -> float:
+        """Get the current yaw in degrees."""
+        return self._orientation_estimator.get_yaw()
 
     def buzzer_beep(self, timer: float = 0.5) -> None:
         """Turn on the buzzer."""

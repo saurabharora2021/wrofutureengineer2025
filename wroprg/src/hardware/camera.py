@@ -38,6 +38,7 @@ class MyCamera:
 
     def start(self):
         """Start the camera."""
+        logger.info("Starting Camera ....")
 
         self._pi_capture.start()
         # Enforce 30 FPS after start

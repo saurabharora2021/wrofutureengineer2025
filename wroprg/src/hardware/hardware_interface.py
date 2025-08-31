@@ -7,7 +7,7 @@ all hardware access (LEGO + Raspberry Pi peripherals) is exposed here.
 import logging
 import time
 import math
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from board import SCL, SDA
 import busio
 import adafruit_ssd1306
@@ -332,10 +332,8 @@ class HardwareInterface(ShutdownInterface):
 
     def shutdown(self) -> None:
         """Shutdown the hardware interface."""
-        if self._lego_drive_base is None:
-            logger.warning("LEGO Drive Base not initialized, skipping shutdown.")
-        else:
-            self._lego_drive_base.shutdown()
+
+        self._lego_drive_base.shutdown()
         self.camera_measurements.shutdown()
 
         # Shutdown Raspberry Pi peripherals
@@ -343,11 +341,9 @@ class HardwareInterface(ShutdownInterface):
             self._flush_pending_messages()
         except Exception as e:  # pylint: disable=broad-except
             logger.error("Error flushing OLED messages during shutdown: %s", e)
-        try:
-            if self.camera is not None:
-                self.camera.close()
-        except Exception as e:  # pylint: disable=broad-except
-            logger.error("Error closing camera during shutdown: %s", e)
+
+        self.camera.close()
+
         try:
             self.buzzer.off()
         except Exception as e:  # pylint: disable=broad-except
@@ -467,7 +463,7 @@ class HardwareInterface(ShutdownInterface):
         front = self._get_front_distance()
         left = self._get_left_distance()
         right = self._get_right_distance()
-        yaw = self.get_orientation()[2]
+        yaw = self.get_yaw
 
         (camera_front, camera_left, camera_right, _) = self.camera_measurements.get_distance()
         return RobotState(

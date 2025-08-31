@@ -57,7 +57,7 @@ def main():
 
             pi_inf.reset_gyro()  # Reset gyro to zero
             gyrohelper: GyroWalkerwithMinDistanceHelper = GyroWalkerwithMinDistanceHelper(
-                def_turn_angle=0, min_left=15, min_right=15)
+                def_turn_angle=0, min_left=20, min_right=20)
 
             challenge1walker.handle_straight_walk_to_distance(maxfront,start_state.left,
                                                               start_state.right, gyrodefault,

@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 MAX_ANGLE = 30
-MIN_GYRO_DELTA = 0.05 # Minimum gyro delta angle in degrees
+MIN_GYRO_DELTA = 1 # Minimum gyro delta angle in degrees
 DELTA_DISTANCE_CM = 0.5
 class PIDController:
     """Simple PID controller."""
@@ -62,6 +62,7 @@ class PIDController:
 class EquiWalkerHelper(ABC):
     """Helper class for equidistance walking with PID control."""
 
+    #TODO: fix gyro correction since yaw is positive to right.
     def __init__(self, def_distance_left: float, def_distance_right: float,
                  max_left_distance: float= constants.LEFT_DISTANCE_MAX,
                  max_right_distance: float= constants.RIGHT_DISTANCE_MAX,
@@ -169,7 +170,8 @@ class GyroWalkerwithMinDistanceHelper(EquiWalkerHelper):
     """Helper class for Gyro Walker logic with distance."""
 
     def __init__(self,
-                 max_left_distance: float, max_right_distance: float,
+                 max_left_distance: float = constants.LEFT_DISTANCE_MAX
+                 , max_right_distance: float = constants.RIGHT_DISTANCE_MAX,
                  kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
                  kgyro: float = -6.0,
                  def_turn_angle: float = 0.0, min_left: float = -1, min_right: float = -1,

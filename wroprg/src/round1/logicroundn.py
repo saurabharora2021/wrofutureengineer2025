@@ -15,8 +15,6 @@ class WalkerN(Walker):
     DEFAULT_FIRST_WALK_SPEED=25
     CORNER_GYRO_SPEED = 30
 
-    CORNER_YAW_ANGLE = 57.0
-    RECOMENDED_CORNER_STEERING = 18.0
 
     output_inf: HardwareInterface
 

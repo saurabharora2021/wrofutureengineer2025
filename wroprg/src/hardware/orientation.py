@@ -104,14 +104,14 @@ class OrientationEstimator(ShutdownInterface):
         # Complementary filter blend factor
         self._alpha = 0.98
         #TODO: tune for indoor, expected to be lower. ooutside 0.97, inside 0.99
-        self._alpha_yaw = 0.70  # Lower value to trust mag heading more (was 0.90)
+        self._alpha_yaw = 0.90  # Increased to trust the gyro more and reduce noise
 
         # Magnetometer fusion tuning
         # Low-pass on mag heading (0..1). Higher to reduce lag on fast turns.
-        self._mag_yaw_lpf_alpha = 0.85
+        self._mag_yaw_lpf_alpha = 0.5  # Decreased for more smoothing of mag data
         self._mag_yaw_lpf = None       # internal state
         # If your yaw correction runs away, flip this to -1.0
-        self.mag_heading_sign = 1.0
+        self.mag_heading_sign = -1.0
         # Magnetometer sensitivity adjustment (increase if turns are underestimated)
         self._mag_sensitivity_factor = 1.0  # 1.0 is sufficient with faster mag LPF
 
@@ -225,8 +225,8 @@ class OrientationEstimator(ShutdownInterface):
                     mz -= self.mag_bias_z
                     # 2D heading (assumes near-level). Use mag_heading_sign to match yaw sense.
                     #yaw_mag = math.degrees(math.atan2(self.mag_heading_sign * my, mx))
-                    # FIX #1: Correct atan2 for X-backward, Y-right coordinate system
-                    yaw_mag = math.degrees(math.atan2(self.mag_heading_sign * -my, -mx))
+                    # FIX #1: Correct atan2 for X-backward, Y-right coordinate system.
+                    yaw_mag = math.degrees(math.atan2(self.mag_heading_sign * my, -mx))
                     yaw_mag = self._wrap_angle_deg(yaw_mag + self.mag_declination_deg)
                     # Smooth heading
                     if self._mag_yaw_lpf is None:
@@ -363,8 +363,8 @@ class OrientationEstimator(ShutdownInterface):
               mz * math.sin(roll) * math.cos(pitch)
         # Flip sign via mag_heading_sign if rotation sense disagrees with gyro
         #heading = math.degrees(math.atan2(self.mag_heading_sign * my2, mx2))
-        # FIX #2: Correct atan2 for X-backward, Y-right coordinate system
-        heading = math.degrees(math.atan2(self.mag_heading_sign * -my2, -mx2))
+        # FIX #2: Correct atan2 for X-backward, Y-right coordinate system.
+        heading = math.degrees(math.atan2(self.mag_heading_sign * my2, -mx2))        
         return self._wrap_angle_deg(heading)
 
     @staticmethod

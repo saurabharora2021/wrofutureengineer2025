@@ -151,7 +151,6 @@ class MeasurementFileLog(ShutdownInterface):
         self._stop_event = threading.Event()
         self._hardware_interface = hardware_interface
         self._mlogger = MeasurementsLogger()
-        self._rpi = hardware_interface._rpi
 
     def add_measurement(self, measurement: Measurement) -> None:
         """Add a new measurement to the list."""
@@ -189,9 +188,9 @@ class MeasurementFileLog(ShutdownInterface):
                             roll, pitch, yaw,counter,extra_metrics=metrics)
 
                 self.add_measurement(measurement)
-                self._rpi.log_message(front=state.front, left=state.left,
-                                                           right=state.right,current_yaw=yaw,
-                                               current_steering=steering_angle)
+                self._hardware_interface.log_message(front=state.front, left=state.left,
+                                                     right=state.right, current_yaw=yaw,
+                                                     current_steering=steering_angle)
 
 
             time.sleep(0.25)

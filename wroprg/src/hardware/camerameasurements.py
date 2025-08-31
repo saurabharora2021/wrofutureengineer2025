@@ -56,6 +56,9 @@ class CameraDistanceMeasurements(ShutdownInterface):
         self._tmp_bool: np.ndarray | None = None
         self._section_w: int = 0
 
+        # pause support
+        self._paused_event = threading.Event()
+
 
 
     def start(self):
@@ -68,12 +71,30 @@ class CameraDistanceMeasurements(ShutdownInterface):
         self.camera.start()
         self.camera_thread.start()
 
+    def pause_readings(self) -> None:
+        """Pause camera processing. Optionally stop the camera device."""
+        self._paused_event.set()
+
+    def resume_readings(self) -> None:
+        """Resume camera processing. Optionally start the camera device."""
+        self._paused_event.clear()
+
+    def is_paused(self) -> bool:
+        return self._paused_event.is_set()
+
     def shutdown(self):
         return self.camera_thread.shutdown()
 
     def process_camera(self)-> int:
         """Process the camera frame and extract distance measurements."""
+        # Short-circuit when paused to save CPU; keep low FPS
+        if self._paused_event.is_set():
+            self.camera_front = self.camera_left = self.camera_right = -1
+            # keep metrics but mark paused
+            self.metrics['paused'] = True
+            return self.MIN_FPS
 
+        self.metrics['paused'] = False
         frame = self.camera.capture()
         counter = time.time()
 

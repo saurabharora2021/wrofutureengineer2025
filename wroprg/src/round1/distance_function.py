@@ -43,7 +43,7 @@ class DistanceCalculator:
             elapsed_time = end_time - self.start_time
             self.distance += elapsed_time * self.current_speed * self.WHEEL_CONSTANT
             self.start_time = end_time
-            logger.info("distance after adding... %.2f",self.distance
+            # logger.info("distance after adding... %.2f",self.distance
             )
 
     def run_speed(self, speed: float):
@@ -57,5 +57,5 @@ class DistanceCalculator:
     def get_distance(self) -> float:
         """Returns the total distance traveled."""
         self._add_speed()
-        logger.info("Distance travelled: %.2f", self.distance)
+        # logger.info("Distance travelled: %.2f", self.distance)
         return self.distance

@@ -44,6 +44,8 @@ class HardwareInterface(ShutdownInterface):
     DEVICE_I2C_CHANNEL = 6
     DISTANCE_FUSION = True
 
+    ENABLE_MEASURE_LOG = False
+
     DISTANCE_SENSOR_DISTANCE = 12.5  # cm distance between sensors
 
     display_loglines = True
@@ -216,9 +218,15 @@ class HardwareInterface(ShutdownInterface):
                 counter += 1
 
         # Measurements
-        self._measurements_manager: Optional[MeasurementFileLog] = MeasurementFileLog(self)
+        self._measurements_manager: MeasurementFileLog = MeasurementFileLog(self)
 
         self.camera_measurements = CameraDistanceMeasurements(self.camera)
+
+    def camera_pause(self):
+        self.camera_measurements.pause_readings()
+    
+    def camera_restart(self):
+        self.camera_measurements.start_readings()
 
     def _full_initialization(self) -> None:
         """Initialize all hardware components."""
@@ -256,7 +264,9 @@ class HardwareInterface(ShutdownInterface):
                                                             " full_initialization() first.")
 
         self._orientation_estimator.start_readings()
-        self._measurements_manager.start_reading()
+
+        if self.ENABLE_MEASURE_LOG is True:
+            self._measurements_manager.start_reading()
         self.camera_measurements.start()
 
     def add_comment(self, comment: str) -> None:

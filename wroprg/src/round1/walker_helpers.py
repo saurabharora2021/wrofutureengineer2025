@@ -266,7 +266,7 @@ class FixedTurnWalker(GyroWalkerwithMinDistanceHelper):
         #small error we continue to turn as per plan
         if abs(distance_error) < DELTA_DISTANCE_CM:
             self.pid.reset()
-            if abs(delta_angle) < 10:
+            if abs(delta_angle) < 20:
                 #lets reduce the steering angle
                 return self.fixed_turn_angle/2
             return self.fixed_turn_angle

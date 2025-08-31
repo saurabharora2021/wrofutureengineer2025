@@ -110,13 +110,13 @@ class BuildHatDriveBase(ShutdownInterface):
 
         # Get current position and sanitize
         current_position = self.front_motor.get_position()
-        logger.info("Turning steering by %s degrees at speed %s, retry %s," \
-                                        " current position: %s", degrees,
-                                        steering_speed, retry, current_position)
+        # logger.info("Turning steering by %s degrees at speed %s, retry %s," \
+        #                                 " current position: %s", degrees,
+        #                                 steering_speed, retry, current_position)
         # If the position is out of expected bounds, reset to zero
         if abs(current_position) > 180:
-            logger.warning("Front motor position out of bounds: %s. Resetting to 0.",
-                           current_position)
+            # logger.warning("Front motor position out of bounds: %s. Resetting to 0.",
+            #                current_position)
             if current_position > 0:
                 self.front_motor.run_to_position(0, speed=steering_speed, blocking=True,
                                                  direction="anticlockwise")
@@ -137,15 +137,15 @@ class BuildHatDriveBase(ShutdownInterface):
         move_degrees = target_position - current_position
 
         if abs(move_degrees) < 1:
-            logger.info("Front motor is already at target position, ignoring small delta.")
+            # logger.info("Front motor is already at target position, ignoring small delta.")
             return
-        logger.info("Turning front motor to %s (move %s degrees)", target_position, move_degrees)
+        # logger.info("Turning front motor to %s (move %s degrees)", target_position, move_degrees)
         self.front_motor.run_for_degrees(move_degrees, speed=steering_speed, blocking=True)
 
         final_position = self.front_motor.get_position()
         if abs(final_position - target_position) >= self.DELTA_ANGLE:
-            logger.warning("Front not correct after turn: %s, expected: %s",
-                           final_position, target_position)
+            # logger.warning("Front not correct after turn: %s, expected: %s",
+            #                final_position, target_position)
             if retry > 0:
                 self.turn_steering(degrees, steering_speed=steering_speed+15, retry=retry - 1)
 

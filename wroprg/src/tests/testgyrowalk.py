@@ -2,6 +2,7 @@
 import logging
 import argparse
 import threading
+from time import sleep
 from hardware.hardware_interface import HardwareInterface
 from round1.logicround1 import Walker
 from utils.helpers import HelperFunctions
@@ -29,7 +30,8 @@ def main():
         pi_inf.start_measurement_recording()
 
         #action button.
-        pi_inf.wait_for_action()
+        #pi_inf.wait_for_action()        
+        pi_inf.reset_gyro()
 
         def run_gyro_walk():
 

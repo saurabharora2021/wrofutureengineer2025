@@ -177,7 +177,7 @@ class MeasurementFileLog(ShutdownInterface):
                                                      current_steering=steering_angle)
 
 
-            time.sleep(0.25)
+            time.sleep(1)
 
     def start_reading(self) -> None:
         """Start the background thread for reading hardware."""

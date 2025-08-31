@@ -1,6 +1,5 @@
 """ This script is used to reset the front wheel of a robot using the BuildHatDriveBase class."""
 import logging
-import argparse
 from hardware.hardware_interface import HardwareInterface
 from utils.helpers import HelperFunctions
 

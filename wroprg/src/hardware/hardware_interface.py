@@ -8,6 +8,7 @@ import logging
 import time
 import math
 import threading
+from typing import Callable
 from typing import List, Optional
 from board import SCL, SDA
 import busio
@@ -137,7 +138,7 @@ class HardwareInterface(ShutdownInterface):
 
         # Actuators and buttons
         self.buzzer = Buzzer(self.BUZZER_PIN)
-        
+
         # Async buzzer support
         self._buzzer_timer: Optional[threading.Timer] = None
         self._buzzer_lock = threading.Lock()
@@ -359,6 +360,10 @@ class HardwareInterface(ShutdownInterface):
         logger.warning("Waiting for action button press...")
         self.action_button.wait_for_active()
         logger.info("Action button pressed!")
+
+    def register_button_press(self, callfunc: Callable[[], None]) -> None:
+        """Register a callback for the action button press."""
+        self.action_button.when_pressed = callfunc
 
     # --- Distance helpers ---
     def _get_right_distance(self) -> float:

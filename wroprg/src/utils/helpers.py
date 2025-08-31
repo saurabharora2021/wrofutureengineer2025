@@ -1,5 +1,8 @@
 """This module contains the utility functions for the WRO Future Engineer 2025 project."""
+import threading
+import time
 import logging
+from typing import Callable
 from base.shutdown_handling import ShutdownInterfaceManager
 from base.logger_setup import LoggerSetup
 from hardware.hardware_interface import HardwareInterface
@@ -8,8 +11,7 @@ from utils.pihealth import PiHealth
 class HelperFunctions:
     """A class containing helper functions for the WRO Future Engineer 2025 project."""
 
-    def __init__(self, log_file: str, debugflag: bool,stabilize:bool=True,
-                                                screen_logger=True) -> None:
+    def __init__(self, stabilize:bool=False,screen_logger=True) -> None:
         """Initialize the HelperFunctions Logger class."""
 
         # Initialize instance attributes
@@ -22,14 +24,7 @@ class HelperFunctions:
         loggersetup = LoggerSetup()
         self._shutdown_manager.add_interface(loggersetup)
 
-        print("Log file: %s", log_file)
-        print("Debug mode: %s", debugflag)  # Optional: print debug status
-
-        if debugflag:
-            # Set log level to DEBUG if debug mode is enabled
-            loggersetup.setup(log_file=log_file, log_level=logging.DEBUG)
-        else:
-            loggersetup.setup(log_file=log_file, log_level=logging.INFO)
+        loggersetup.setup()
 
         self._logger = logging.getLogger(__name__)
         print("Starting Logger successfully")
@@ -44,6 +39,52 @@ class HelperFunctions:
             self.add_new_logger(self._hardware_interface)
 
         self._hardware_interface.wait_for_ready()
+
+        self._stop_event = threading.Event()
+        self._is_running = False
+
+    def start_application(self,call_func:Callable[[], None],use_button:bool=False,):
+        """Function to start the main application logic in a separate thread."""
+
+        if use_button:
+            self._hardware_interface.wait_for_action()
+
+        start_time = time.time()
+        def runner():
+            try:
+                self._is_running = True
+                self._logger.warning("===============STARTING BOT===================")
+                call_func()
+
+            except (ImportError, AttributeError, RuntimeError) as e:
+                self._logger.error("Error Running Program")
+                self._logger.error("Exception: %s",e)
+                self._hardware_interface.led1_red()
+                self._hardware_interface.buzzer_beep()
+            finally:
+                #shutdown
+                self.shutdown_all()
+                self._stop_event.set()
+                self._is_running = False
+
+
+        def on_button_pressed():
+            self._stop_event.set()
+            self._is_running = False
+
+        run_thread = threading.Thread(target=runner)
+        run_thread.start()
+        # wait for button to settle down.
+        time.sleep(2)
+
+        self._hardware_interface.register_button_press(on_button_pressed)
+
+        while self._is_running:
+            self._stop_event.wait()
+
+        end_time = time.time()
+        self._logger.warning("==========Bot Stopped=============")
+        self._logger.warning("Total time: %s seconds", end_time - start_time)
 
     def get_pi_interface(self) -> HardwareInterface:
         """Function to get the Raspberry Pi Hardware Interface."""

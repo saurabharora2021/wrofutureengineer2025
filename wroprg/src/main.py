@@ -1,6 +1,5 @@
 """Main application for the Wro - Raspberry Pi interface."""
 import logging
-import argparse
 import threading
 from time import sleep
 
@@ -15,16 +14,7 @@ from utils.helpers import HelperFunctions
 def main():
     """ Main function to run the Wro - raspberry Application."""
 
-    parser = argparse.ArgumentParser(description="Wro lego - raspberry Application")
-    parser.add_argument('--logfile', type=str, default='application.log', help='Path to log file')
-    # Added debug argument
-    parser.add_argument('--debug', action='store_true', help='Enable debug mode')
-    args = parser.parse_args()
-
-    print(f"Log file: {args.logfile}")
-    print(f"Debug mode: {args.debug}")  # Optional: print debug status
-
-    helper: HelperFunctions = HelperFunctions(args.logfile, args.debug,screen_logger=False)
+    helper: HelperFunctions = HelperFunctions(screen_logger=False)
     logger = logging.getLogger(__name__)
 
     pi_inf: HardwareInterface = helper.get_pi_interface()

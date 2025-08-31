@@ -51,6 +51,8 @@ def main():
 
         maxfront = 120
 
+        DEFAULT_SPEED=30
+
         logger.info("Max front distance: %.2f", maxfront)
 
         def run_gyro_walk():
@@ -61,7 +63,7 @@ def main():
 
             challenge1walker.handle_straight_walk_to_distance(maxfront,start_state.left,
                                                               start_state.right, gyrodefault,
-                                                              Walker.DEFAULT_SPEED,speedcheck=True,
+                                                              DEFAULT_SPEED,speedcheck=True,
                                                               base_helper=gyrohelper)
             pi_inf.drive_stop()
 

@@ -48,7 +48,7 @@ def main():
 
         gyrodefault = 0
 
-        maxfront = 120
+        maxfront = 100
 
         logger.info("Max front distance: %.2f", maxfront)
 

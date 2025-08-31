@@ -101,6 +101,9 @@ class BuildHatDriveBase(ShutdownInterface):
         Turn the steering by the specified degrees.
         Handles outlier motor position readings.
         """
+        if steering_speed > 100:
+            steering_speed = 100
+
         # Helper to wrap angle to [-180, 180]
         def wrap_angle(angle):
             return ((angle + 180) % 360) - 180

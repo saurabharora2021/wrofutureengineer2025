@@ -30,7 +30,7 @@ class Walker:
     YAW_CORRECTION = 0.75
     DISTANCE_CORRECTION = 4
 
-    CORNER_YAW_ANGLE = 57.0
+    CORNER_YAW_ANGLE = 64.0
     RECOMENDED_CORNER_STEERING = 18.0
 
     output_inf: HardwareInterface
@@ -474,20 +474,20 @@ class Walker:
             # we have reached corner1
             if state.right > 40:
                 logger.info("Based on current right distance, turn -95")
-                def_turn_angle=min(-95, 90-current_angle)
+                def_turn_angle=min(-self.CORNER_YAW_ANGLE-5, self.CORNER_YAW_ANGLE-current_angle)
             else:
                 logger.info("Based on current right distance, turn -90")
-                def_turn_angle=max(-90, -90-current_angle)
+                def_turn_angle=max(-self.CORNER_YAW_ANGLE, -self.CORNER_YAW_ANGLE-current_angle)
             if state.front < 70:
                 #too close to front wall,add another 5 to turn
                 def_turn_angle-=5
         else:
             if state.left < 40:
-                logger.info("Based on current left distance, turn 95")
-                def_turn_angle=min(95, 90-current_angle)
+                logger.info("Based on current left distance, turn %.2f",(self.CORNER_YAW_ANGLE+5))
+                def_turn_angle=min(self.CORNER_YAW_ANGLE+5, self.CORNER_YAW_ANGLE-current_angle)
             else:
-                logger.info("Based on current left distance, turn 90")
-                def_turn_angle=max(90 , 90-current_angle)
+                logger.info("Based on current left distance, turn %.2f",self.CORNER_YAW_ANGLE)
+                def_turn_angle=max(self.CORNER_YAW_ANGLE , self.CORNER_YAW_ANGLE-current_angle)
             if state.front < 70:
                 #too close to front wall,add another 5 to turn
                 def_turn_angle+=5

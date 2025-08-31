@@ -38,7 +38,8 @@ class OrientationEstimator(ShutdownInterface):
 
     # Based on 90 degreee turn right and left we can only 88 degree turn.
     # lets correct yaw accordingly. scale it up.
-    DEGREE_90_CORRECTION = 90.0/88.0
+    # DEGREE_90_CORRECTION = 90.0/88.0
+    DEGREE_90_CORRECTION = 90/15
 
     USE_COMPASS = False
     # When True, completely disable MPU6050 usage and drive yaw only from QMC5883L.

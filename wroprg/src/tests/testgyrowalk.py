@@ -35,7 +35,7 @@ def main():
 
             #lets assume this is AntiClockwise and side1 is complete, we have reached corner1
             challenge1walker.intelligence.\
-                report_direction_side1(MATDIRECTION.ANTICLOCKWISE_DIRECTION)
+                report_direction_side1(MATDIRECTION.CLOCKWISE_DIRECTION)
 
             challenge1walker.handle_corner(gyrodefault=0)
 

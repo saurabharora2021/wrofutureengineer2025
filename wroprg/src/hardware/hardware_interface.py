@@ -7,6 +7,7 @@ all hardware access (LEGO + Raspberry Pi peripherals) is exposed here.
 import logging
 import time
 import math
+import threading
 from typing import List, Optional
 from board import SCL, SDA
 import busio
@@ -136,6 +137,10 @@ class HardwareInterface(ShutdownInterface):
 
         # Actuators and buttons
         self.buzzer = Buzzer(self.BUZZER_PIN)
+        
+        # Async buzzer support
+        self._buzzer_timer: Optional[threading.Timer] = None
+        self._buzzer_lock = threading.Lock()
         self.led1 = RGBLED(
             red=self.LED1_RED_PIN,
             green=self.LED1_GREEN_PIN,
@@ -223,10 +228,12 @@ class HardwareInterface(ShutdownInterface):
         self.camera_measurements = CameraDistanceMeasurements(self.camera)
 
     def camera_pause(self):
+        """Camera Pause"""
         self.camera_measurements.pause_readings()
-    
+
     def camera_restart(self):
-        self.camera_measurements.start_readings()
+        "Camera Restart readings"
+        self.camera_measurements.resume_readings()
 
     def _full_initialization(self) -> None:
         """Initialize all hardware components."""
@@ -262,12 +269,17 @@ class HardwareInterface(ShutdownInterface):
         if self._measurements_manager is None:
             raise RuntimeError("Measurements manager not initialized. Call" \
                                                             " full_initialization() first.")
+        self.camera_measurements.start()
 
         self._orientation_estimator.start_readings()
 
+        self.reset_gyro()
+
         if self.ENABLE_MEASURE_LOG is True:
             self._measurements_manager.start_reading()
-        self.camera_measurements.start()
+
+        #ensures reset gyro works.
+        time.sleep(1)
 
     def add_comment(self, comment: str) -> None:
         """Add a comment to the measurements log."""
@@ -287,8 +299,37 @@ class HardwareInterface(ShutdownInterface):
         """Get the current yaw in degrees."""
         return self._orientation_estimator.get_yaw()
 
-    def buzzer_beep(self, timer: float = 0.5) -> None:
-        """Turn on the buzzer."""
+    def _buzzer_off_cb(self) -> None:
+        with self._buzzer_lock:
+            try:
+                self.buzzer.off()
+            finally:
+                self._buzzer_timer = None
+
+    def buzzer_beep_async(self, timer: float = 0.5) -> None:
+        """Beep without blocking the caller using a background timer."""
+        with self._buzzer_lock:
+            # Cancel any pending off so we can extend the beep
+            if self._buzzer_timer is not None:
+                try:
+                    self._buzzer_timer.cancel()
+                except Exception:
+                    pass
+                self._buzzer_timer = None
+            # Turn on immediately, schedule off
+            self.buzzer.on()
+            t = max(0.0, float(timer))
+            self._buzzer_timer = threading.Timer(t, self._buzzer_off_cb)
+            self._buzzer_timer.daemon = True
+            self._buzzer_timer.start()
+
+    def buzzer_beep(self, timer: float = 0.5, non_blocking: bool = True) -> None:
+        """Beep the buzzer. By default, blocks for 'timer' seconds.
+        Set non_blocking=True to return immediately.
+        """
+        if non_blocking:
+            self.buzzer_beep_async(timer)
+            return
         self.buzzer.on()
         time.sleep(timer)
         self.buzzer.off()
@@ -380,6 +421,14 @@ class HardwareInterface(ShutdownInterface):
         self.camera.close()
 
         try:
+            # Ensure any async buzzer timers are cancelled and buzzer is off
+            with self._buzzer_lock:
+                if self._buzzer_timer is not None:
+                    try:
+                        self._buzzer_timer.cancel()
+                    except Exception:
+                        pass
+                    self._buzzer_timer = None
             self.buzzer.off()
         except Exception as e:  # pylint: disable=broad-except
             logger.error("Error turning off buzzer during shutdown: %s", e)
@@ -539,7 +588,7 @@ class HardwareInterface(ShutdownInterface):
         ultrasonic_weight: float = 0.5,
         max_diff: float = 10,
     ) -> float:
-        
+
         if lidar_val > 0 and ultrasonic_val > 0:
             if abs(lidar_val - ultrasonic_val) > max_diff:
                 # we trust in order of value, if any this is more that 15

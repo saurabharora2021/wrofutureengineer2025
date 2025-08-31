@@ -1,4 +1,4 @@
-# WRO Future Engineers 2025 – Reference Robot
+# WRO Future Engineers 2025 – Yo-Wroom
 
 > *Full-mark scoring autonomous vehicle design for the WRO 2025 Future Engineers category, using Raspberry Pi based control platforms.*
 
@@ -31,7 +31,7 @@ It serves as both a **learning platform** for participating teams and a **benchm
 Key features:  
 - **Front-wheel steering** and **rear-wheel drive** design for realistic vehicle dynamics.  
 - **Raspberry Pi 4B** for vision-based navigation and sensor control and **Raspberry Pi BUILD HAT** for direct motor and sensor control.  
-- Three ultrasonic sensors for accurate wall following.  
+- Three ultrasonic sensors and two LiDAR for accurate wall following.  
 - IMU-based orientation stabilization.  
 - Modular software for quick adaptation to custom strategies.  
 ---
@@ -41,24 +41,22 @@ Key features:
 | Directory        | Description                              |
 |------------------|------------------------------------------|
 | `pi-install/src` | Installation script                      |
-| `others`         | Additional reference files or resources  |
-| `schematics`     | Wiring diagrams for RPi setups           |
+| `team_photos`         | Team photos  |
+| `vehicle_photos`     | Images of the completed robot builds           |
 | `wroprg`         | Source code in Python                    |
-| `team_photo`     | Photos of the team members               |
-| `vehicle_photos` | Images of the completed and in-progress robot builds |
-| `video`          | Demo and competition run videos          |
 | `README.md`      | Project documentation (this file)        |
 
 ---
 
 ## Team Members
 <p align="center">
-  <img src="team_photo.jpg" alt="Team Photo" width="500">
+  <img src="team_photo.png" alt="Team Photo" width="500">
 </p>
 
-- **Kanak Arora** – Lead Programming and Electronics and Basic build development– [xyz@email.com](mailto:xyz@email.com)  
-- **Mohit Kuriseti** – Electronics and Program development – [xyz@email.com](mailto:xyz@email.com)
-- **Rachit Tiwari** – Electronics and Build development– [xyz@email.com](mailto:xyz@email.com)
+- **Kanak Arora** – Lead Programming and Electronics and Basic build development – [yolabteachers2@gmail.com](mailto:yolabteachers2@gmail.com)
+- **Rachit Tiwari** – Electronics and Build development – [yolabs007@gmail.com](mailto:yolabs007@gmail.com)  
+- **Mohit Kuriseti** – Electronics and Program development – [yolabs007@gmail.com](mailto:yolabs007@gmail.com)
+- **Saurabh Arora** – Coach for team Yo-Vroom – [support@yolabs.in](support@yolabs.in)
 - **Team YoLabs** – WRO Future Engineers preparation and reference build development.  
 
 
@@ -74,13 +72,15 @@ Key features:
 | Spike Prime Large Motor  | Rear-wheel drive                        | Controlled via Raspberry Pi BUILD HAT     |
 | Spike Prime Small Motor    | Front wheel steering system           | Controlled via Raspberry Pi BUILD HAT     |
 | Raspberry Pi 4B   | Main processing unit                    | Runs vision & navigation algorithms, distance sensor control  |
-| Raspberry Pi Camera Module        | Vision input                            | Front-mounted, wide-angle lens       |
+| Raspberry Pi Camera Module        | Vision input, Front distance confirmation                            | Front-mounted, wide-angle lens       |
 | Raspberry Pi BUILD HAT   | Control unit for all LEGO Education Spike Prime components                 | Handles motors & colour sensor input |
 | Spike Prime Colour sensor        | Detecting direction through line colour on mat           |  Controlled via Raspberry Pi BUILD HAT|
 | MPU6050           | IMU for orientation feedback            | I2C connected to Raspberry Pi               |
 | Ultrasonic Sensor (×3) | Distance measurement                | Mounted front, left & right for wall following and front wall detection |
 | Li-ion Battery (x4)      |  18650 3.6V 3500mAh                            | Powers motors, electronics, BUILD HAT & Raspberry Pi|
 | OLED display          | For error and info display           | I2C connected to Raspberry Pi             |
+| Small LiDAR Sensors (x2)          | For side distance confirmation           | I2C connected to Raspberry Pi             |
+| Magnetometer          | Gyro measurements           | For  gyro confirmation             |
 | Misc.             | Smaller components for errors and info, connectors, wiring  |                                        |
 
 
@@ -101,7 +101,10 @@ Key features:
   - **Ultrasonic (Front, Right, Left):** Wall distance, corner detection and wall following
   - **MPU6050 IMU:** Orientation correction during navigation using Yaw. 
   - **Raspberry Pi Camera Module:** Vision-based navigation and challenge detection.  
-  - **Spike Prime Colour sensor:** Direction Detection from mat line colour.  
+  - **Spike Prime Colour sensor:** Direction Detection from mat line colour.
+  - **Small LiDAR:** Wall distance and wall following.
+  - **Magnetometer:** Gyro confirmation.
+  
 
 ---
 
@@ -131,6 +134,7 @@ Key features:
 
 - **Vision Processing (OpenCV on RPi):**
   - Convert frames from BGR to HSV.
+  - Detecting front wall.
   - Detecting track Obstacles.
 - **Sensor Integration:**
   - Ultrasonic sensors for precise wall-following.
@@ -139,11 +143,11 @@ Key features:
 
 ### Driving Strategies & Challenge Logic
 
-- **Wall Following:** PD-controlled steering using right and left ultrasonic distance.
-- **Corner Detection:** Front ultrasonic detection to initiate turns.
+- **Wall Following:** PD-controlled steering using right and left ultrasonic distance and Small LiDAR sensors.
+- **Corner Detection:** Front ultrasonic + camera-based detection to initiate turns.
 - **Lap Completion:** IMU + distance tracking to ensure accurate lap counts.
 - **Recovery Logic:** If bot drifts, slow down and re-center before resuming speed.
-- **Straight Walk:** Distance sensor and IMU fusion for smooth path control.
+- **Straight Walk:** Distance sensor and IMU + Magnetometer fusion for smooth path control.
 
 ---
 
@@ -159,7 +163,7 @@ Key features:
    - Mount LEGO Education Spike Prime Large Motor.
    - Mount LEGO Education Spike Prime Colour sensor.
    - Mount Raspberry Pi BUILD HAT on top of Raspberry Pi.
-   - Mount and connect all other sensirs and electronics.
+   - Mount and connect all other sensors and electronics.
 4. **Power Wiring:**  
    - Ensure regulated supply to Raspberry Pi BUILD HAT.  
 5. **Testing:**  
@@ -170,8 +174,8 @@ Key features:
 
 ## Potential Improvements
 
-- Integrate LiDAR for higher-precision mapping. 
-- Ise lighter Chassis and more open source harsware to decrease errors. 
+- Integrate stronger LiDAR for higher-precision mapping. 
+- Use lighter Chassis and more open source hardware to decrease errors. 
 - Improve computer vision FPS via GPU acceleration on RPi.  
 - Add auto-calibration for ultrasonic sensors.  
 - Experiment with reinforcement learning for adaptive driving.

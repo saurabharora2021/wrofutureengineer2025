@@ -1,6 +1,11 @@
 """ This modules contains WRO Future Engineer 2025 mat functions and constants."""
 import math
+import logging
+from enum import Enum,auto
+from collections import Counter
 
+
+logger = logging.getLogger(__name__)
 #based on color.py from buildhat
 def mat_color( r, g, b)-> str:
     """Return the color name from RGB
@@ -25,3 +30,85 @@ def mat_color( r, g, b)-> str:
             near = itm[0]
             euc = cur
     return near
+
+class MATDIRECTION(Enum):
+    """Enum to represent the direction of the Mat Walker."""
+    CLOCKWISE_DIRECTION = auto()
+    ANTICLOCKWISE_DIRECTION = auto()
+    UNKNOWN_DIRECTION = auto()
+
+class MATLOCATION(Enum):
+    """Enum to represent the current location of the Mat Walker."""
+    SIDE_1 = auto()
+    SIDE_2 = auto()
+    SIDE_3 = auto()
+    SIDE_4 = auto()
+    CORNER_1 = auto()
+    CORNER_2 = auto()
+    CORNER_3 = auto()
+    CORNER_4 = auto()
+
+class MATGENERICLOCATION(Enum):
+    """Enum to represent the generic location of the Mat Walker."""
+    SIDE = auto()
+    CORNER = auto()
+
+
+def color_to_direction(color)-> MATDIRECTION:
+    """Convert Mat line color to direction."""
+    if color == "blue":
+        return MATDIRECTION.ANTICLOCKWISE_DIRECTION
+    elif color == "orange":
+        return MATDIRECTION.CLOCKWISE_DIRECTION
+    else:
+        return MATDIRECTION.UNKNOWN_DIRECTION
+
+def location_to_genericlocation(location: MATLOCATION) -> MATGENERICLOCATION:
+    """Convert current location to generic location."""
+    if location in (MATLOCATION.SIDE_1, MATLOCATION.SIDE_2,
+                    MATLOCATION.SIDE_3, MATLOCATION.SIDE_4):
+        return MATGENERICLOCATION.SIDE
+    if location in (MATLOCATION.CORNER_1, MATLOCATION.CORNER_2,
+                    MATLOCATION.CORNER_3, MATLOCATION.CORNER_4):
+        return MATGENERICLOCATION.CORNER
+    else:
+        raise ValueError(f"Unknown current location: {location}")
+
+def vote_directions(list_of_directions: list[MATDIRECTION]) -> MATDIRECTION:
+    """Vote for the most common direction in the list."""
+    if not list_of_directions:
+        return MATDIRECTION.UNKNOWN_DIRECTION
+    direction_counter = Counter(list_of_directions)
+    most_common_direction, _ = direction_counter.most_common(1)[0]
+    logger.info("Most common direction: %s", most_common_direction)
+    return most_common_direction
+
+def directiontostr(direction):
+    """Convert direction to string."""
+    if direction == MATDIRECTION.CLOCKWISE_DIRECTION:
+        return "Clockwise"
+    elif direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
+        return "Anti-clockwise"
+    else:
+        return "Unknown"
+
+def locationtostr(location:MATLOCATION)-> str:
+    """Convert location to string."""
+    if location == MATLOCATION.SIDE_1:
+        return "Side 1"
+    elif location == MATLOCATION.SIDE_2:
+        return "Side 2"
+    elif location == MATLOCATION.SIDE_3:
+        return "Side 3"
+    elif location == MATLOCATION.SIDE_4:
+        return "Side 4"
+    elif location == MATLOCATION.CORNER_1:
+        return "Corner 1"
+    elif location == MATLOCATION.CORNER_2:
+        return "Corner 2"
+    elif location == MATLOCATION.CORNER_3:
+        return "Corner 3"
+    elif location == MATLOCATION.CORNER_4:
+        return "Corner 4"
+    else:
+        return "Unknown"

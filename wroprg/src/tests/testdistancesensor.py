@@ -24,7 +24,9 @@ def main():
         robot_validator:RobotValidator =  RobotValidator(pi_inf)
         robot_validator.validate()  # Validate the robot's functionality
 
-        pi_inf.logdistances()  # Log the distances
+        state = pi_inf.read_state()  # Log the distances
+        logger.warning("F:%.2f, L:%.2f, R:%.2f, Y:%.2f , ",
+                       state.front, state.left, state.right, state.yaw)
 
         pi_inf.force_flush_messages()
 

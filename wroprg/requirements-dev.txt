@@ -4,6 +4,7 @@ opencv-python
 pillow
 numpy
 adafruit-circuitpython-ssd1306
+adafruit-circuitpython-mpu6050
 # Mock GPIO for development
 fake-rpi
 gpiozero

@@ -3,9 +3,11 @@ import logging
 import argparse
 import threading
 from time import sleep
-from round1.logicround1 import Walker
+
+from hardware.robotstate import RobotState
 from hardware.validator import RobotValidator
 from hardware.hardware_interface import HardwareInterface
+from round1.logicroundn import WalkerN
 
 from utils.helpers import HelperFunctions
 
@@ -22,7 +24,7 @@ def main():
     print(f"Log file: {args.logfile}")
     print(f"Debug mode: {args.debug}")  # Optional: print debug status
 
-    helper: HelperFunctions = HelperFunctions(args.logfile, args.debug)
+    helper: HelperFunctions = HelperFunctions(args.logfile, args.debug,screen_logger=False)
     logger = logging.getLogger(__name__)
 
     pi_inf: HardwareInterface = helper.get_pi_interface()
@@ -33,8 +35,12 @@ def main():
 
         # Validate the robot's functionality
         robot_validator: RobotValidator = RobotValidator(pi_inf)
+        pi_inf.disable_logger()
+        state:RobotState = pi_inf.read_state()
+        pi_inf.log_message(state.front, state.left, state.right, current_yaw=0,
+                               current_steering=pi_inf.get_steering_angle())
         if not robot_validator.validate():
-            logger.error("Robot validation failed. Exiting.")
+
             pi_inf.led1_red()
             pi_inf.buzzer_beep()
             raise RuntimeError("Robot validation failed")
@@ -45,10 +51,14 @@ def main():
         logger.warning("Test Successful")
         pi_inf.force_flush_messages()
 
-        challenge1walker = Walker(pi_inf,nooflaps=1)
+        challenge1walker = WalkerN(pi_inf,nooflaps=2)
 
         #action button.
-        pi_inf.wait_for_action()
+        state = pi_inf.read_state()
+        pi_inf.log_message(state.front, state.left, state.right, current_yaw=0,
+                               current_steering=pi_inf.get_steering_angle())
+        #pi_inf.wait_for_action()
+        pi_inf.buzzer_beep()
 
         def runner():
             pi_inf.reset_gyro()  # Reset gyro to zero
@@ -66,10 +76,11 @@ def main():
             sleep(0.01)
 
     except (ImportError, AttributeError, RuntimeError) as e:
-        logger.error("Error Running Program")
         logger.error("Exception: %s",e)
         pi_inf.led1_red()
-        pi_inf.buzzer_beep()
+        state = pi_inf.read_state()
+        pi_inf.log_message(state.front, state.left, state.right, current_yaw=0,
+                               current_steering=pi_inf.get_steering_angle())
         raise
     finally:
         helper.shutdown_all()

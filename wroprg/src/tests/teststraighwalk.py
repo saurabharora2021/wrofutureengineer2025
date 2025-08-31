@@ -44,8 +44,7 @@ def main():
         challenge1walker = Walker(pi_inf)
         pi_inf.start_measurement_recording()
         # Log the distances
-        start_left_distance = pi_inf.get_left_distance()
-        start_right_distance = pi_inf.get_right_distance()
+        start_state = pi_inf.read_state()
 
         gyrodefault = 0
 
@@ -57,8 +56,8 @@ def main():
 
             pi_inf.reset_gyro()  # Reset gyro to zero
 
-            challenge1walker.handle_straight_walk_to_distance(maxfront,start_left_distance,
-                                                              start_right_distance,
+            challenge1walker.handle_straight_walk_to_distance(maxfront,start_state.left,
+                                                              start_state.right,
                                               gyrodefault,Walker.DEFAULT_SPEED,speedcheck=True)
             pi_inf.drive_stop()
 

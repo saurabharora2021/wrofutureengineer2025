@@ -3,7 +3,6 @@
 import logging
 from typing import List
 from PIL import Image, ImageDraw, ImageFont
-from hardware.pin_config import PinConfig
 
 
 logger = logging.getLogger(__name__)
@@ -15,28 +14,32 @@ class ScreenLogger:
     MAX_MESSAGES = 3  # maximum number of messages to display
     START_X = 11
 
-    def __init__(self):
-        self.image: Image.Image = Image.new("1", (PinConfig.SCREEN_WIDTH, PinConfig.SCREEN_HEIGHT))
+    def __init__(self,width:int,height:int) -> None:
+        
+        self.width = width
+        self.height = height
+        self.image: Image.Image = Image.new("1", (self.width, self.height))
         self.draw: ImageDraw.ImageDraw = ImageDraw.Draw(self.image)
         self.font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
                                         self.FONT_SIZE)
         self.messages: List[str] = []  # Initialize messages list
 
+
     def log_message(self, front: float, left: float, right: float, current_yaw: float,
                                                             current_steering: float)->Image.Image:
         """Log the message to the screen."""
-        logger.info("Front: %.2f, Left: %.2f, Right: %.2f, Yaw: %.2f, Steering: %.2f",
+        logger.debug("Front: %.2f, Left: %.2f, Right: %.2f, Yaw: %.2f, Steering: %.2f",
                                              front, left, right, current_yaw, current_steering)
-        self.draw.rectangle((0, 0, PinConfig.SCREEN_WIDTH, PinConfig.SCREEN_HEIGHT),
+        self.draw.rectangle((0, 0, self.width, self.height),
                             outline=0, fill=0)
 
         if current_steering > 0:
             #Steering at right side
-            self.draw.rectangle((PinConfig.SCREEN_WIDTH - 9, 0, PinConfig.SCREEN_WIDTH,
-                                 PinConfig.SCREEN_HEIGHT), outline=0, fill=1)
+            self.draw.rectangle((self.width - 9, 0, self.width,
+                                 self.height), outline=0, fill=1)
         else:
             #steering towards left side
-            self.draw.rectangle((0, 0, 9, PinConfig.SCREEN_HEIGHT),outline=0, fill=1)
+            self.draw.rectangle((0, 0, 9, self.height),outline=0, fill=1)
 
         cursor = 0
         # Draw left sensor value

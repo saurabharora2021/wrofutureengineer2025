@@ -2,9 +2,14 @@
 import math
 import time
 import logging
+from typing import Tuple
+from board import SCL, SDA
+import busio
+import adafruit_mpu6050
+from qmc5883l import QMC5883L
+import adafruit_tca9548a
 from base.shutdown_handling import ShutdownInterface
 from utils.threadingfunctions import ConstantUpdateThread
-
 logger = logging.getLogger(__name__)
 
 class SimpleKalmanFilter:
@@ -30,9 +35,55 @@ class OrientationEstimator(ShutdownInterface):
     Estimates roll, pitch, and yaw using MPU6050 data and a complementary blend
     with simple Kalman smoothing on accelerometer-derived angles.
     """
-    def __init__(self, get_accel, get_gyro, dt=0.01):
-        self.get_accel = get_accel      # returns (ax, ay, az) in m/s^2
-        self.get_gyro = get_gyro        # returns (gx, gy, gz) in rad/s (Adafruit lib)
+
+    # Based on 90 degreee turn right and left we can only 88 degree turn.
+    # lets correct yaw accordingly. scale it up.
+    DEGREE_90_CORRECTION = 90.0/88.0
+
+    USE_COMPASS = False
+    # When True, completely disable MPU6050 usage and drive yaw only from QMC5883L.
+    USE_ONLY_COMPASS = False
+    # Set the yaw sign so that a right turn yields positive yaw.
+    # If your MPU6050 gz increases for left turns (common), use -1.0.
+    # If gz increases for right turns, use +1.0.
+    gyro_yaw_sign: float = -1.0
+    def get_acceleration(self) -> Tuple[float, float, float]:
+        """Get the acceleration from the MPU6050 sensor."""
+        accel = self.mpu.acceleration
+        return accel
+
+    def get_gyroscope(self) -> Tuple[float, float, float]:
+        """Get the gyroscope data from the MPU6050 sensor."""
+        return self.mpu.gyro
+
+    def get_magnetometer(self) -> Tuple[float, float, float]:
+        """Get the magnetometer data from the QMC5883L sensor."""
+        if self.compass is not None:
+            return self.compass.magnetic
+        raise ValueError("Magnetometer not available")
+
+    def __init__(self, device_channel, dt=0.01):
+
+        # Sensors on I2C
+        if not self.USE_ONLY_COMPASS:
+            self.mpu = adafruit_mpu6050.MPU6050(device_channel)
+            self.get_accel = self.get_acceleration  # returns (ax, ay, az) in m/s^2
+            self.get_gyro = self.get_gyroscope # returns (gx, gy, gz) in rad/s (Adafruit lib)
+        else:
+            # Disable MPU entirely
+            self.mpu = None
+            self.get_accel = None
+            self.get_gyro = None
+
+        # Enable compass when requested or when running compass-only mode
+        if self.USE_ONLY_COMPASS or self.USE_COMPASS:
+            self.compass = QMC5883L(device_channel)
+            # Magnetometer callback: returns (mx, my, mz) in microteslas (uT)
+            self.get_mag = self.get_magnetometer
+        else:
+            self.compass = None
+            self.get_mag = None
+
         self.dt = dt
         self.last_time = time.perf_counter()
 
@@ -40,6 +91,10 @@ class OrientationEstimator(ShutdownInterface):
         self.roll = 0.0
         self.pitch = 0.0
         self.yaw = 0.0
+        # Yaw zero-reference (degrees). Reported yaw = yaw - this offset.
+        self._yaw_zero_offset_deg = 0.0
+        # Defer zeroing until a valid fused yaw exists
+        self._yaw_zero_pending = False
 
         # Gyro bias (rad/s) for yaw axis
         self.yaw_bias = 0.0
@@ -51,18 +106,37 @@ class OrientationEstimator(ShutdownInterface):
 
         # Complementary filter blend factor
         self._alpha = 0.98
+        #TODO: tune for indoor, expected to be lower. ooutside 0.97, inside 0.99
+        self._alpha_yaw = 0.90  # Increased to trust the gyro more and reduce noise
+
+        # Magnetometer fusion tuning
+        # Low-pass on mag heading (0..1). Higher to reduce lag on fast turns.
+        self._mag_yaw_lpf_alpha = 0.5  # Decreased for more smoothing of mag data
+        self._mag_yaw_lpf = None       # internal state
+        # If your yaw correction runs away, flip this to -1.0
+        self.mag_heading_sign = -1.0
+        # Magnetometer sensitivity adjustment (increase if turns are underestimated)
+        self._mag_sensitivity_factor = 1.0  # 1.0 is sufficient with faster mag LPF
 
         # Calibration offsets
         self.roll_offset = 0.0
         self.pitch_offset = 0.0
         self.yaw_offset = 0.0
 
+        # Magnetometer calibration (hard-iron bias) and declination
+        self.mag_bias_x = 0.0
+        self.mag_bias_y = 0.0
+        self.mag_bias_z = 0.0
+        # Optional soft-iron scaling could be added later
+        self.mag_declination_deg = 0.0  # set your local declination if needed
+
 
         #lets start the thread to read sensor data
-        self._thread: ConstantUpdateThread = ConstantUpdateThread(self.update, interval_ms=9)
+        self._thread: ConstantUpdateThread = ConstantUpdateThread(self.update, interval_ms=8)
 
         self._stationary_gz_samples = []
         self._stationary_sample_limit = 50  # Number of samples to average for bias
+
 
     def shutdown(self):
         """Shutdown readings"""
@@ -70,9 +144,13 @@ class OrientationEstimator(ShutdownInterface):
 
     def start_readings(self):
         """Start Reading"""
-        #Lets calibrate the devices.
-        self.calibrate_imu()
+        # Always calibrate IMU on startup when MPU is enabled
+        if not self.USE_ONLY_COMPASS:
+            logger.info("Calibrating IMU (startup)...")
+            self.calibrate_imu()
 
+        # Defer yaw zeroing to the first valid fused update
+        self.reset_yaw(defer_to_next_update=True)
         self._thread.start()
 
 
@@ -97,6 +175,41 @@ class OrientationEstimator(ShutdownInterface):
             dt = self.dt  # clamp to nominal to avoid spikes
         self.last_time = now
 
+        # Compass-only mode: compute yaw directly from magnetometer (no tilt compensation)
+        if self.USE_ONLY_COMPASS:
+            if callable(self.get_mag):
+                try:
+                    mx, my, mz = self.get_mag()
+                    mx, my, mz = self._remap_qmc_to_imu(mx, my, mz)
+                    # Apply hard-iron bias compensation
+                    mx -= self.mag_bias_x
+                    my -= self.mag_bias_y
+                    mz -= self.mag_bias_z
+                    # 2D heading (assumes near-level). Use mag_heading_sign to match yaw sense.
+                    #yaw_mag = math.degrees(math.atan2(self.mag_heading_sign * my, mx))
+                    # FIX #1: Correct atan2 for X-backward, Y-right coordinate system.
+                    yaw_mag = math.degrees(math.atan2(self.mag_heading_sign * my, -mx))
+                    yaw_mag = self._wrap_angle_deg(yaw_mag + self.mag_declination_deg)
+                    # Smooth heading
+                    if self._mag_yaw_lpf is None:
+                        self._mag_yaw_lpf = yaw_mag
+                    else:
+                        err = self._angle_diff_deg(yaw_mag, self._mag_yaw_lpf)
+                        self._mag_yaw_lpf = self._wrap_angle_deg(
+                            self._mag_yaw_lpf + self._mag_yaw_lpf_alpha * err
+                        )
+                    self.yaw = self._mag_yaw_lpf
+                except (OSError, RuntimeError, ValueError) as e:
+                    # Keep previous yaw if read fails
+                    logger.debug("Compass-only read failed: %s", e)
+            # Handle deferred zeroing once we have a yaw
+            if self._yaw_zero_pending:
+                self._yaw_zero_offset_deg = self.yaw
+                self._yaw_zero_pending = False
+                logger.info("Yaw zeroed at first update (compass-only): %.2f deg", \
+                                                            self._yaw_zero_offset_deg)
+            return
+
         # logger.info("Update orientation... %0.2f", dt)
 
         # Read sensors
@@ -106,14 +219,10 @@ class OrientationEstimator(ShutdownInterface):
         # Subtract offsets for roll and pitch. Yaw bias is handled separately.
         gx -= math.radians(self.roll_offset)
         gy -= math.radians(self.pitch_offset)
-        # gz -= math.radians(self.yaw_offset) # <-- REMOVE THIS LINE
-
-        # Prediction: integrate gyro (convert rad/s to deg/s)
+        # --- Roll & Pitch prediction (deg) ---
         roll_pred = self.roll + math.degrees(gx) * dt
         pitch_pred = self.pitch + math.degrees(gy) * dt
-
-        # Yaw: only gyro with bias correction (no accel correction available)
-        # Adapt bias slowly when stationary
+        # --- Stationary detection for yaw bias refinement ---
         stationary = abs(gx) < self.stationary_threshold and \
                      abs(gy) < self.stationary_threshold and \
                      abs(gz) < self.stationary_threshold
@@ -121,14 +230,9 @@ class OrientationEstimator(ShutdownInterface):
         if stationary:
             self._stationary_gz_samples.append(gz)
             if len(self._stationary_gz_samples) >= self._stationary_sample_limit:
-                # Calculate the new stationary average
-                stationary_avg_bias = sum(self._stationary_gz_samples) / len(self._stationary_gz_samples)
-                
-                # Instead of replacing, gently blend the new average with the existing bias.
-                # This respects the initial calibration but allows for slow adaptation.
-                # (95% old value, 5% new value)
+                stationary_avg_bias = sum(self._stationary_gz_samples) \
+                                                 / len(self._stationary_gz_samples)
                 self.yaw_bias = self.yaw_bias * 0.95 + stationary_avg_bias * 0.05
-
                 logger.info("Refined Stationary yaw bias to: %.4f rad/s", self.yaw_bias)
                 self._stationary_gz_samples.clear()
         else:
@@ -136,20 +240,104 @@ class OrientationEstimator(ShutdownInterface):
 
         # Apply the single, unified bias correction
         corrected_gz = gz - self.yaw_bias
-        self.yaw += math.degrees(corrected_gz) * dt
+        # Integrate yaw with configured sign so that right turns are positive.
+        yaw_pred = self.yaw + self.gyro_yaw_sign * math.degrees(corrected_gz) * dt
 
-        # Measurement: roll/pitch from accelerometer (smoothed)
+        # --- Accel measurement for roll/pitch ---
         accel_roll, accel_pitch = self._accel_to_angles(ax, ay, az)
         accel_roll = self.kalman_roll.update(accel_roll)
         accel_pitch = self.kalman_pitch.update(accel_pitch)
 
-        # Complementary fusion
+        # Complementary fusion for roll/pitch
         a = self._alpha
         self.roll = a * roll_pred + (1.0 - a) * accel_roll
         self.pitch = a * pitch_pred + (1.0 - a) * accel_pitch
 
+        # Magnetometer fusion for yaw (tilt-compensated heading)
+        if callable(self.get_mag):
+            try:
+                mx, my, mz = self.get_mag()
+                # Axes are wired to match: IMU X=QMC X, IMU Y=QMC Y (Z assumed aligned)
+                mx, my, mz = self._remap_qmc_to_imu(mx, my, mz)
+                # Apply hard-iron bias compensation
+                mx -= self.mag_bias_x
+                my -= self.mag_bias_y
+                mz -= self.mag_bias_z
+                # Compute tilt-compensated heading (deg), add declination
+                yaw_mag = self._tilt_compensated_heading(ax, ay, az, mx, my, mz)
+                # Add magnetic declination
+                yaw_mag = self._wrap_angle_deg(yaw_mag + self.mag_declination_deg)
+                # Smooth magnetometer heading (circular low-pass)
+                if self._mag_yaw_lpf is None:
+                    self._mag_yaw_lpf = yaw_mag
+                else:
+                    err = self._angle_diff_deg(yaw_mag, self._mag_yaw_lpf)
+                    self._mag_yaw_lpf = self._wrap_angle_deg(self._mag_yaw_lpf + \
+                                                    self._mag_yaw_lpf_alpha * err)
+                # Trust mag a bit more when stationary
+                alpha_yaw = 0.80 if not stationary else 0.60  # Trust mag more (was 0.85/0.70)
+                self.yaw = self._fuse_angles_deg(yaw_pred, self._mag_yaw_lpf, alpha_yaw,
+                                                 sensitivity=self._mag_sensitivity_factor)
+            except (OSError, RuntimeError, ValueError) as e:
+                # Fallback to gyro-only if magnetometer read fails
+                logger.debug("Compass read failed: %s; using gyro-only yaw", e)
+                self.yaw = self._wrap_angle_deg(yaw_pred)
+        else:
+            self.yaw = self._wrap_angle_deg(yaw_pred)
+
+        # If zeroing was requested before a valid yaw existed,
+        # set the zero offset now using the current fused yaw.
+        if self._yaw_zero_pending:
+            self._yaw_zero_offset_deg = self.yaw
+            self._yaw_zero_pending = False
+            logger.info("Yaw zeroed at first update: %.2f deg", self._yaw_zero_offset_deg)
+
+    @staticmethod
+    def _wrap_angle_deg(angle: float) -> float:
+        """Wrap angle to [-180, 180)."""
+        a = (angle + 180.0) % 360.0 - 180.0
+        # Map -180 to 180 if needed to keep continuity (optional)
+        return a
+
+    @staticmethod
+    def _angle_diff_deg(a: float, b: float) -> float:
+        """Compute smallest signed difference a-b in degrees within [-180,180)."""
+        d = (a - b + 180.0) % 360.0 - 180.0
+        return d
+
+    def _fuse_angles_deg(self, pred: float, meas: float, alpha: float,\
+                                                sensitivity: float = 1.0) -> float:
+        """Complementary fuse two angles in degrees considering wrap-around."""
+        err = self._angle_diff_deg(meas, pred)
+        # Apply sensitivity scaling to make magnetometer corrections stronger
+        fused = pred + (1.0 - alpha) * err * sensitivity
+        return self._wrap_angle_deg(fused)
+
+    def _tilt_compensated_heading(self, ax: float, ay: float, az: float,
+                                  mx: float, my: float, mz: float) -> float:
+        """Compute tilt-compensated magnetic heading in degrees [-180,180)."""
+        # Compute roll/pitch in radians from accel
+        roll_deg, pitch_deg = self._accel_to_angles(ax, ay, az)
+        roll = math.radians(roll_deg)
+        pitch = math.radians(pitch_deg)
+
+        # Tilt compensation (AN4248 style)
+        mx2 = mx * math.cos(pitch) + mz * math.sin(pitch)
+        my2 = mx * math.sin(roll) * math.sin(pitch) + my * math.cos(roll) - \
+              mz * math.sin(roll) * math.cos(pitch)
+        # Flip sign via mag_heading_sign if rotation sense disagrees with gyro
+        #heading = math.degrees(math.atan2(self.mag_heading_sign * my2, mx2))
+        # FIX #2: Correct atan2 for X-backward, Y-right coordinate system.
+        heading = math.degrees(math.atan2(self.mag_heading_sign * my2, -mx2))
+        return self._wrap_angle_deg(heading)
+
+    @staticmethod
+    def _remap_qmc_to_imu(mx: float, my: float, mz: float) -> tuple[float, float, float]:
+        """Axes are already aligned between QMC5883L and MPU6050 on this robot."""
+        return (mx, my, mz)
+
     def reset(self, roll: float = 0.0, pitch: float = 0.0, yaw: float = 0.0,
-               sample_yaw_bias: bool = True) -> None:
+                ) -> None:
         """
         Reset internal state and start estimation again.
         - roll/pitch/yaw are in degrees
@@ -173,9 +361,35 @@ class OrientationEstimator(ShutdownInterface):
         # Reset time to avoid a large dt on next update
         self.last_time = time.perf_counter()
 
+    def reset_yaw(self, to_current: bool = True, offset_deg: float | None = None,
+                  defer_to_next_update: bool = False) -> None:
+        """
+         Set yaw zero-reference for relative yaw reporting.
+         - to_current=True: zero to current absolute yaw so subsequent yaw reads start at 0.
+         - offset_deg: explicitly set the zero-reference angle in degrees (absolute frame).
+         - defer_to_next_update=True: zero at the next fused update (recommended at startup).
+         If both provided, to_current takes precedence unless defer_to_next_update is True.
+        """
+        if defer_to_next_update:
+            self._yaw_zero_pending = True
+            return
+        if to_current:
+            self._yaw_zero_offset_deg = self.yaw
+        elif offset_deg is not None:
+            self._yaw_zero_offset_deg = self._wrap_angle_deg(offset_deg)
+        else:
+            self._yaw_zero_offset_deg = 0.0
+
+        logger.info("reset yaw: %.2f", self._yaw_zero_offset_deg)
+
+    def get_yaw(self) -> float:
+        """Return yaw in degrees relative to the zero-reference set by reset_yaw()."""
+        return self._wrap_angle_deg(self.yaw - self._yaw_zero_offset_deg)*self.DEGREE_90_CORRECTION
+
     def get_orientation(self):
-        """Returns (roll, pitch, yaw) in degrees."""
-        return self.roll, self.pitch, self.yaw
+        """Returns (roll, pitch, yaw) in degrees. Yaw is relative to reset_yaw()."""
+        return self.roll, self.pitch, self._wrap_angle_deg(self.yaw - self._yaw_zero_offset_deg)\
+                                                        * self.DEGREE_90_CORRECTION
 
     def calibrate_imu(self, samples=200) -> tuple[float, float, float]:
         """
@@ -208,3 +422,33 @@ class OrientationEstimator(ShutdownInterface):
         self.yaw_bias = math.radians(offset_yaw)
 
         return offset_roll, offset_pitch, offset_yaw
+
+
+
+def main():
+    """Main method for orientation."""
+    logging.basicConfig(level=logging.INFO)
+    # Use module-level logger
+
+    DEVICE_I2C_CHANNEL = 6
+
+    # Setup I2C devices
+    i2c = busio.I2C(SCL, SDA)
+    tca = adafruit_tca9548a.TCA9548A(i2c)
+
+    device_channel = tca[DEVICE_I2C_CHANNEL]
+
+    # Create an OrientationEstimator instance
+    orientation_estimator = OrientationEstimator(device_channel)
+
+    orientation_estimator.start_readings()
+    time.sleep(1)
+    orientation_estimator.reset_yaw()
+
+    while True:
+        (roll, pitch, yaw) = orientation_estimator.get_orientation()
+        logger.info("Orientation: Roll: %.2f, Pitch: %.2f, Yaw: %.2f", roll, pitch, yaw)
+        time.sleep(0.5)
+
+if __name__ == "__main__":
+    main()

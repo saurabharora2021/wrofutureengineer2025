@@ -1,7 +1,9 @@
 """ This module implements the Drive Base using Build Hat motors and sensors."""
 import logging
-from typing import Final, Optional
-from buildhat import Motor, ColorSensor, DistanceSensor, Hat
+import threading
+import time
+from typing import Final
+from buildhat import Motor, ColorSensor, Hat
 from base.shutdown_handling import ShutdownInterface
 
 # Module-level logger that can be used without self
@@ -10,18 +12,33 @@ logger = logging.getLogger(__name__)
 class BuildHatDriveBase(ShutdownInterface):
     """ This class implements the Drive Base using Build Hat motors and sensors."""
 
-    MAX_STEERING_DEGREE: Final = 45
+    MAX_STEERING_DEGREE: Final = 41
     # Negative gear ratio indicates that positive steering input results in a negative motor
     # rotation due to the physical gear setup.
-    STEERING_GEAR_RATIO: Final = -2
+    STEERING_GEAR_RATIO: Final = -1.67
     DELTA_ANGLE: float = 0.5
 
-    front_distance_sensor: Optional[DistanceSensor] = None
-
-    def __init__(self, front_motor_port: str, back_motor_port: str, bottom_color_sensor_port: str,
-                  front_distance_sensor_port: Optional[str]) -> None:
+    def __init__(self, front_motor_port: str, back_motor_port: str, bottom_color_sensor_port: str)\
+                                                                                     -> None:
         """Initialize the drive base with two motors."""
 
+        self.front_motor_port = front_motor_port
+        self.back_motor_port = back_motor_port
+        self.bottom_color_sensor_port = bottom_color_sensor_port
+        self.front_motor: Motor = None
+        self.back_motor: Motor = None
+        self.bottom_color_sensor: ColorSensor = None
+
+        # build hat takes lot of time to start, lets a separate thread and return.
+        try:
+            self.initthread = threading.Thread(target=self._buildhat_init)
+            self.initthread.start()
+        except Exception as e:
+            logger.error("Failed to start BuildHat initialization thread: %s", e)
+
+    def _buildhat_init(self) -> None:
+
+        starttime = time.time()
         logger.warning("BuildHat start..")
 
         # Build Hat has a history of issues to fail first initialization on reboot.
@@ -36,23 +53,24 @@ class BuildHatDriveBase(ShutdownInterface):
         logger.warning("BuildHat v: %s", _hat.get_vin())
 
 
-        self.front_motor = Motor(front_motor_port)
-        self.back_motor = Motor(back_motor_port)
-        self.bottom_color_sensor = ColorSensor(bottom_color_sensor_port)
+        self.front_motor = Motor(self.front_motor_port)
+        self.back_motor = Motor(self.back_motor_port)
+        self.bottom_color_sensor = ColorSensor(self.bottom_color_sensor_port)
         self.bottom_color_sensor.on()
-        if front_distance_sensor_port is None:
-            self.front_distance_sensor = None
-            logger.info("Front Lego distance sensor is not connected.")
-        else:
-            # Initialize the front distance sensor if the port is provided
-            logger.info("Front distance sensor port: %s", front_distance_sensor_port)
-            self.front_distance_sensor = DistanceSensor(front_distance_sensor_port)
-            self.front_distance_sensor.on()
 
         logger.info("BuildHat success")
         logger.warning("Position front wheel:%s", self.front_motor.get_position())
         self.reset_front_motor()  # Reset the front motor position to zero.
-        self.current_position = 0.0
+
+        endtime = time.time()
+        logger.info("BuildHat loaded in %.2f seconds", endtime - starttime)
+
+    def wait_for_setup(self) -> None:
+        """Wait for the setup to complete."""
+        logger.info("Waiting for setup to complete...")
+        # Here you can implement any waiting logic if needed
+        self.initthread.join()
+        logger.info("Setup complete.")
 
     def reset_front_motor(self) -> None:
         """Reset the front motor position to zero."""
@@ -114,6 +132,10 @@ class BuildHatDriveBase(ShutdownInterface):
 
         # Calculate how much to move from current position
         move_degrees = target_position - current_position
+
+        if abs(move_degrees) < 1:
+            logger.info("Front motor is already at target position, ignoring small delta.")
+            return
         logger.info("Turning front motor to %s (move %s degrees)", target_position, move_degrees)
         self.front_motor.run_for_degrees(move_degrees, speed=steering_speed, blocking=True)
 
@@ -174,12 +196,6 @@ class BuildHatDriveBase(ShutdownInterface):
     def get_bottom_color_rgbi(self) -> list[float]:
         """Get the RGB values detected by the bottom sensor."""
         return self.bottom_color_sensor.get_color_rgbi()
-
-    def get_front_distance(self) -> float:
-        """Get the distance to the front obstacle in centimeter."""
-        if self.front_distance_sensor is None:
-            raise RuntimeError("Front distance sensor not initialized. Check the port connection.")
-        return self.front_distance_sensor.get_distance() / 10  # Convert from mm to cm
 
     def get_steering_angle(self) -> float:
         """Get the current steering angle in degrees."""

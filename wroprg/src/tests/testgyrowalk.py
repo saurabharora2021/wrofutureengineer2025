@@ -3,7 +3,6 @@ import logging
 import argparse
 import threading
 from hardware.hardware_interface import HardwareInterface
-from round1.matintelligence import MatIntelligence
 from round1.logicround1 import Walker
 from utils.helpers import HelperFunctions
 from utils.mat import MATDIRECTION
@@ -27,7 +26,6 @@ def main():
         pi_inf.force_flush_messages()
 
         challenge1walker = Walker(pi_inf)
-        intel: MatIntelligence = MatIntelligence()
         pi_inf.start_measurement_recording()
 
         #action button.
@@ -36,9 +34,10 @@ def main():
         def run_gyro_walk():
 
             #lets assume this is AntiClockwise and side1 is complete, we have reached corner1
-            intel.report_direction_side1(MATDIRECTION.ANTICLOCKWISE_DIRECTION)
+            challenge1walker.intelligence.\
+                report_direction_side1(MATDIRECTION.ANTICLOCKWISE_DIRECTION)
 
-            challenge1walker.gyro_corner_walk_round_1(def_turn_angle=60)
+            challenge1walker.handle_corner(gyrodefault=0)
 
         # Start gyro walk in a separate thread
         gyro_thread = threading.Thread(target=run_gyro_walk)

@@ -8,7 +8,6 @@ import logging
 import time
 import math
 from typing import List, Optional
-from typing import List, Optional
 from board import SCL, SDA
 import busio
 import adafruit_ssd1306
@@ -235,7 +234,7 @@ class HardwareInterface(ShutdownInterface):
     def get_left_ultra_distance(self) -> float:
         """Get the distance from the left ultrasonic sensor."""
         return self.leftdistancesensor.distance * 100  # cm
-    
+
     def get_right_ultra_distance(self) -> float:
         """Get the distance from the right ultrasonic sensor."""
         return self.rightdistancesensor.distance * 100  # cm
@@ -525,22 +524,21 @@ class HardwareInterface(ShutdownInterface):
         self,
         lidar_val: float,
         ultrasonic_val: float,
-        lidar_weight: float = 0.7,
-        ultrasonic_weight: float = 0.3,
-        max_diff: float = 20,
+        lidar_weight: float = 0.5,
+        ultrasonic_weight: float = 0.5,
+        max_diff: float = 10,
     ) -> float:
         if lidar_val > 0 and ultrasonic_val > 0:
             if abs(lidar_val - ultrasonic_val) > max_diff:
-                # we trust in order of value, if anythis is more that 200 sorry.
-                if lidar_val < 200:
+                # we trust in order of value, if any this is more that 15
+                if lidar_val < 15:
                     return lidar_val
                 else:
                     return ultrasonic_val
-            fused = (lidar_val * lidar_weight + ultrasonic_val * ultrasonic_weight) / (
-                lidar_weight + ultrasonic_weight
-            )
+        else:
+            fused = (lidar_val * lidar_weight + ultrasonic_val * ultrasonic_weight) / \
+                (lidar_weight + ultrasonic_weight)
             return fused
-        return lidar_val if lidar_val > 0 else ultrasonic_val
 
     def get_left_wangle(self) -> float:
         """Left Wall angle"""

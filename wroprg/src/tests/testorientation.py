@@ -38,14 +38,12 @@ def main():
 
             logger.info("yaw:%0.2f", yaw)
             pi_inf.display_message(f"Yaw: {yaw:.2f}",forceflush=True)
-            # logger.info("State: Front: %.2f, Left: %.2f, Right: %.2f Camera F:%.2f, Camera L:%.2f,"\
-            #                 +"Camera R:%.2f", state.front, state.left, state.right, \
-            #                 state.camera_front,state.camera_left, state.camera_right)
-            logger.info("Left Lidar: %.2f", left_distance)
-            logger.info("Left Ultra: %.2f", left_ultra)
+            logger.info("State: Front: %.2f, Left: %.2f, Right: %.2f Camera F:%.2f, Camera L:%.2f,"\
+                            +"Camera R:%.2f", state.front, state.left, state.right, \
+                            state.camera_front,state.camera_left, state.camera_right)
+            logger.info("Left Lidar: %.2f , Ultra: %.2f", left_distance,left_ultra)
+            logger.info("Right Lidar: %.2f, Ultra: %.2f", right_distance, right_ultra)
 
-            logger.info("Right Lidar: %.2f", right_distance)
-            logger.info("Right Ultra: %.2f", right_ultra)
             pi_inf.force_flush_messages()
             sleep(1)
 

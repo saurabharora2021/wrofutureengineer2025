@@ -11,14 +11,11 @@ from typing import List, Optional, Tuple
 from board import SCL, SDA
 import busio
 import adafruit_ssd1306
-import adafruit_mpu6050
 import adafruit_tca9548a
 import adafruit_vl53l0x
-from qmc5883l import QMC5883L
 from gpiozero import Buzzer, RGBLED, DistanceSensor, Button, Device
 from gpiozero.pins.pigpio import PiGPIOFactory
 from PIL import Image, ImageDraw, ImageFont
-
 from base.shutdown_handling import ShutdownInterface
 from hardware.robotstate import RobotState
 from hardware.legodriver import BuildHatDriveBase
@@ -95,8 +92,9 @@ class HardwareInterface(ShutdownInterface):
         device_channel = tca[self.DEVICE_I2C_CHANNEL]
 
         # Sensors on I2C
-        self.mpu = adafruit_mpu6050.MPU6050(device_channel)
-        self.compass = QMC5883L(device_channel)
+
+        #first set orientation.
+        self._orientation_estimator = OrientationEstimator(device_channel)
 
         # OLED display
         self.oled = adafruit_ssd1306.SSD1306_I2C(self.SCREEN_WIDTH, self.SCREEN_HEIGHT,\
@@ -201,13 +199,9 @@ class HardwareInterface(ShutdownInterface):
                     time.sleep(1)
                 counter += 1
 
-        # Measurements and orientation
+        # Measurements
         self._measurements_manager: Optional[MeasurementFileLog] = MeasurementFileLog(self)
-        self._orientation_estimator = OrientationEstimator(
-            get_accel=self.get_acceleration,
-            get_gyro=self.get_gyro,
-            get_mag=self.get_magnetometer,
-        )
+
         self.camera_measurements = CameraDistanceMeasurements(self.camera)
 
     def _full_initialization(self) -> None:
@@ -398,19 +392,6 @@ class HardwareInterface(ShutdownInterface):
         if self._lego_drive_base is None:
             raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
         self._lego_drive_base.reset_front_motor()
-
-    def get_acceleration(self) -> Tuple[float, float, float]:
-        """Get the acceleration from the MPU6050 sensor."""
-        accel = self.mpu.acceleration
-        return accel
-
-    def get_magnetometer(self) -> Tuple[float, float, float]:
-        """Get the magnetometer data from the QMC5883L sensor."""
-        return self.compass.magnetic
-
-    def get_gyro(self) -> Tuple[float, float, float]:
-        """Get the gyroscope data from the MPU6050 sensor."""
-        return self.mpu.gyro
 
     def reset_gyro(self) -> None:
         """Reset the yaw angle to zero."""

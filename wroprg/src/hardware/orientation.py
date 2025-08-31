@@ -3,11 +3,15 @@ import math
 import time
 import logging
 import json
-import os
+from typing import Tuple
 from pathlib import Path
+from board import SCL, SDA
+import busio
+import adafruit_mpu6050
+from qmc5883l import QMC5883L
+import adafruit_tca9548a
 from base.shutdown_handling import ShutdownInterface
 from utils.threadingfunctions import ConstantUpdateThread
-
 logger = logging.getLogger(__name__)
 
 class SimpleKalmanFilter:
@@ -33,12 +37,36 @@ class OrientationEstimator(ShutdownInterface):
     Estimates roll, pitch, and yaw using MPU6050 data and a complementary blend
     with simple Kalman smoothing on accelerometer-derived angles.
     """
-    def __init__(self, get_accel, get_gyro, get_mag=None, dt=0.01):
-        self.get_accel = get_accel      # returns (ax, ay, az) in m/s^2
-        self.get_gyro = get_gyro        # returns (gx, gy, gz) in rad/s (Adafruit lib)
-        # self.get_mag = get_mag          # returns (mx, my, mz) in uT; optional
-        # Magnetometer callback: returns (mx, my, mz) in microteslas (uT)
-        self.get_mag = get_mag
+    USE_COMPASS =True
+    def get_acceleration(self) -> Tuple[float, float, float]:
+        """Get the acceleration from the MPU6050 sensor."""
+        accel = self.mpu.acceleration
+        return accel
+
+    def get_gyroscope(self) -> Tuple[float, float, float]:
+        """Get the gyroscope data from the MPU6050 sensor."""
+        return self.mpu.gyro
+
+    def get_magnetometer(self) -> Tuple[float, float, float]:
+        """Get the magnetometer data from the QMC5883L sensor."""
+        if self.compass is not None:
+            return self.compass.magnetic
+        raise ValueError("Magnetometer not available")
+
+    def __init__(self, device_channel, dt=0.01):
+
+        # Sensors on I2C
+        self.mpu = adafruit_mpu6050.MPU6050(device_channel)
+        self.get_accel = self.get_acceleration      # returns (ax, ay, az) in m/s^2
+        self.get_gyro = self.get_gyroscope        # returns (gx, gy, gz) in rad/s (Adafruit lib)
+
+        if self.USE_COMPASS:
+            self.compass = QMC5883L(device_channel)
+            # Magnetometer callback: returns (mx, my, mz) in microteslas (uT)
+            self.get_mag = self.get_magnetometer
+        else:
+            self.get_mag = None
+
         self.dt = dt
         self.last_time = time.perf_counter()
 
@@ -395,3 +423,32 @@ class OrientationEstimator(ShutdownInterface):
         with open(self._calibration_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
         logger.info("Saved IMU calibration to %s", self._calibration_path)
+
+
+def main():
+    """Main method for orientation."""
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
+    DEVICE_I2C_CHANNEL = 6
+
+    # Setup I2C devices
+    i2c = busio.I2C(SCL, SDA)
+    tca = adafruit_tca9548a.TCA9548A(i2c)
+
+    device_channel = tca[DEVICE_I2C_CHANNEL]
+
+    # Create an OrientationEstimator instance
+    orientation_estimator = OrientationEstimator(device_channel)
+
+    orientation_estimator.start_readings()
+    time.sleep(1)
+    orientation_estimator.reset_yaw()
+
+    while True:
+        (roll, pitch, yaw) = orientation_estimator.get_orientation()
+        logger.info("Orientation: Roll: %.2f, Pitch: %.2f, Yaw: %.2f", roll, pitch, yaw)
+        time.sleep(0.5)
+
+if __name__ == "__main__":
+    main()

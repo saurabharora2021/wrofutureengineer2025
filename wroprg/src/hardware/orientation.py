@@ -373,8 +373,6 @@ class OrientationEstimator(ShutdownInterface):
         """
         if defer_to_next_update:
             self._yaw_zero_pending = True
-            #TODO: sleep so that the update happens
-            time.sleep(1)
             return
         if to_current:
             self._yaw_zero_offset_deg = self.yaw
@@ -383,7 +381,7 @@ class OrientationEstimator(ShutdownInterface):
         else:
             self._yaw_zero_offset_deg = 0.0
 
-        logger.info("reset yaw: %.2f", self._yaw_zero_offset_deg)
+        # logger.info("reset yaw: %.2f", self._yaw_zero_offset_deg)
 
     def get_yaw(self) -> float:
         """Return yaw in degrees relative to the zero-reference set by reset_yaw()."""

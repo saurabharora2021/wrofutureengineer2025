@@ -44,7 +44,7 @@ class DistanceCalculator:
             self.distance += elapsed_time * self.current_speed * self.WHEEL_CONSTANT
             self.start_time = end_time
             # logger.info("distance after adding... %.2f",self.distance
-            )
+            #)
 
     def run_speed(self, speed: float):
         """

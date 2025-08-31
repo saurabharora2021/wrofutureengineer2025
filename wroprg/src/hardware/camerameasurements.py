@@ -25,8 +25,8 @@ class CameraDistanceMeasurements(ShutdownInterface):
     SAVE_CAMERA_IMAGE_ON_CORRECTION:bool = False
     CAMERA_OUTPUT_DIR:str= "output"
     SHOW_IMAGE:bool = False
-    MIN_FPS: int = 10
-    MAX_FPS: int = 20
+    MIN_FPS: int = 15
+    MAX_FPS: int = 25
     ORIENTATION_DEG: int = 180        # 0 or 180; swap L/R logically when 180
     SHOW_DEBUG=False
     # New: use 2/3 of the image height (tunable)
@@ -70,13 +70,16 @@ class CameraDistanceMeasurements(ShutdownInterface):
 
         self.camera.start()
         self.camera_thread.start()
+        logger.info("Camera Distance Measurements started")
 
     def pause_readings(self) -> None:
         """Pause camera processing. Optionally stop the camera device."""
+        logger.info("Pausing camera readings")
         self._paused_event.set()
 
     def resume_readings(self) -> None:
         """Resume camera processing. Optionally start the camera device."""
+        logger.info("Resume camera readings")
         self._paused_event.clear()
 
     def is_paused(self) -> bool:
@@ -92,7 +95,7 @@ class CameraDistanceMeasurements(ShutdownInterface):
             self.camera_front = self.camera_left = self.camera_right = -1
             # keep metrics but mark paused
             self.metrics['paused'] = True
-            return self.MIN_FPS
+            return 5  # very low FPS when paused
 
         self.metrics['paused'] = False
         frame = self.camera.capture()

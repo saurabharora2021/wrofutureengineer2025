@@ -217,8 +217,8 @@ class WalkerN(Walker):
             return True
 
         logger.info("Starting round handle side...")
-        self.handle_straight_walk_to_distance(min_front=min_front,min_left=left_def,
-                                                min_right=right_def,
+        self.handle_straight_walk_to_distance(min_front=min_front,def_left=left_def,
+                                                def_right=right_def,
                                             gyrodefault=current_yaw,
                                             defaultspeed=speed,
                                             weak_gyro=False,

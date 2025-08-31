@@ -57,13 +57,13 @@ def main():
         state = pi_inf.read_state()
         pi_inf.log_message(state.front, state.left, state.right, current_yaw=0,
                                current_steering=pi_inf.get_steering_angle())
-        #pi_inf.wait_for_action()
+        pi_inf.wait_for_action()
+        logger.info("===============STARTING BOT===================")
         pi_inf.buzzer_beep()
 
         def runner():
-            pi_inf.reset_gyro()  # Reset gyro to zero
+            
             pi_inf.start_measurement_recording()
-
             challenge1walker.start_walk()
 
         # Start gyro walk in a separate thread

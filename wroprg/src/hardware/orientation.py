@@ -2,9 +2,7 @@
 import math
 import time
 import logging
-import json
 from typing import Tuple
-from pathlib import Path
 from board import SCL, SDA
 import busio
 import adafruit_mpu6050
@@ -120,7 +118,7 @@ class OrientationEstimator(ShutdownInterface):
         # Magnetometer sensitivity adjustment (increase if turns are underestimated)
         self._mag_sensitivity_factor = 1.0  # 1.0 is sufficient with faster mag LPF
 
-            # Calibration offsets
+        # Calibration offsets
         self.roll_offset = 0.0
         self.pitch_offset = 0.0
         self.yaw_offset = 0.0
@@ -139,10 +137,6 @@ class OrientationEstimator(ShutdownInterface):
         self._stationary_gz_samples = []
         self._stationary_sample_limit = 50  # Number of samples to average for bias
 
-        # Persistent calibration settings
-        self._calibration_path: Path = Path.home() / ".wro_orientation_cal.json"
-        self._recal_interval_sec: float = 2 * 60 * 60  # 2 hours
-        self._cal_loaded: bool = False
 
     def shutdown(self):
         """Shutdown readings"""
@@ -150,47 +144,10 @@ class OrientationEstimator(ShutdownInterface):
 
     def start_readings(self):
         """Start Reading"""
-        # Try to load calibration; recalibrate if missing or older than 2 hours
-        need_recal = True
+        # Always calibrate IMU on startup when MPU is enabled
         if not self.USE_ONLY_COMPASS:
-            try:
-                if self._calibration_path.exists():
-                    # Prefer timestamp inside file; fall back to mtime
-                    with open(self._calibration_path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                    ts = float(data.get("timestamp", 0.0))
-                    if ts <= 0.0:
-                        ts = self._calibration_path.stat().st_mtime
-                    age = time.time() - ts
-                    if age < self._recal_interval_sec:
-                        # Apply loaded calibration
-                        self.roll_offset = float(data.get("roll_offset_deg_per_s", 0.0))
-                        self.pitch_offset = float(data.get("pitch_offset_deg_per_s", 0.0))
-                        self.yaw_offset = float(data.get("yaw_offset_deg_per_s", 0.0))
-                        # Set primary yaw bias (rad/s) from yaw_offset
-                        self.yaw_bias = math.radians(self.yaw_offset)
-                        # Optional magnetometer calibration if present
-                        self.mag_bias_x = float(data.get("mag_bias_x", 0.0))
-                        self.mag_bias_y = float(data.get("mag_bias_y", 0.0))
-                        self.mag_bias_z = float(data.get("mag_bias_z", 0.0))
-                        self.mag_declination_deg = float(data.get("mag_declination_deg", 0.0))
-                        need_recal = False
-                        self._cal_loaded = True
-                        logger.info("Loaded IMU calibration from %s (age: %.0fs)",
-                                    self._calibration_path, age)
-            except Exception as e:
-                logger.warning("Failed to load calibration: %s", e)
-
-            if need_recal:
-                logger.info("Calibrating IMU (no/old calibration)...")
-                self.calibrate_imu()
-                try:
-                    self._save_calibration()
-                except Exception as e:
-                    logger.warning("Failed to save calibration: %s", e)
-        else:
-            # In compass-only mode, skip gyro calibration
-            need_recal = False
+            logger.info("Calibrating IMU (startup)...")
+            self.calibrate_imu()
 
         # Defer yaw zeroing to the first valid fused update
         self.reset_yaw(defer_to_next_update=True)
@@ -242,9 +199,9 @@ class OrientationEstimator(ShutdownInterface):
                             self._mag_yaw_lpf + self._mag_yaw_lpf_alpha * err
                         )
                     self.yaw = self._mag_yaw_lpf
-                except Exception:
+                except (OSError, RuntimeError, ValueError) as e:
                     # Keep previous yaw if read fails
-                    pass
+                    logger.debug("Compass-only read failed: %s", e)
             # Handle deferred zeroing once we have a yaw
             if self._yaw_zero_pending:
                 self._yaw_zero_offset_deg = self.yaw
@@ -321,8 +278,9 @@ class OrientationEstimator(ShutdownInterface):
                 alpha_yaw = 0.80 if not stationary else 0.60  # Trust mag more (was 0.85/0.70)
                 self.yaw = self._fuse_angles_deg(yaw_pred, self._mag_yaw_lpf, alpha_yaw,
                                                  sensitivity=self._mag_sensitivity_factor)
-            except Exception:  # pylint: disable=broad-except
+            except (OSError, RuntimeError, ValueError) as e:
                 # Fallback to gyro-only if magnetometer read fails
+                logger.debug("Compass read failed: %s; using gyro-only yaw", e)
                 self.yaw = self._wrap_angle_deg(yaw_pred)
         else:
             self.yaw = self._wrap_angle_deg(yaw_pred)
@@ -465,33 +423,12 @@ class OrientationEstimator(ShutdownInterface):
 
         return offset_roll, offset_pitch, offset_yaw
 
-    # --- Persistence helpers ---
-    def _save_calibration(self) -> None:
-        """Persist gyro (and optional mag) calibration to JSON file."""
-        data = {
-            "roll_offset_deg_per_s": float(self.roll_offset),
-            "pitch_offset_deg_per_s": float(self.pitch_offset),
-            "yaw_offset_deg_per_s": float(self.yaw_offset),
-            "mag_bias_x": float(self.mag_bias_x),
-            "mag_bias_y": float(self.mag_bias_y),
-            "mag_bias_z": float(self.mag_bias_z),
-            "mag_declination_deg": float(self.mag_declination_deg),
-            "timestamp": float(time.time()),
-            "recal_interval_sec": float(self._recal_interval_sec),
-        }
-        try:
-            self._calibration_path.parent.mkdir(parents=True, exist_ok=True)
-        except Exception:
-            pass
-        with open(self._calibration_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-        logger.info("Saved IMU calibration to %s", self._calibration_path)
 
 
 def main():
     """Main method for orientation."""
     logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(__name__)
+    # Use module-level logger
 
     DEVICE_I2C_CHANNEL = 6
 

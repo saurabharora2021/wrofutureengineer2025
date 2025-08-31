@@ -107,8 +107,6 @@ class MeasurementsLogger:
                 f"{measurement.right_distance:.2f},"
                 f"{measurement.front_distance:.2f},"
                 f"{measurement.steering_angle:.2f},"
-                f"{measurement.roll:.2f},"
-                f"{measurement.pitch:.2f},"
                 f"{measurement.yaw:.2f},"
                 f"{measurement.timestamp:.2f},"
                 f"\"{json_escaped}\"\n"

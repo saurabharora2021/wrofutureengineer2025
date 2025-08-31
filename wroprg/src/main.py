@@ -3,9 +3,11 @@ import logging
 import argparse
 import threading
 from time import sleep
-from round1.logicroundn import WalkerN
+
+from hardware.robotstate import RobotState
 from hardware.validator import RobotValidator
-from hardware.hardware_interface import HardwareInterface, RobotState
+from hardware.hardware_interface import HardwareInterface
+from round1.logicroundn import WalkerN
 
 from utils.helpers import HelperFunctions
 
@@ -55,7 +57,7 @@ def main():
         state = pi_inf.read_state()
         pi_inf.log_message(state.front, state.left, state.right, current_yaw=0,
                                current_steering=pi_inf.get_steering_angle())
-        pi_inf.wait_for_action()
+        #pi_inf.wait_for_action()
         pi_inf.buzzer_beep()
 
         def runner():

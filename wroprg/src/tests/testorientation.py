@@ -15,7 +15,7 @@ def main():
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     args = parser.parse_args()
 
-    helper: HelperFunctions = HelperFunctions(args.logfile, args.debug,stabilize=False)
+    helper: HelperFunctions = HelperFunctions(args.logfile, args.debug,stabilize=True)
     logger = logging.getLogger(__name__)
 
     pi_inf: HardwareInterface = helper.get_pi_interface()
@@ -31,12 +31,21 @@ def main():
             # Read orientation data
             yaw  = pi_inf.get_yaw()
             state:RobotState = pi_inf.read_state()
+            right_distance = pi_inf.get_right_lidar_distance()
+            left_distance = pi_inf.get_left_lidar_distance()
+            right_ultra = pi_inf.get_right_ultra_distance()
+            left_ultra = pi_inf.get_left_ultra_distance()
 
             logger.info("yaw:%0.2f", yaw)
             pi_inf.display_message(f"Yaw: {yaw:.2f}",forceflush=True)
-            logger.info("State: Front: %.2f, Left: %.2f, Right: %.2f Camera F:%.2f, Camera L:%.2f,\
-                            Camera R:%.2f", state.front, state.left, state.right, \
-                            state.camera_front,state.camera_left, state.camera_right)
+            # logger.info("State: Front: %.2f, Left: %.2f, Right: %.2f Camera F:%.2f, Camera L:%.2f,"\
+            #                 +"Camera R:%.2f", state.front, state.left, state.right, \
+            #                 state.camera_front,state.camera_left, state.camera_right)
+            logger.info("Left Lidar: %.2f", left_distance)
+            logger.info("Left Ultra: %.2f", left_ultra)
+
+            logger.info("Right Lidar: %.2f", right_distance)
+            logger.info("Right Ultra: %.2f", right_ultra)
             pi_inf.force_flush_messages()
             sleep(1)
 

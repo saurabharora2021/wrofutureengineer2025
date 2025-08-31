@@ -8,6 +8,7 @@ import logging
 import time
 import math
 from typing import List, Optional
+from typing import List, Optional
 from board import SCL, SDA
 import busio
 import adafruit_ssd1306
@@ -184,15 +185,31 @@ class HardwareInterface(ShutdownInterface):
             valid_distance = False
             while counter < self.MAX_STABILIZATION_CHECKS and not valid_distance:
                 valid_distance = True
-                if (self._get_right_distance() < 0.1 or
-                        self._get_right_distance() >= constants.RIGHT_DISTANCE_MAX):
-                    logger.info("Right distance sensor is not stable, %.2f cm", \
-                                                        self._get_right_distance())
+                ultrasonic_right = self.rightdistancesensor.distance * 100  # cm
+                laser_right = self.right_laser.range / 10.0  # cm
+                ultrasonic_left = self.leftdistancesensor.distance * 100  # cm
+                laser_left = self.left_laser.range / 10.0  # cm
+
+                if (ultrasonic_right < 0.1 or
+                        ultrasonic_right >= constants.RIGHT_DISTANCE_MAX):
+                    logger.info("Right Ultrasonic distance sensor is not stable, %.2f cm", \
+                                                        ultrasonic_right)
                     valid_distance = False
-                if (self._get_left_distance() < 0.1 or
-                        self._get_left_distance() >= constants.LEFT_DISTANCE_MAX):
-                    logger.info("Left distance sensor is not stable, %.2f cm", \
-                                                        self._get_left_distance())
+
+                if (laser_right < 0.1 or
+                        laser_right >= constants.RIGHT_DISTANCE_MAX):
+                    logger.info("Right Laser distance sensor is not stable, %.2f cm", \
+                                                        laser_right)
+                    valid_distance = False
+                if (ultrasonic_left < 0.1 or
+                        ultrasonic_left >= constants.LEFT_DISTANCE_MAX):
+                    logger.info("Left Ultrasonic distance sensor is not stable, %.2f cm", \
+                                                        ultrasonic_left)
+                    valid_distance = False
+                if (laser_left < 0.1 or
+                        laser_left >= constants.LEFT_DISTANCE_MAX):
+                    logger.info("Left Laser distance sensor is not stable, %.2f cm", \
+                                                        laser_left)
                     valid_distance = False
                 if not valid_distance:
                     logger.warning("Waiting for distance sensors to stabilize...")
@@ -214,6 +231,14 @@ class HardwareInterface(ShutdownInterface):
         """Wait for complete hardware initialization."""
         if self._lego_drive_base is not None:
             self._lego_drive_base.wait_for_setup()
+
+    def get_left_ultra_distance(self) -> float:
+        """Get the distance from the left ultrasonic sensor."""
+        return self.leftdistancesensor.distance * 100  # cm
+    
+    def get_right_ultra_distance(self) -> float:
+        """Get the distance from the right ultrasonic sensor."""
+        return self.rightdistancesensor.distance * 100  # cm
 
     # --- LiDAR distances ---
     def get_right_lidar_distance(self) -> float:
@@ -463,7 +488,7 @@ class HardwareInterface(ShutdownInterface):
         front = self._get_front_distance()
         left = self._get_left_distance()
         right = self._get_right_distance()
-        yaw = self.get_yaw
+        yaw = self.get_yaw()
 
         (camera_front, camera_left, camera_right, _) = self.camera_measurements.get_distance()
         return RobotState(
@@ -506,7 +531,11 @@ class HardwareInterface(ShutdownInterface):
     ) -> float:
         if lidar_val > 0 and ultrasonic_val > 0:
             if abs(lidar_val - ultrasonic_val) > max_diff:
-                return lidar_val
+                # we trust in order of value, if anythis is more that 200 sorry.
+                if lidar_val < 200:
+                    return lidar_val
+                else:
+                    return ultrasonic_val
             fused = (lidar_val * lidar_weight + ultrasonic_val * ultrasonic_weight) / (
                 lidar_weight + ultrasonic_weight
             )

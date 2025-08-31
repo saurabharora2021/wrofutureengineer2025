@@ -22,7 +22,7 @@ def main():
     try:
         pi_inf.force_flush_messages()
         #Turn steering to right 15 degrees
-        pi_inf.turn_steering(-10)
+        pi_inf.turn_steering(-30)
         sleep(10)
         pi_inf.buzzer_beep()
         pi_inf.reset_steering()

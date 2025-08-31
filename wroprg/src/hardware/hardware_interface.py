@@ -528,6 +528,7 @@ class HardwareInterface(ShutdownInterface):
         ultrasonic_weight: float = 0.5,
         max_diff: float = 10,
     ) -> float:
+        
         if lidar_val > 0 and ultrasonic_val > 0:
             if abs(lidar_val - ultrasonic_val) > max_diff:
                 # we trust in order of value, if any this is more that 15
@@ -535,10 +536,11 @@ class HardwareInterface(ShutdownInterface):
                     return lidar_val
                 else:
                     return ultrasonic_val
-        else:
-            fused = (lidar_val * lidar_weight + ultrasonic_val * ultrasonic_weight) / \
-                (lidar_weight + ultrasonic_weight)
-            return fused
+            else:
+                fused = (lidar_val * lidar_weight + ultrasonic_val * ultrasonic_weight) / \
+                    (lidar_weight + ultrasonic_weight)
+                return fused
+        return 200 #MAX Distance
 
     def get_left_wangle(self) -> float:
         """Left Wall angle"""

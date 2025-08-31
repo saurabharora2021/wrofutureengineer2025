@@ -480,7 +480,7 @@ class Walker:
                 def_turn_angle=max(-90, -90-current_angle)
             if state.front < 70:
                 #too close to front wall,add another 5 to turn
-                def_turn_angle+=5
+                def_turn_angle-=5
         else:
             if state.left < 40:
                 logger.info("Based on current left distance, turn 95")
@@ -490,7 +490,7 @@ class Walker:
                 def_turn_angle=max(90 , 90-current_angle)
             if state.front < 70:
                 #too close to front wall,add another 5 to turn
-                def_turn_angle-=5
+                def_turn_angle+=5
         if self.intelligence.get_round_number() == 1:
             # lets handle the corner walk for round 1.
             # we are going to use the gyro corner walk.

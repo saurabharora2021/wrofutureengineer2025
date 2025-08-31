@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 MAX_ANGLE = 30
-MIN_GYRO_DELTA = 1 # Minimum gyro delta angle in degrees
+MIN_GYRO_DELTA = 0.05 # Minimum gyro delta angle in degrees
 DELTA_DISTANCE_CM = 0.5
 class PIDController:
     """Simple PID controller."""
@@ -67,7 +67,7 @@ class EquiWalkerHelper(ABC):
                  max_left_distance: float= constants.LEFT_DISTANCE_MAX,
                  max_right_distance: float= constants.RIGHT_DISTANCE_MAX,
                  kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
-                 kgyro: float = -5.0, def_turn_angle: float = 0.0,
+                 kgyro: float = 4.0, def_turn_angle: float = 0.0,
                  fused_distance_weight: float = 0.5, fused_gyro_weight: float = 0.5,
                  min_left: float = 10.00, min_right: float = 10.00) -> None:
 # Default before tuning
@@ -173,7 +173,7 @@ class GyroWalkerwithMinDistanceHelper(EquiWalkerHelper):
                  max_left_distance: float = constants.LEFT_DISTANCE_MAX
                  , max_right_distance: float = constants.RIGHT_DISTANCE_MAX,
                  kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
-                 kgyro: float = -6.0,
+                 kgyro: float = 5.35,
                  def_turn_angle: float = 0.0, min_left: float = -1, min_right: float = -1,
                  fused_distance_weight: float = 0.6, fused_gyro_weight: float = 0.4,
                  ) -> None:

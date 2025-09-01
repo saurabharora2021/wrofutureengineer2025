@@ -11,9 +11,9 @@ from round1.utilityfunctions import clamp_angle, check_bottom_color
 from round1.matintelligence import MatIntelligence
 from utils.threadingfunctions import ConditionCheckerThread
 from utils import constants
-from utils.mat import MATDIRECTION, MATGENERICLOCATION, MATLOCATION
-from utils.mat import color_to_direction,vote_directions,locationtostr,directiontostr
-
+from utils.mat import MATDIRECTION
+from utils.mat import locationtostr,directiontostr
+from utils.mat import decide_direction
 
 logger = logging.getLogger(__name__)
 class Walker:
@@ -50,6 +50,7 @@ class Walker:
         self._walking:bool = False
         self._prev_turn_angle = -99999
         self.distance_calculator = DistanceCalculator()
+        self._direction = MATDIRECTION.UNKNOWN_DIRECTION
 
     def read_state_side(self,camera_read:bool=False) -> RobotState:
         """Read the current state of the robot."""
@@ -72,14 +73,13 @@ class Walker:
                 reset_state = True
                 logger.info("Using camera right distance: %.2f", right)
 
-            direction = self.intelligence.get_direction()
-            if direction == MATDIRECTION.CLOCKWISE_DIRECTION and state.left > 65 and \
+            if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION and state.left > 65 and \
                             state.camera_front > 0 and state.camera_front < front :
                 #set front using camera front
                 front = state.camera_front
                 reset_state = True
                 logger.info("Using camera front distance: %.2f", front)
-            elif direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION and state.right > 65 and \
+            elif self._direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION and state.right > 65 and \
                             state.camera_front > 0 and state.camera_front < front :
                 #set front using camera front
                 front = state.camera_front
@@ -111,16 +111,14 @@ class Walker:
             right = state.right
             front = state.front
 
-
-            direction = self.intelligence.get_direction()
-            if direction == MATDIRECTION.CLOCKWISE_DIRECTION and state.camera_right > 0 \
+            if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION and state.camera_right > 0 \
                   and state.camera_right < state.right:
                 #set right using camera right
                 right = state.camera_right
                 reset_state = True
                 logger.info("Using camera right distance: %.2f", right)
 
-            elif direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION and state.camera_left > 0 \
+            elif self._direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION and state.camera_left > 0 \
                             and state.camera_left < state.left:
                 #set left using camera left
                 left = state.camera_left
@@ -152,7 +150,7 @@ class Walker:
         # If Delta is high move towards the center, move by 10cm otherwise too high correction.
 
         if left == constants.LEFT_DISTANCE_MAX and right < constants.RIGHT_DISTANCE_MAX:
-            if self.intelligence.get_direction() == MATDIRECTION.CLOCKWISE_DIRECTION:
+            if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION:
                 #make sure your are away from the inside wall you can read.
                 left = max(25,left)
                 return (True, 0, left, right)
@@ -163,7 +161,7 @@ class Walker:
                 return (True, 0, left, right)
 
         if right == constants.RIGHT_DISTANCE_MAX and left < constants.LEFT_DISTANCE_MAX:
-            if self.intelligence.get_direction() == MATDIRECTION.CLOCKWISE_DIRECTION:
+            if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION:
                 # make sure you are 30 away from outside wall
                 right = max(30,right)
                 return (True, 0, left, right)
@@ -225,50 +223,17 @@ class Walker:
 
         state = self.read_state_side()
 
-        direction = self._decide_direction(color, color2, state.left, state.right)
+        self._direction = decide_direction(color, color2, state.left, state.right)
 
-        if direction != MATDIRECTION.UNKNOWN_DIRECTION:
-            self.intelligence.report_direction_side1(direction)
+        if self._direction != MATDIRECTION.UNKNOWN_DIRECTION:
+            self.intelligence.report_direction_side1(self._direction)
         else:
             return  # unable to determine; stop early
 
         self.output_inf.buzzer_beep()
-        logger.warning("Final direction: %s", directiontostr(direction))
+        logger.warning("Final direction: %s", directiontostr(self._direction))
 
         self.output_inf.force_flush_messages()
-
-    def start_walk(self):
-        """Start the walk based on the current direction which is unknown and number of laps."""
-        logger.info("Starting to walk...")
-
-        #this should set the direction
-        self.handle_unknowndirection_walk()
-        #we don't need camera Now
-        self.output_inf.camera_off()
-
-        #we cannot determine direction, beep and stop.
-        if self.intelligence.get_direction() == MATDIRECTION.UNKNOWN_DIRECTION:
-            logger.error("Direction is unknown, stopping the walk.")
-            self.output_inf.buzzer_beep()
-            self.output_inf.led1_red()
-            self.output_inf.force_flush_messages()
-            return
-
-        #We have detected the directions, and now time to walk knowing the directions.
-        gyrodefault = 0
-        while self.intelligence.get_round_number()<= self._nooflaps:
-            logger.info("Starting walk for location: %s , round: %d",
-                         self.intelligence.get_location(), self.intelligence.get_round_number())
-
-            if self.intelligence.get_generic_location() == MATGENERICLOCATION.CORNER:
-                # Handle corner.
-                self.handle_corner(gyrodefault)
-            else:
-                #handle SIDE
-                gyrodefault = self.handle_side()
-
-        #print the matintelligence
-        self.intelligence.print_mat_intelligence()
 
     def side_bot_centering(self,front:float,learned_left:float,learned_right:float,
                                 actual_left:float,actual_right:float,
@@ -502,18 +467,17 @@ class Walker:
 
 
 
-    def handle_corner(self,gyrodefault:float):
+    def handle_corner_round1(self,gyrodefault:float):
         """Handle corner walk"""
 
         #gyrodefault is needed for walk to corner, later not used.
         self.walk_to_corner(gyrodefault)
-        current_direction = self.intelligence.get_direction()
         state = self.read_state_side()
 
         def_turn_angle = 0
         current_angle = state.yaw
         logger.info("handle_corner current yaw %.2f",current_angle)
-        if current_direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
+        if self._direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
             # lets assume this is AntiClockwise and side1 is complete,
             # we have reached corner1
             if state.right > 40:
@@ -544,13 +508,6 @@ class Walker:
                 self.gyro_corner_walk_round_1(def_turn_angle=def_turn_angle)
             finally:
                 self.output_inf.camera_restart()
-        else:
-            # lets handle the corner walk for round 2 onwards.
-            # we are going to use the gyro corner walk.
-            logger.info("Handling corner walk for round 2 with turn angle: %.2f", def_turn_angle)
-            self.gyro_corner_walk_round_n(def_turn_angle=def_turn_angle,
-                                            location=self.intelligence.get_location())
-        self.output_inf.buzzer_beep()
 
         return
 
@@ -606,21 +563,9 @@ class Walker:
     def gyro_corner_walk_round_1(self,def_turn_angle:float):
         """Round 1 corner walk using generic routine."""
         logger.info("Gyro corner walk round 1 started..")
-        min_left, min_right = (30, 20) if self.intelligence.get_direction() \
+        min_left, min_right = (30, 20) if self._direction \
                                     == MATDIRECTION.CLOCKWISE_DIRECTION else (20, 30)
         self._gyro_corner_walk(def_turn_angle, min_left, min_right)
-
-    def gyro_corner_walk_round_n(self,def_turn_angle:float,location:MATLOCATION,
-                                    gyroreset: bool=True):
-        """Round 2+ corner walk using generic routine."""
-        logger.info("Gyro corner walk round n started..")
-
-        _, l_left, l_right = self.intelligence.get_learned_distances(location)
-
-        # the default distance to 5 cm higer than learned.
-        self.intelligence.reset_current_distance(left=l_left+5, right=l_right+5)
-
-        self._gyro_corner_walk(def_turn_angle, l_left, l_right,gyroreset)
 
     def _gyro_corner_walk(self, def_turn_angle: float, min_left: float, min_right: float,
                            gyroreset: bool=True) -> None:
@@ -930,9 +875,7 @@ class Walker:
                     (self.output_inf.get_left_lidar_distance() + \
                       self.output_inf.get_right_lidar_distance() < 150)
 
-            direction = self.intelligence.get_direction()
-
-            if direction == MATDIRECTION.CLOCKWISE_DIRECTION:
+            if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION:
                 #only look at left wall
                 state = self.handle_straight_walk_to_distance(min_front=self.WALLFRONTFORWALL,
                                                     def_left=state.left,
@@ -941,7 +884,7 @@ class Walker:
                                                     defaultspeed=self.WALK_TO_CORNER_SPEED,
                                                     keep_walking=cond1)
 
-            elif direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
+            elif self._direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
                 # only look at right wall
                 state = self.handle_straight_walk_to_distance(min_front=self.WALLFRONTFORWALL,
                                                             def_left=200,
@@ -1008,31 +951,3 @@ class Walker:
             )
 
         return helper
-
-    def _decide_direction(self, color: str|None, color2: str|None,
-                          left: float, right: float) -> MATDIRECTION:
-        """Decide direction using color votes and distance hints."""
-        logger.info("Deciding direction colors: %s, %s and L=%.2f, R=%.2f",
-                     color, color2, left, right)
-        direction_hints = (
-            MATDIRECTION.ANTICLOCKWISE_DIRECTION if left > right
-            else MATDIRECTION.CLOCKWISE_DIRECTION if right > left
-            else MATDIRECTION.UNKNOWN_DIRECTION
-        )
-
-        directioncolor = color_to_direction(color)
-        directioncolor2 = color_to_direction(color2)
-        voted = vote_directions([directioncolor, directioncolor2, direction_hints])
-
-        if voted != MATDIRECTION.UNKNOWN_DIRECTION:
-            return voted
-
-        logger.info("No clear direction using fallback.")
-        # Fallback precedence: hints, then first color, else unknown
-        if direction_hints != MATDIRECTION.UNKNOWN_DIRECTION:
-            logger.info("Using direction hints: %s", direction_hints)
-            return direction_hints
-        if directioncolor != MATDIRECTION.UNKNOWN_DIRECTION:
-            logger.info("Using first color direction: %s", directioncolor)
-            return directioncolor
-        return MATDIRECTION.UNKNOWN_DIRECTION

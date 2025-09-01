@@ -112,3 +112,31 @@ def locationtostr(location:MATLOCATION)-> str:
         return "Corner 4"
     else:
         return "Unknown"
+
+def decide_direction(color: str|None, color2: str|None,
+                        left: float, right: float) -> MATDIRECTION:
+    """Decide direction using color votes and distance hints."""
+    logger.info("Deciding direction colors: %s, %s and L=%.2f, R=%.2f",
+                    color, color2, left, right)
+    direction_hints = (
+        MATDIRECTION.ANTICLOCKWISE_DIRECTION if left > right
+        else MATDIRECTION.CLOCKWISE_DIRECTION if right > left
+        else MATDIRECTION.UNKNOWN_DIRECTION
+    )
+
+    directioncolor = color_to_direction(color)
+    directioncolor2 = color_to_direction(color2)
+    voted = vote_directions([directioncolor, directioncolor2, direction_hints])
+
+    if voted != MATDIRECTION.UNKNOWN_DIRECTION:
+        return voted
+
+    logger.info("No clear direction using fallback.")
+    # Fallback precedence: hints, then first color, else unknown
+    if direction_hints != MATDIRECTION.UNKNOWN_DIRECTION:
+        logger.info("Using direction hints: %s", direction_hints)
+        return direction_hints
+    if directioncolor != MATDIRECTION.UNKNOWN_DIRECTION:
+        logger.info("Using first color direction: %s", directioncolor)
+        return directioncolor
+    return MATDIRECTION.UNKNOWN_DIRECTION

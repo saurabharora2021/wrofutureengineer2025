@@ -15,7 +15,7 @@ def main():
     pi_inf.force_flush_messages()
     pi_inf.buzzer_beep()
     sleep(1)
-    pi_inf.start_measurement_recording()
+    pi_inf.start_measurement()
 
     def runner():
         while True:

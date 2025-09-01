@@ -16,7 +16,7 @@ def main():
 
         pi_inf.buzzer_beep()
         pi_inf.force_flush_messages()
-        pi_inf.start_measurement_recording()
+        pi_inf.start_measurement()
         sleep(2)
         pi_inf.reset_gyro()
         default_yaw = pi_inf.get_yaw()

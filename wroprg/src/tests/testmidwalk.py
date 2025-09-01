@@ -31,7 +31,7 @@ def main():
         pi_inf.buzzer_beep()
 
     challenge1walker = Walker(pi_inf)
-    pi_inf.start_measurement_recording()
+    pi_inf.start_measurement()
     # Log the distances
     start_state = pi_inf.read_state()
     gyrodefault = 0

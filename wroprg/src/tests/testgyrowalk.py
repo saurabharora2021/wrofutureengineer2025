@@ -15,7 +15,7 @@ def main():
     pi_inf.force_flush_messages()
 
     challenge1walker = Walker(pi_inf)
-    pi_inf.start_measurement_recording()
+    pi_inf.start_measurement()
     pi_inf.reset_gyro()
 
 
@@ -24,7 +24,7 @@ def main():
         challenge1walker.intelligence.\
             report_direction_side1(MATDIRECTION.CLOCKWISE_DIRECTION)
 
-        challenge1walker.handle_corner(gyrodefault=0)
+        challenge1walker.handle_corner_round1(gyrodefault=0)
 
     helper.start_application(runner)
 

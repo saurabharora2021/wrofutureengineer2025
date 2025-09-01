@@ -39,7 +39,7 @@ class WalkerN(Walker):
         self.output_inf.camera_off()
 
         #we cannot determine direction, beep and stop.
-        if self.intelligence.get_direction() == MATDIRECTION.UNKNOWN_DIRECTION:
+        if self._direction == MATDIRECTION.UNKNOWN_DIRECTION:
             logger.error("Direction is unknown, stopping the walk.")
             self.output_inf.buzzer_beep()
             self.output_inf.led1_red()
@@ -55,7 +55,7 @@ class WalkerN(Walker):
 
                 if self.intelligence.get_generic_location() == MATGENERICLOCATION.CORNER:
                     # Handle corner.
-                    self.handle_corner(gyrodefault)
+                    self.handle_corner_round1(gyrodefault)
                 else:
                     #handle SIDE
                     gyrodefault = self.handle_side()
@@ -77,7 +77,7 @@ class WalkerN(Walker):
                              speed=self.DEFAULT_FIRST_WALK_SPEED,
                              def_yaw=0)
 
-        corner_yaw_angle = self.CORNER_YAW_ANGLE if self.intelligence.get_direction() == \
+        corner_yaw_angle = self.CORNER_YAW_ANGLE if self._direction == \
                                                     MATDIRECTION.ANTICLOCKWISE_DIRECTION \
                                                         else -self.CORNER_YAW_ANGLE
         logger.info("Corner yaw angle: %.2f", corner_yaw_angle)
@@ -114,10 +114,9 @@ class WalkerN(Walker):
         (def_front, min_left, min_right) = self.intelligence.get_learned_distances()
 
         #lets make sure steering is within limits
-        current_direction = self.intelligence.get_direction()
         state: RobotState = self.output_inf.read_state()
 
-        if current_direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
+        if self._direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
             recommended_angle = min(-15.5,-self.RECOMENDED_CORNER_STEERING - state.yaw)
         else:
             recommended_angle = max(15.5,self.RECOMENDED_CORNER_STEERING - state.yaw)

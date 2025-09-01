@@ -12,7 +12,7 @@ def main():
 
     def runner():
 
-        pi_inf.start_measurement_recording()
+        pi_inf.start_measurement()
         pi_inf.drive_forward(100)
         sleep(10)  # Allow the motor to run for a while
         pi_inf.drive_stop()

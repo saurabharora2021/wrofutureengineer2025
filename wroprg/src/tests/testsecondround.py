@@ -40,7 +40,7 @@ def main():
 
     def runner():
 
-        pi_inf.start_measurement_recording()
+        pi_inf.start_measurement()
 
         roundwalker.full_gyro_walk()
 

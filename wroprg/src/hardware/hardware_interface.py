@@ -187,7 +187,6 @@ class HardwareInterface(ShutdownInterface):
 
         if stabilize:
             logger.warning("Stabilize Distance Sensors...")
-            time.sleep(0.5)
             counter = 0
             valid_distance = False
             while counter < self.MAX_STABILIZATION_CHECKS and not valid_distance:
@@ -220,7 +219,7 @@ class HardwareInterface(ShutdownInterface):
                     valid_distance = False
                 if not valid_distance:
                     logger.warning("Waiting for distance sensors to stabilize...")
-                    time.sleep(1)
+                    time.sleep(0.25)
                 counter += 1
 
         # Measurements
@@ -265,7 +264,7 @@ class HardwareInterface(ShutdownInterface):
         return self.left_laser.range / 10.0
 
     # --- Measurements and orientation management ---
-    def start_measurement_recording(self) -> None:
+    def start_measurement(self) -> None:
         """Start the measurements manager thread."""
         if self._measurements_manager is None:
             raise RuntimeError("Measurements manager not initialized. Call" \
@@ -273,8 +272,6 @@ class HardwareInterface(ShutdownInterface):
         self.camera_measurements.start()
 
         self._orientation_estimator.start_readings()
-
-        self.reset_gyro()
 
         if self.ENABLE_MEASURE_LOG is True:
             self._measurements_manager.start_reading()

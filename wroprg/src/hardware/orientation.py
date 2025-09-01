@@ -398,7 +398,6 @@ class OrientationEstimator(ShutdownInterface):
         Returns offsets for roll, pitch, yaw (in degrees).
         """
         print("Calibrating IMU... Place the robot on a perfectly level surface.")
-        time.sleep(0.5)
         total_gx = 0.0
         total_gy = 0.0
         total_gz = 0.0
@@ -443,13 +442,11 @@ def main():
     orientation_estimator = OrientationEstimator(device_channel)
 
     orientation_estimator.start_readings()
-    time.sleep(1)
-    orientation_estimator.reset_yaw()
 
     while True:
         (roll, pitch, yaw) = orientation_estimator.get_orientation()
         logger.info("Orientation: Roll: %.2f, Pitch: %.2f, Yaw: %.2f", roll, pitch, yaw)
-        time.sleep(0.5)
+        time.sleep(0.5) # main method sleep
 
 if __name__ == "__main__":
     main()

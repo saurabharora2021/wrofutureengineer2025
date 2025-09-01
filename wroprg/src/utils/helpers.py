@@ -53,7 +53,7 @@ class HelperFunctions:
         def runner():
             try:
                 self._is_running = True
-                self._logger.warning("===============STARTING BOT===================")
+                self._logger.info("===============STARTING BOT===================")
                 call_func()
 
             except (ImportError, AttributeError, RuntimeError) as e:
@@ -83,8 +83,8 @@ class HelperFunctions:
             self._stop_event.wait()
 
         end_time = time.time()
-        self._logger.warning("==========Bot Stopped=============")
-        self._logger.warning("Total time: %s seconds", end_time - start_time)
+        self._logger.info("==========Bot Stopped=============")
+        self._logger.info("Total time: %s seconds", end_time - start_time)
 
     def get_pi_interface(self) -> HardwareInterface:
         """Function to get the Raspberry Pi Hardware Interface."""

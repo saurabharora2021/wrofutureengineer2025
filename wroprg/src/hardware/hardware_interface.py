@@ -46,8 +46,6 @@ class HardwareInterface(ShutdownInterface):
     DEVICE_I2C_CHANNEL = 6
     DISTANCE_FUSION = True
 
-    ENABLE_MEASURE_LOG = False
-
     DISTANCE_SENSOR_DISTANCE = 12.5  # cm distance between sensors
 
     display_loglines = True
@@ -273,8 +271,8 @@ class HardwareInterface(ShutdownInterface):
 
         self._orientation_estimator.start_readings()
 
-        if self.ENABLE_MEASURE_LOG is True:
-            self._measurements_manager.start_reading()
+
+        self._measurements_manager.start_reading()
 
         #ensures reset gyro works.
         time.sleep(1)

@@ -70,7 +70,7 @@ class Walker:
         self.intelligence.add_readings(state.front, state.left, state.right)
 
         if not camera_read:
-            logger.warning("F:%.2f, L:%.2f, R:%.2f, Y:%.2f", \
+            logger.info("F:%.2f, L:%.2f, R:%.2f, Y:%.2f", \
                                         state.front, state.left, state.right, state.yaw)
             return state
 
@@ -107,8 +107,7 @@ class Walker:
                                camera_front=state.camera_front, camera_left=state.camera_left,
                                  camera_right=state.camera_right)
 
-        log_level = logging.WARNING if use_camera else logging.INFO
-        logger.log(log_level, "State (Cam:%s): F:%.2f, L:%.2f, R:%.2f, Y:%.2f", use_camera,
+        logger.info("State (Cam:%s): F:%.2f, L:%.2f, R:%.2f, Y:%.2f", use_camera,
                    new_state.front, new_state.left, new_state.right, new_state.yaw)
 
         return new_state
@@ -169,11 +168,9 @@ class Walker:
             return  # unable to determine; stop early
 
         self.output_inf.buzzer_beep()
-        logger.warning("Final direction: %s", directiontostr(self._direction))
+        logger.warning("Final: %s", directiontostr(self._direction))
 
         self.output_inf.force_flush_messages()
-
-    
 
     def handle_side(self,gyroreset:bool = True,def_yaw:float = 0)->float:
         """Handle side walk

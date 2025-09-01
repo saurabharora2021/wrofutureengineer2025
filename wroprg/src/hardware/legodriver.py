@@ -82,7 +82,7 @@ class BuildHatDriveBase(ShutdownInterface):
             logger.info("BuildHat Front Motor is not at zero position, resetting it.")
             self.check_set_steering(0)
 
-        logger.warning("After TurnPosition front wheel:%s", self.front_motor.get_position())
+        logger.info("After TurnPosition front wheel:%s", self.front_motor.get_position())
 
     def camera_on(self) -> None:
         """Turn on the camera."""
@@ -161,7 +161,7 @@ class BuildHatDriveBase(ShutdownInterface):
         counter = 0
         while abs(current_position - expected_position) > min_error and counter < retrycount:
             # If the front motor is not at the expected position, reset it.
-            logger.warning("Front Motor is not at expected position, resetting it. %s",
+            logger.info("Front Motor is not at expected position, resetting it. %s",
                                 current_position)
             difference =  expected_position - current_position
             self.front_motor.run_for_degrees(difference, speed=steering_speed,
@@ -169,7 +169,7 @@ class BuildHatDriveBase(ShutdownInterface):
             counter += 1
             current_position = self.front_motor.get_position()
         if abs(current_position - expected_position) > min_error:
-            logger.warning("Front Motor is still not at expected position," \
+            logger.info("Front Motor is still not at expected position," \
             " current position: %s, expected: %s",
                                 current_position, expected_position )
         else:

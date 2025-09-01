@@ -482,7 +482,7 @@ class MatIntelligence(ShutdownInterface):
                 # If the total distance is less than the minimum wall-to-wall distance,
                 # time to send the distances to the walker helper.
                 if self._callback is not None:
-                    logger.info("reset distance left: %.2f, right: %.2f",
+                    logger.warning("reset distance left: %.2f, right: %.2f",
                                    left_distance, right_distance)
                     self._callback(left_distance,right_distance)
 

@@ -4,17 +4,19 @@ import time
 from typing import Callable, Optional, Tuple, List
 from hardware.hardware_interface import HardwareInterface
 from hardware.robotstate import RobotState
-from round1.distance_function import DistanceCalculator
 from round1.walker_helpers import EquiWalkerHelper, GyroWalkerwithMinDistanceHelper
 from round1.walker_helpers import FixedTurnWalker
-from round1.utilityfunctions import WalkParameters, clamp_angle, check_bottom_color
+from round1.utilityfunctions import WalkParameters, check_bottom_color
 from round1.matintelligence import MatIntelligence
 from round1.botposition import BotPositioner
+from round1.movement_controller import MovementController
+from round1.movement_controller import MAX_STEERING_ANGLE
 from utils.threadingfunctions import ConditionCheckerThread
 from utils import constants
 from utils.mat import MATDIRECTION,MATGENERICLOCATION
 from utils.mat import locationtostr,directiontostr
 from utils.mat import decide_direction
+
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +30,9 @@ class Walker:
     WALLFRONTFORWALL=60.0
     WALLFRONTENDDISTANCE=60.0
     KNOWN_COLORS = ("blue", "orange")
-    MAX_ANGLE = 20.0
-    MAX_STEERING_ANGLE = 24.4
-    MAX_DELTA_ANGLE = 8.0
+
+
+
     YAW_CORRECTION = 0.75
     DISTANCE_CORRECTION = 4.0
 
@@ -57,10 +59,11 @@ class Walker:
 
         self._walking:bool = False
         self._prev_turn_angle = -99.0
-        self.distance_calculator = DistanceCalculator()
         self._direction = MATDIRECTION.UNKNOWN_DIRECTION
 
         self._positioner = BotPositioner(self.intelligence)
+
+        self.movementcontroller = MovementController(output_inf,min_speed = self.MIN_SPEED)
 
 
     def read_state(self, location_type: MATGENERICLOCATION, \
@@ -181,7 +184,7 @@ class Walker:
 
         if gyroreset:
             #lets start with zero heading.
-            self.stop_walking()
+            self.movementcontroller.stop_walking()
             self.output_inf.reset_gyro()
 
         (min_front,left_def,right_def) = self.intelligence.get_learned_distances()
@@ -219,7 +222,7 @@ class Walker:
             nonlocal last_stop
             if state.left <= 10 or state.right <= 10:
                 if (time.time() - last_stop) > 0.5:
-                    self.stop_walking()
+                    self.movementcontroller.stop_walking()
                     logger.info("Condition met: very close to wall stopping L: %.2f, R: %.2f",\
                                  state.left, state.right)
                     last_stop = time.time()
@@ -281,7 +284,7 @@ class Walker:
             else:
                 logger.info("Completed round handle side...")
 
-        self.stop_walking()
+        self.movementcontroller.stop_walking()
         self.intelligence.location_complete()
         self.intelligence.unregister_callback()
 
@@ -339,7 +342,7 @@ class Walker:
                 self.output_inf.drive_backward(self.MIN_SPEED+10)
                 time.sleep(0.002)
                 state = self.read_state_side(True)
-            self.stop_walking()
+            self.movementcontroller.stop_walking()
 
     def handle_corner_round1(self,gyrodefault:float):
         """Handle corner walk"""
@@ -383,55 +386,6 @@ class Walker:
 
         return
 
-    def turn_steering_with_logging(self,turn_angle:float| None,current_speed:float,
-                                    delta_angle:float=0,
-                                    speedcheck:bool=False,
-                                    max_turn_angle:float=MAX_ANGLE):
-        """
-        Turn the steering with logging.
-        """
-        if turn_angle is None:
-            logger.info("Turn angle is None")
-            if speedcheck:
-                self.start_walking(current_speed)
-            return
-
-        current_steering_angle = self.output_inf.get_steering_angle()
-        max_delta_angle = self.MAX_DELTA_ANGLE if delta_angle == 0 else delta_angle
-
-        #we should restrict the delta angle to DELTA_ANGLE
-        # logger.info("turn angle before delta: %.2f , steering %.2f", \
-        #             turn_angle,current_steering_angle)
-
-        delta = float(turn_angle) - current_steering_angle
-
-        if abs(delta) > max_delta_angle:
-            turn_angle = current_steering_angle + \
-                        (max_delta_angle if delta > 0 else -max_delta_angle)
-            # logger.info("turn angle after delta: %.2f", turn_angle)
-        turn_angle = clamp_angle(turn_angle, max_turn_angle)
-
-
-        if turn_angle==self._prev_turn_angle:
-            logger.info("Turn angle is same as previous angle, not turning.")
-            self._prev_turn_angle = 0
-            return
-        else:
-            self._prev_turn_angle = turn_angle
-
-        if delta >= 0:
-            logger.info("Turning right from %.2f to %.2f: %.2f", current_steering_angle,\
-                         turn_angle, delta)
-        else:
-            logger.info("Turning left from %.2f to %.2f: %.2f", current_steering_angle,\
-                         turn_angle, delta)
-
-        # Turn the steering based on the calculated angle
-        if (speedcheck and abs(delta) >= self.MAX_DELTA_ANGLE):
-            self.start_walking(self.MIN_SPEED)
-
-        self.output_inf.turn_steering(turn_angle)
-
     def gyro_corner_walk_round_1(self,def_turn_angle:float):
         """Round 1 corner walk using generic routine."""
         logger.info("Gyro corner walk round 1 started..")
@@ -449,14 +403,14 @@ class Walker:
             logger.info("corner Report. Left: %.2f, Right: %.2f", left, right)
             self._current_distance = (left, right)
             #TODO: we should stop for now lets wait.
-            self.stop_walking()
+            self.movementcontroller.stop_walking()
 
         # Implement the gyro corner walking logic here
         if gyroreset:
             self.output_inf.reset_gyro()
 
         if def_turn_angle > self.CORNER_YAW_ANGLE:
-            fixed_turn_angle = self.MAX_STEERING_ANGLE
+            fixed_turn_angle = MAX_STEERING_ANGLE
         else:
             fixed_turn_angle = self.CORNER_YAW_ANGLE
 
@@ -474,8 +428,8 @@ class Walker:
         turn_angle = gyrohelper.walk_func(current_angle=state.yaw,
                                               left_distance=state.left, right_distance=state.right)
         self.log_data(gyrohelper)
-        self.turn_steering_with_logging(turn_angle,delta_angle=35,
-                                        max_turn_angle=self.MAX_STEERING_ANGLE,
+        self.movementcontroller.turn_steering_with_logging(turn_angle,delta_angle=35,
+                                        max_turn_angle=MAX_STEERING_ANGLE,
                                              current_speed=self.MIN_SPEED)
 
         turned = False
@@ -485,13 +439,13 @@ class Walker:
         self._current_distance = (0, 0)
         logger.info("Starting corner walk... F:%.2f, current distance %s", state.front,
                                                 self._current_distance)
-        self.distance_calculator.reset()
-        self.start_walking(self.MIN_SPEED)
+        self.movementcontroller.reset_distance()
+        self.movementcontroller.start_walking(self.MIN_SPEED)
 
         while state.front > def_front and self._current_distance == (0,0) \
                         and ((gyroreset is True and abs(state.yaw - def_turn_angle) > 1) or \
                              gyroreset is False) and \
-                                self.distance_calculator.get_distance() < 200.0:
+                                self.movementcontroller.get_distance() < 200.0:
 
             state = self.read_state_corner()
             turn_angle = gyrohelper.walk_func(current_angle=state.yaw,
@@ -502,12 +456,12 @@ class Walker:
                 turned = True
                 self.intelligence.reset_current_distance()
                 self.intelligence.register_callback(report_distances_corner)
-                self.start_walking(self.WALK_TO_CORNER_SPEED)
+                self.movementcontroller.start_walking(self.WALK_TO_CORNER_SPEED)
 
             if state.front > def_front and self._current_distance == (0,0):
 
-                self.turn_steering_with_logging(turn_angle,delta_angle=15,
-                                                 max_turn_angle=self.MAX_STEERING_ANGLE,
+                self.movementcontroller.turn_steering_with_logging(turn_angle,delta_angle=15,
+                                                 max_turn_angle=MAX_STEERING_ANGLE,
                                                  current_speed=self.MIN_SPEED)
                 time.sleep(0.001)
         if state.front <= def_front:
@@ -515,9 +469,9 @@ class Walker:
 
         self.log_data(gyrohelper)
 
-        self.stop_walking()
+        self.movementcontroller.stop_walking()
         logger.info("End corner : Front:%.2f distance travelled:%.2f", state.front,\
-                     self.distance_calculator.get_distance())
+                     self.movementcontroller.get_distance())
 
         self.intelligence.location_complete(state)
         self.intelligence.unregister_callback()
@@ -528,20 +482,6 @@ class Walker:
             messages: List[str] = helper.get_log_data()
             messages.append(f"Loc: {locationtostr(self.intelligence.get_location())}, " )
             self.output_inf.add_screen_logger_message(messages)
-
-    def start_walking(self, speed: float):
-        """Start the walking movement, public for testing only"""
-        if self._walking is False :
-            self._walking = True
-            self.output_inf.drive_forward(speed)
-            self.distance_calculator.run_speed(speed)
-
-    def stop_walking(self):
-        """Stop the walking movement."""
-        self._walking = False
-        self.output_inf.drive_stop()
-        self.distance_calculator.stop()
-        logger.info("Stopping bot")
 
     def handle_straight_walk(self,
                             params: WalkParameters,
@@ -585,9 +525,9 @@ class Walker:
         #we would walk slow if the turn angle exist.
         if turn_angle is None:
             logger.info("No turn angle detected, walking straight faster")
-            self.start_walking(params.speed)
+            self.movementcontroller.start_walking(params.speed)
         else:
-            self.start_walking(self.MIN_SPEED)
+            self.movementcontroller.start_walking(self.MIN_SPEED)
         state = self.read_state_side(params.camera_read)
 
         prev_turn_angle = 0
@@ -630,7 +570,7 @@ class Walker:
         if lenient is True and turn_angle is not None:
             turn_angle = turn_angle * 0.5
 
-        self.turn_steering_with_logging(turn_angle,speedcheck=speedcheck,
+        self.movementcontroller.turn_steering_with_logging(turn_angle,speedcheck=speedcheck,
                                         current_speed=defaultspeed)
         return turn_angle
 
@@ -638,7 +578,7 @@ class Walker:
                                                                 Tuple[str|None,str|None]:
         """Read the bottom color using the mat_color function."""
 
-        self.stop_walking()
+        self.movementcontroller.stop_walking()
 
         logger.info("Time to check color")
         #lets reduce the gyro correction
@@ -668,7 +608,7 @@ class Walker:
             def set_line_color(c):
                 self._line_color = c
                 logger.info("Found Color: %s", c)
-                self.stop_walking()
+                self.movementcontroller.stop_walking()
 
             def value_check_func():
                 return check_bottom_color(self.output_inf, list(self.KNOWN_COLORS))
@@ -686,7 +626,7 @@ class Walker:
                 state = self.read_state_side()
                 self._line_color = None
                 logger.info("Start color walk")
-                self.start_walking(self.MIN_SPEED)
+                self.movementcontroller.start_walking(self.MIN_SPEED)
                 while (state.front > self.WALLFRONTENDDISTANCE
                                     and self._line_color is None):
 
@@ -695,13 +635,14 @@ class Walker:
                                                   current_angle=state.yaw)
 
 
-                    self.turn_steering_with_logging(turn_angle,current_speed=self.MIN_SPEED)
+                    self.movementcontroller.\
+                            turn_steering_with_logging(turn_angle,current_speed=self.MIN_SPEED)
                     time.sleep(0.005)
                     state = self.read_state_side()
 
             finally:
                 #Lets first stop the base and then check the color.
-                self.stop_walking()
+                self.movementcontroller.stop_walking()
                 if colorchecker.is_running():
                     logger.info("Stopping color checker thread, not found color yet.")
                     colorchecker.stop()

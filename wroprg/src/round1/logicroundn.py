@@ -5,6 +5,7 @@ from hardware.robotstate import RobotState
 from round1.walker_helpers import FixedTurnWalker
 from round1.logicround1 import Walker
 from round1.utilityfunctions import WalkParameters
+from round1.movement_controller import MAX_STEERING_ANGLE
 from utils import constants
 from utils.mat import MATDIRECTION, MATGENERICLOCATION
 
@@ -140,21 +141,22 @@ class WalkerN(Walker):
                 current_angle=state.yaw
             )
 
-        self.turn_steering_with_logging(turn_angle,current_speed=current_speed,delta_angle=20,
-                                        max_turn_angle=self.MAX_STEERING_ANGLE)
+        self.movementcontroller.turn_steering_with_logging(turn_angle,current_speed=current_speed,
+                                        delta_angle=20,
+                                        max_turn_angle=MAX_STEERING_ANGLE)
 
         state = self.output_inf.read_state()
-        self.distance_calculator.reset()
+        self.movementcontroller.reset_distance()
 
         self.start_walking(current_speed)
 
         logger.info("Start corner with def_f %.2f, F: %.2f, final_yaw:%.2f,"+\
                     "current_yaw:%.2f,D:%.2f",
                     def_front, state.front, final_yaw, state.yaw,
-                    self.distance_calculator.get_distance())
+                    self.movementcontroller.get_distance())
 
         while state.front > def_front and abs(state.yaw) - abs(final_yaw) < 0 \
-                    and self.distance_calculator.get_distance() < 200:
+                    and self.movementcontroller.get_distance() < 200:
 
             turn_angle = fixedturnwalker.walk_func(
                 left_distance=state.left,
@@ -162,9 +164,10 @@ class WalkerN(Walker):
                 current_angle=state.yaw,
             )
 
-            self.turn_steering_with_logging(turn_angle,current_speed=current_speed,
+            self.movementcontroller.turn_steering_with_logging(turn_angle,
+                                current_speed=current_speed,
                                 delta_angle=15,
-                                max_turn_angle=self.MAX_STEERING_ANGLE,
+                                max_turn_angle=MAX_STEERING_ANGLE,
                                 )
             state = self.read_state_side()
 

@@ -1,7 +1,5 @@
 """Main application for the Wro - Raspberry Pi interface."""
 import logging
-import threading
-from time import sleep
 
 from hardware.robotstate import RobotState
 from hardware.validator import RobotValidator

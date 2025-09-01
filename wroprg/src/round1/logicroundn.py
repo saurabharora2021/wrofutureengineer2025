@@ -4,6 +4,7 @@ from hardware.hardware_interface import HardwareInterface
 from hardware.robotstate import RobotState
 from round1.walker_helpers import FixedTurnWalker
 from round1.logicround1 import Walker
+from round1.utilityfunctions import WalkParameters
 from utils import constants
 from utils.mat import MATDIRECTION, MATGENERICLOCATION
 
@@ -87,7 +88,7 @@ class WalkerN(Walker):
         current_yaw_angle = 0
 
 
-        for i in range(1, 3):
+        for i in range(3): # Loop 3 times for the first 3 corners and sides
             #lets walk the corner at 90 degrees corner1
             current_yaw_angle += corner_yaw_angle
             self.handle_gyro_corner(
@@ -98,8 +99,6 @@ class WalkerN(Walker):
             #go to side 2-3-4
             self.handle_side_walk_n(gyroreset=False,def_yaw=current_yaw_angle,
                                     speed=self.DEFAULT_GYRO_SPEED)
-            self.stop_walking()
-            return
 
         #go to corner 4
         current_yaw_angle += corner_yaw_angle
@@ -107,6 +106,8 @@ class WalkerN(Walker):
                 final_yaw=current_yaw_angle,
                 current_speed=self.CORNER_GYRO_SPEED
             )
+
+        self.stop_walking()
 
     def handle_gyro_corner(self,final_yaw:float,current_speed:float):
         """Handle the gyro cornering logic."""
@@ -197,7 +198,7 @@ class WalkerN(Walker):
         if gyroreset:
             def_yaw = current_state.yaw
 
-        (is_correction, yaw_delta, left_def, right_def) = self.side_bot_centering(
+        (is_correction, yaw_delta, left_def, right_def) = self._positioner.side_bot_centering(
             current_state.front,
             left_def, right_def, current_state.left, current_state.right,0)
         logger.info("handle_side_walk_n: correction: %s, Y: %.2f, L def: %.2f, R def: %.2f",
@@ -216,14 +217,18 @@ class WalkerN(Walker):
             return True
 
         logger.info("Starting round handle side...")
-        self.handle_straight_walk_to_distance(min_front=min_front,def_left=left_def,
-                                                def_right=right_def,
-                                            gyrodefault=current_yaw,
-                                            defaultspeed=speed,
-                                            weak_gyro=False,
-                                            speedcheck=True,
-                                            keep_walking=condition_met,
-                                            camera_read=True)
+
+        walk_params = WalkParameters(
+                    min_front=min_front,
+                    def_left=left_def,
+                    def_right=right_def,
+                    gyro_default=current_yaw,
+                    speed=speed,
+                    weak_gyro=False,
+                    speed_check=True,
+                    camera_read=True,)
+
+        self.handle_straight_walk(params=walk_params, keep_walking=condition_met)
 
         current_state = self.read_state_side(camera_read=True)
 

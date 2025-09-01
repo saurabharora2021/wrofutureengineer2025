@@ -2,12 +2,11 @@
 import logging
 from collections import Counter
 import queue
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 import threading
+from base.shutdown_handling import ShutdownInterface
 from utils.mat import MATDIRECTION, MATLOCATION, MATGENERICLOCATION
 from utils.mat import location_to_genericlocation
-
-from base.shutdown_handling import ShutdownInterface
 from hardware.hardware_interface import HardwareInterface
 from hardware.robotstate import RobotState
 
@@ -96,7 +95,7 @@ class MatIntelligence(ShutdownInterface):
             },
         }
 
-        self._learned_distances = {}
+        self._learned_distances:dict[MATLOCATION,Tuple[float,float,float]] = {}
         self._current_min_distances = self.DEFAULT_DISTANCE  # (left, right)
 
         self._callback: Callable[[float,float],None] | None = None

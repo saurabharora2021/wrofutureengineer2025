@@ -8,6 +8,7 @@ from typing import Callable, Tuple
 from typing import Any, Dict
 import cv2
 import numpy as np
+from numpy.typing import NDArray
 from base.shutdown_handling import ShutdownInterface
 from hardware.camera import MyCamera
 
@@ -59,8 +60,6 @@ class CameraDistanceMeasurements(ShutdownInterface):
         # pause support
         self._paused_event = threading.Event()
 
-
-
     def start(self):
         """Start the camera."""
 
@@ -98,7 +97,7 @@ class CameraDistanceMeasurements(ShutdownInterface):
             return 5  # very low FPS when paused
 
         self.metrics['paused'] = False
-        frame = self.camera.capture()
+        frame:NDArray[np.uint8] = self.camera.capture()
         counter = time.time()
 
 
@@ -141,7 +140,7 @@ class CameraDistanceMeasurements(ShutdownInterface):
                 logger.info("Saved: %s",filename)
 
 
-    def _measure_border(self, image,counter) -> Tuple[float, float, float, float, float, float]:
+    def _measure_border(self, image:NDArray[np.uint8],counter:float) -> Tuple[float, float, float, float, float, float]:
         # ROI selection without rotation
         H, W = image.shape[:2]
         roi_h = max(1, int(H * self.ROI_HEIGHT_FRAC))

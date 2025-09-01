@@ -9,7 +9,7 @@ from utils import constants
 logger = logging.getLogger(__name__)
 
 
-MAX_ANGLE = 30
+MAX_ANGLE = 30.0
 MIN_GYRO_DELTA = 0.05 # Minimum gyro delta angle in degrees
 DELTA_DISTANCE_CM = 0.5
 class PIDController:
@@ -19,8 +19,8 @@ class PIDController:
         self.kp = kp
         self.ki = ki
         self.kd = kd
-        self._prev_error = 0
-        self._integral = 0
+        self._prev_error = 0.0
+        self._integral = 0.0
         self._prev_time = time.perf_counter()
 
     def reset(self):

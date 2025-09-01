@@ -39,7 +39,7 @@ class MatIntelligence(ShutdownInterface):
         # logger.setLevel(logging.WARNING)
 
         # Reading for the start location, for starting position
-        self._mem_initial_start = (0,0,0)
+        self._mem_initial_start = (0.0,0.0,0.0)
 
         self._locationssequence = [
             MATLOCATION.SIDE_1,
@@ -252,7 +252,7 @@ class MatIntelligence(ShutdownInterface):
         else:
             return (-1,-1,-1)
 
-    def _mid_distance(self,state:RobotState=None) -> float|None:
+    def _mid_distance(self,state:Optional[RobotState]=None) -> float|None:
         """Get the mid distance for the current location."""
         if self._current_min_distances is not None:
             mid= (self._current_min_distances[0] + self._current_min_distances[1]) / 2
@@ -280,7 +280,7 @@ class MatIntelligence(ShutdownInterface):
                 logger.info("Not learning distances for location: %s", location)
 
 
-    def location_complete(self,state:RobotState = None) -> MATLOCATION:
+    def location_complete(self,state:Optional[RobotState] = None) -> MATLOCATION:
         """Change the current location of the Mat Walker."""
         logger.info("Location complete: %s, current dis:%s",self._location,
                             self._current_min_distances)

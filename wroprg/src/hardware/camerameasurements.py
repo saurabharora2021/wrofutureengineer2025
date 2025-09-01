@@ -98,7 +98,7 @@ class CameraDistanceMeasurements(ShutdownInterface):
 
         self.metrics['paused'] = False
         frame:NDArray[np.uint8] = self.camera.capture()
-        counter = time.time()
+        counter:float = time.time()
 
 
         (center_p,left_p,right_p,self.camera_front,self.camera_left,self.camera_right) = \

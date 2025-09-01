@@ -40,14 +40,14 @@ class PIDController:
         p_term = self.kp * error
 
         # Integral term with anti-windup
-        i_term = 0
+        i_term: float = 0.0
         if self.ki != 0:
             self._integral += error * dt
-            self._integral = clamp_angle(self._integral, MAX_ANGLE/self.ki)
+            self._integral = clamp_angle(self._integral, MAX_ANGLE / self.ki)
             i_term = self.ki * self._integral
 
         # Derivative term
-        d_term = 0
+        d_term: float = 0.0
         if self.kd != 0:
             d_term = self.kd * (error - self._prev_error) / dt
 

@@ -56,7 +56,7 @@ class Walker:
                                                               hardware_interface=output_inf)
 
         self._walking:bool = False
-        self._prev_turn_angle = -99999
+        self._prev_turn_angle = -99.0
         self.distance_calculator = DistanceCalculator()
         self._direction = MATDIRECTION.UNKNOWN_DIRECTION
 
@@ -351,7 +351,7 @@ class Walker:
         self.walk_to_corner(gyrodefault)
         state = self.read_state_side()
 
-        def_turn_angle = 0
+        def_turn_angle = 0.0
         current_angle = state.yaw
         logger.info("handle_corner current yaw %.2f",current_angle)
         if self._direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:

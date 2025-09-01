@@ -150,7 +150,7 @@ class BuildHatDriveBase(ShutdownInterface):
                 self.turn_steering(degrees, steering_speed=steering_speed+15, retry=retry - 1)
 
     def check_set_steering(self, expected_position: float = 0,min_error:float = 2,
-                           retrycount:int = 3,steering_speed:float=10) -> None:
+                           retrycount:int = 3,steering_speed:float=50) -> None:
         """
         Check if the steering is at the specified degrees.
         If not, set it to the specified degrees.
@@ -161,8 +161,8 @@ class BuildHatDriveBase(ShutdownInterface):
         counter = 0
         while abs(current_position - expected_position) > min_error and counter < retrycount:
             # If the front motor is not at the expected position, reset it.
-            logger.info("Front Motor is not at expected position, resetting it. %s",
-                                current_position)
+            # logger.info("Front Motor is not at expected position, resetting it. %s",
+            #                     current_position)
             difference =  expected_position - current_position
             self.front_motor.run_for_degrees(difference, speed=steering_speed,
                                                       blocking=True)

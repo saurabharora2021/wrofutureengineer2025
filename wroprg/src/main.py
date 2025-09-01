@@ -34,6 +34,7 @@ def main():
         pi_inf.buzzer_beep()
 
     logger.warning("Test Successful")
+    pi_inf.reset_steering()
     pi_inf.force_flush_messages()
 
     walker = WalkerN(pi_inf,nooflaps=2)

@@ -85,11 +85,11 @@ class HardwareInterface(ShutdownInterface):
         tca = adafruit_tca9548a.TCA9548A(i2c)
 
         for channel in range(8):
-            if tca[channel].try_lock():
+            if tca[channel].try_lock(): # pyright: ignore[reportArgumentType]
                 logger.info("Channel %s:", channel)
-                addresses = tca[channel].scan()
+                addresses = tca[channel].scan() # pyright: ignore[reportArgumentType]
                 logger.info([hex(address) for address in addresses if address != 0x70])
-                tca[channel].unlock()
+                tca[channel].unlock() # pyright: ignore[reportArgumentType]
 
         device_channel = tca[self.DEVICE_I2C_CHANNEL]
 
@@ -99,8 +99,8 @@ class HardwareInterface(ShutdownInterface):
         self._orientation_estimator = OrientationEstimator(device_channel)
 
         # OLED display
-        self.oled = adafruit_ssd1306.SSD1306_I2C(self.SCREEN_WIDTH, self.SCREEN_HEIGHT,\
-                                                         device_channel)
+        self.oled = adafruit_ssd1306.SSD1306_I2C(self.SCREEN_WIDTH,self.SCREEN_HEIGHT,\
+                                device_channel) # pyright: ignore[reportArgumentType]
         self.oled.fill(0)
         self.oled.show()
 
@@ -267,10 +267,9 @@ class HardwareInterface(ShutdownInterface):
         if self._measurements_manager is None:
             raise RuntimeError("Measurements manager not initialized. Call" \
                                                             " full_initialization() first.")
-        self.camera_measurements.start()
-
         self._orientation_estimator.start_readings()
 
+        self.camera_measurements.start()
 
         self._measurements_manager.start_reading()
 
@@ -299,6 +298,7 @@ class HardwareInterface(ShutdownInterface):
         with self._buzzer_lock:
             try:
                 self.buzzer.off()
+                self.led1_off()
             finally:
                 self._buzzer_timer = None
 
@@ -313,6 +313,7 @@ class HardwareInterface(ShutdownInterface):
                     pass
                 self._buzzer_timer = None
             # Turn on immediately, schedule off
+            self.led1_blue()
             self.buzzer.on()
             t = max(0.0, float(timer))
             self._buzzer_timer = threading.Timer(t, self._buzzer_off_cb)
@@ -326,9 +327,12 @@ class HardwareInterface(ShutdownInterface):
         if non_blocking:
             self.buzzer_beep_async(timer)
             return
+        self.led1_blue()
         self.buzzer.on()
         time.sleep(timer)
         self.buzzer.off()
+        self.led1_off()
+
 
     def led1_green(self) -> None:
         """Turn on the LED1 green."""

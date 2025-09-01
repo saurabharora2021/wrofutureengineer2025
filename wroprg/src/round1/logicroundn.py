@@ -4,7 +4,7 @@ from hardware.hardware_interface import HardwareInterface
 from hardware.robotstate import RobotState
 from round1.walker_helpers import FixedTurnWalker
 from round1.logicround1 import Walker
-from round1.utilityfunctions import WalkParameters
+from round1.walker_helpers import WalkParameters
 from round1.movement_controller import MAX_STEERING_ANGLE
 from utils import constants
 from utils.mat import MATDIRECTION, MATGENERICLOCATION
@@ -63,7 +63,7 @@ class WalkerN(Walker):
                     gyrodefault = self.handle_side()
             else:
                 self.full_gyro_walk()
-                self.stop_walking()
+                self.movementcontroller.stop_walking()
                 return
 
     def full_gyro_walk(self):
@@ -108,7 +108,7 @@ class WalkerN(Walker):
                 current_speed=self.CORNER_GYRO_SPEED
             )
 
-        self.stop_walking()
+        self.movementcontroller.stop_walking()
 
     def handle_gyro_corner(self,final_yaw:float,current_speed:float):
         """Handle the gyro cornering logic."""
@@ -148,7 +148,7 @@ class WalkerN(Walker):
         state = self.output_inf.read_state()
         self.movementcontroller.reset_distance()
 
-        self.start_walking(current_speed)
+        self.movementcontroller.start_walking(current_speed)
 
         logger.info("Start corner with def_f %.2f, F: %.2f, final_yaw:%.2f,"+\
                     "current_yaw:%.2f,D:%.2f",
@@ -184,7 +184,7 @@ class WalkerN(Walker):
         """
         if gyroreset:
             #lets start with zero heading.
-            self.stop_walking()
+            self.movementcontroller.stop_walking()
             self.output_inf.reset_gyro()
 
         # Get the steering if it more than +-5, reduce it .

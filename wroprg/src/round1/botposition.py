@@ -11,7 +11,7 @@ class BotPositioner:
     """Utility class to center the bot"""
 
     DISTANCE_CORRECTION = 4.0
-    YAW_CORRECTION = 0.75
+    YAW_CORRECTION = 0.5
 
     def __init__(self, intelligence:MatIntelligence):
         self.intelmat = intelligence
@@ -60,12 +60,12 @@ class BotPositioner:
                 logger.info("Adjusting left distance, moving to right")
                 left += correction
                 right -= correction
-                delta_yaw = -self.YAW_CORRECTION
+                delta_yaw = self.YAW_CORRECTION
             else:
                 logger.info("Adjusting right distance,moving to left")
                 left -= correction
                 right += correction
-                delta_yaw = self.YAW_CORRECTION
+                delta_yaw = -self.YAW_CORRECTION
             logger.info("adjusted left %.2f , right %.2f, yaw %.2f",left,right,delta_yaw)
             return True,delta_yaw,left, right
         else:
@@ -113,13 +113,20 @@ class BotPositioner:
                         #we can adjust the right distance
                         if actual_right > total_learned/2:
                             actual_right -= 5
+                            prev_yaw = self.YAW_CORRECTION
+                        elif actual_right <= 20.0 :
+                            #increasing right
+                            actual_right = 20.0
                             prev_yaw = -self.YAW_CORRECTION
                     elif actual_right == constants.RIGHT_DISTANCE_MAX and \
                                         actual_left != constants.LEFT_DISTANCE_MAX:
                         #we can adjust the left distance
                         if actual_left > total_learned/2:
                             actual_left -= 5
-                            prev_yaw = +self.YAW_CORRECTION
+                            prev_yaw = self.YAW_CORRECTION
+                        elif actual_left < 20.0:
+                            actual_left = 20.0
+                            prev_yaw = self.YAW_CORRECTION
                     logger.info("Adjusted distances: L: %.2f, R: %.2f Y: %.2f",
                                 actual_left, actual_right, prev_yaw)
                     return (True, prev_yaw, actual_left, actual_right)

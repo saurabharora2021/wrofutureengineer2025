@@ -24,6 +24,7 @@ def main():
         challenge1walker.intelligence.\
             report_direction_side1(MATDIRECTION.CLOCKWISE_DIRECTION)
 
+        pi_inf.reset_steering()
         challenge1walker.handle_corner_round1(gyrodefault=0)
 
     helper.start_application(runner)

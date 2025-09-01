@@ -47,7 +47,11 @@ class HelperFunctions:
         """Function to start the main application logic in a separate thread."""
 
         if use_button:
+            self._hardware_interface.force_flush_messages()
             self._hardware_interface.wait_for_action()
+            self._hardware_interface.buzzer_beep()
+            self._logger.info("Button pressed.")
+            self._hardware_interface.force_flush_messages()
 
         start_time = time.time()
         def runner():

@@ -1,6 +1,4 @@
 """Movement controller encapsulating motion commands and distance tracking."""
-from __future__ import annotations
-
 import logging
 import time
 from typing import Optional
@@ -11,8 +9,8 @@ from round1.utilityfunctions import clamp_angle
 
 logger = logging.getLogger(__name__)
 
-
-DIST_PER_SPEED_PER_SEC = 27.6 * 5/100 # Calibrate this value
+# Calibrate this value
+DIST_PER_SPEED_PER_SEC = 0.84   #27.6 * 5/100 
 MAX_ANGLE = 20.0
 MAX_DELTA_ANGLE = 8.0
 MAX_STEERING_ANGLE = 24.4
@@ -76,7 +74,22 @@ class MovementController:
             self.current_speed = speed
             self.start_time = time.monotonic() # Reset timer for the new speed
             logger.info("Changed speed to: %.2f", speed)
-
+            
+    def start_backward(self,speed:float)->None:
+        """Start driving backward at a given speed."""
+        if not self._walking:
+            # Transition from stopped to moving
+            self._walking = True
+            self.output_inf.drive_backward(speed)
+            self.current_speed = -speed
+            self.start_time = time.monotonic()
+            logger.info("Started walking backward at speed: %.2f", speed)
+        elif self.current_speed != speed:
+            # Speed change while already moving
+            self._add_speed() # Finalize distance for the previous speed
+            self.output_inf.drive_backward(speed)
+            self.current_speed = -speed
+            self.start_time = time.monotonic() # Reset timer for the new speed
 
     def stop_walking(self) -> None:
         """Stop driving and finalize distance accounting."""

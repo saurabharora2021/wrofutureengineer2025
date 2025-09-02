@@ -204,7 +204,8 @@ class HardwareInterface(ShutdownInterface):
                         laser_right >= constants.RIGHT_DISTANCE_MAX):
                     logger.info("Right Laser distance sensor is not stable, %.2f cm", \
                                                         laser_right)
-                    valid_distance = False
+                    #laser is usually not stable
+                    #valid_distance = False
                 if (ultrasonic_left < 0.1 or
                         ultrasonic_left >= constants.LEFT_DISTANCE_MAX):
                     logger.info("Left Ultrasonic distance sensor is not stable, %.2f cm", \
@@ -214,7 +215,8 @@ class HardwareInterface(ShutdownInterface):
                         laser_left >= constants.LEFT_DISTANCE_MAX):
                     logger.info("Left Laser distance sensor is not stable, %.2f cm", \
                                                         laser_left)
-                    valid_distance = False
+                    # laser is usually not stable
+                    #valid_distance = False
                 if not valid_distance:
                     logger.warning("Waiting for distance sensors to stabilize...")
                     time.sleep(0.25)

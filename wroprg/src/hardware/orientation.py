@@ -64,7 +64,7 @@ class OrientationEstimator(ShutdownInterface):
 
         # store current heading as offset (degrees)
         self._yaw_zero_offset_deg = (euler[0] or 0.0)
-    
+
     def get_yaw(self) -> float:
         """Returns the current yaw"""
         # Apply zero-offset and normalize to [-180, 180)
@@ -144,12 +144,12 @@ class OrientationEstimator(ShutdownInterface):
                 hz = float('inf')
             else:
                 hz = self._updates_since_rate / elapsed
-            logger.info('Orientation update rate: %.2f Hz over %d updates', hz, self._updates_since_rate)
+            logger.info('Orientation update rate: %.2f Hz over %d updates', hz,\
+                                 self._updates_since_rate)
             # reset counters
             self._updates_since_rate = 0
             self._rate_last_time = now
 
-        
     @staticmethod
     def _wrap_angle_deg(angle: float) -> float:
         """Wrap angle to [-180, 180)."""
@@ -170,7 +170,9 @@ class OrientationEstimator(ShutdownInterface):
             self.ANOMALY_RESET_COUNT = 10
 
         def sanitize(self, raw_angle_deg):
-            if raw_angle_deg is None or (isinstance(raw_angle_deg, float) and math.isnan(raw_angle_deg)):
+            """Sanitize raw angle readings."""
+            if raw_angle_deg is None or (isinstance(raw_angle_deg, float) \
+                                         and math.isnan(raw_angle_deg)):
                 self._count_anomaly('nan')
                 return self._fallback()
             if abs(raw_angle_deg) > self.ANGLE_ABS_LIMIT:
@@ -187,7 +189,8 @@ class OrientationEstimator(ShutdownInterface):
                 self._count_anomaly(f'jump {d:.1f}')
                 # Limit the step size to avoid large spikes, but update
                 # last_valid so we don't repeatedly correct the same jump.
-                corrected = (self.last_valid + math.copysign(self.MAX_STEP_DEG, d) + 180.0) % 360.0 - 180.0
+                corrected = (self.last_valid + math.copysign(self.MAX_STEP_DEG, d) + 180.0) % \
+                                                                        360.0 - 180.0
                 self.last_valid = corrected
                 return self._apply_smoothing(corrected)
             else:
@@ -222,30 +225,6 @@ class OrientationEstimator(ShutdownInterface):
             self.last_valid = None
             self.smoothed = None
             self.anomaly_count = 0
-
-    def _bno_reinit(self):
-        """Attempt to reinitialize the BNO device. Safe to call repeatedly."""
-        try:
-            # Attempt to recreate using same interface if available
-            # Try to recreate the driver using the stored device channel.
-            logger.info('Reinitializing BNO055 instance')
-            if hasattr(self, '_device_channel') and self._device_channel is not None:
-                try:
-                    self.bno = adafruit_bno055.BNO055_I2C(self._device_channel)
-                    logger.info('BNO055 reinitialized')
-                    return
-                except Exception:
-                    logger.exception('BNO recreate failed')
-            # Fallback: if driver exposes a begin/reset method, try that on existing object
-            if self.bno is not None and hasattr(self.bno, 'begin'):
-                try:
-                    self.bno.begin()
-                except Exception:
-                    logger.exception('BNO begin() failed')
-        except Exception as e:
-            logger.exception("BNO reinit exception: %s", e)
-
-
 
 def main():
     """Main method for orientation."""

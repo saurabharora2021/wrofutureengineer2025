@@ -2,7 +2,7 @@
 import time
 from board import SCL, SDA
 import busio
-from hardware.mpu6050 import MPU6050
+from scratch.mpu6050 import MPU6050
 import adafruit_tca9548a
 DEVICE_I2C_CHANNEL = 6
 

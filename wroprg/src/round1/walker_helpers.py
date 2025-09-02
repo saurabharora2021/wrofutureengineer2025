@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 MAX_ANGLE = 30.0
 MIN_GYRO_DELTA = 0.05 # Minimum gyro delta angle in degrees
 DELTA_DISTANCE_CM = 0.5
+MIN_DISTANCE_TURN = 5
 class PIDController:
     """Simple PID controller."""
 
@@ -153,10 +154,15 @@ class EquiWalkerHelper(ABC):
 
         if left_distance <= self.min_left and left_distance > 0:
             #close to wall, make delta negative
-            distance_error -=5
+            #distance_error -=5
+            #lets turn right.
+            self.pid.reset()
+            return MIN_DISTANCE_TURN
         elif right_distance <= self.min_right and right_distance > 0:
             #close to right wall, make delta more postive
-            distance_error += 5
+            # lets turn left.
+            self.pid.reset()
+            return -MIN_DISTANCE_TURN
 
         # Deadband to avoid small corrections
         if abs(distance_error) < DELTA_DISTANCE_CM and \
@@ -209,9 +215,11 @@ class GyroWalkerwithMinDistanceHelper(EquiWalkerHelper):
         # Distance correction
         distance_error = 0.0
         if self.min_left != -1 and left_distance < self.min_left:
-            distance_error += self.min_left - left_distance
+            self.pid.reset()
+            return MIN_DISTANCE_TURN
         if self.min_right != -1 and right_distance < self.min_right:
-            distance_error += self.min_right - right_distance
+            self.pid.reset()
+            return -MIN_DISTANCE_TURN
 
         # Deadband to avoid small corrections
         if abs(distance_error) < DELTA_DISTANCE_CM and \
@@ -256,9 +264,11 @@ class FixedTurnWalker(GyroWalkerwithMinDistanceHelper):
         # Distance correction
         distance_error = 0.0
         if self.min_left != -1 and left_distance < self.min_left:
-            distance_error += self.min_left - left_distance
+            self.pid.reset()
+            return MIN_DISTANCE_TURN
         if self.min_right != -1 and right_distance < self.min_right:
-            distance_error += self.min_right - right_distance
+            self.pid.reset()
+            return -MIN_DISTANCE_TURN
 
         # Gyro correction
         delta_angle = current_angle - self.def_turn_angle
@@ -334,8 +344,8 @@ class WalkParameters:
                  # Optional parameters with sensible defaults
                  speed: float = 50,
                  speed_check: bool = True,
-                 min_left: float = 10,
-                 min_right: float = 10,
+                 min_left: float = 15,
+                 min_right: float = 15,
                  force_change: bool = False,
                  weak_gyro: bool = False,
                  is_unknown_direction: bool = False,

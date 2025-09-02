@@ -11,7 +11,7 @@ class BotPositioner:
     """Utility class to center the bot"""
 
     DISTANCE_CORRECTION = 4.0
-    YAW_CORRECTION = 0.5
+    YAW_CORRECTION = 1.0
 
     def __init__(self, intelligence:MatIntelligence):
         self.intelmat = intelligence
@@ -78,8 +78,8 @@ class BotPositioner:
         """ Side bot Centering for handle side function."""
         total_learned = learned_left + learned_right
         total_actual = actual_left + actual_right
-        logger.info("Side Bot Centering: Learned L: %.2f, R: %.2f, Actual L: %.2f, R: %.2f",
-                    learned_left, learned_right, actual_left, actual_right)
+        logger.info("Side Bot Centering: Learned L: %.2f, R: %.2f, Actual L: %.2f, R: %.2f Lenient:%s",
+                    learned_left, learned_right, actual_left, actual_right,lenient)
         #if the gap is less , or the learned is still not correct so less than 40.
         #ignore and center the bot
         if lenient:

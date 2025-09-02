@@ -55,6 +55,7 @@ class HelperFunctions:
             self._logger.info("Button pressed.")
             self._hardware_interface.force_flush_messages()
 
+        # We record the start time *after* the initial button press.
         start_time = time.time()
         def runner():
             try:
@@ -74,16 +75,35 @@ class HelperFunctions:
                 self._is_running = False
 
 
-        def on_button_pressed():
-            self._stop_event.set()
-            self._is_running = False
+        def on_button_pressed(*args, **kwargs):
+            """Button callback: set stop flag and trigger shutdown."""
+            # Grace period: Ignore any button press within the first 0.5 seconds
+            # to prevent the start-up press from causing an immediate shutdown.
+            if time.time() - start_time < 0.5:
+                self._logger.debug("Ignoring button press during grace period.")
+                return
+
+            if not self._is_running:
+                return # Avoid multiple shutdown calls
+
+            try:
+                self._logger.info("Stop button pressed, initiating shutdown.")
+                self._is_running = False
+                self._stop_event.set()
+                # Directly call shutdown_all to stop all hardware and interfaces.
+                self.shutdown_all()
+            except Exception as e:
+                # Avoid raising from the callback; just log
+                self._logger.exception("Exception in on_button_pressed: %s", e)
 
         run_thread = threading.Thread(target=runner)
+
+        # register the button callback before starting the worker so presses are handled immediately
+        self._hardware_interface.register_button_press(on_button_pressed)
+
         run_thread.start()
         # wait for button to settle down.
         time.sleep(1)
-
-        self._hardware_interface.register_button_press(on_button_pressed)
 
         while self._is_running:
             if self._stop_event.is_set():

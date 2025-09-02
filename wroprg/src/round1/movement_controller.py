@@ -10,7 +10,7 @@ from round1.utilityfunctions import clamp_angle
 logger = logging.getLogger(__name__)
 
 # Calibrate this value
-DIST_PER_SPEED_PER_SEC = 0.84   #27.6 * 5/100 
+DIST_PER_SPEED_PER_SEC = 0.84   #27.6 * 5/100
 MAX_ANGLE = 20.0
 MAX_DELTA_ANGLE = 8.0
 MAX_STEERING_ANGLE = 24.4
@@ -74,7 +74,7 @@ class MovementController:
             self.current_speed = speed
             self.start_time = time.monotonic() # Reset timer for the new speed
             logger.info("Changed speed to: %.2f", speed)
-            
+
     def start_backward(self,speed:float)->None:
         """Start driving backward at a given speed."""
         if not self._walking:
@@ -94,9 +94,9 @@ class MovementController:
     def stop_walking(self) -> None:
         """Stop driving and finalize distance accounting."""
         if self._walking:
+            self.output_inf.drive_stop()
             self._add_speed() # Finalize distance for the last segment
             self._walking = False
-            self.output_inf.drive_stop()
             self.current_speed = 0
             self.start_time = time.monotonic() # Reset time for consistency
             logger.info("Stopping bot. Total distance: %.2f", self.distance)

@@ -7,7 +7,7 @@ from round1.logicround1 import Walker
 from round1.walker_helpers import WalkParameters
 from round1.movement_controller import MAX_STEERING_ANGLE
 from utils import constants
-from utils.mat import MATDIRECTION, MATGENERICLOCATION
+from utils.mat import MATDIRECTION, MATGENERICLOCATION ,MATLOCATION
 
 logger = logging.getLogger(__name__)
 class WalkerN(Walker):
@@ -31,9 +31,7 @@ class WalkerN(Walker):
 
         self._walking:bool = False
 
-    def start_walk(self):
-        """Start the walk based on the current direction which is unknown and number of laps."""
-        logger.info("Starting to walk...")
+    def _full_round1_walk(self):
 
         #this should set the direction
         self.handle_unknowndirection_walk()
@@ -48,23 +46,40 @@ class WalkerN(Walker):
             self.output_inf.force_flush_messages()
             return
 
-        #We have detected the directions, and now time to walk knowing the directions.
-        gyrodefault = 0
+        corner_yaw_angle = self.CORNER_YAW_ANGLE if self._direction == \
+                                                    MATDIRECTION.CLOCKWISE_DIRECTION \
+                                                        else -self.CORNER_YAW_ANGLE
+        logger.info("Corner yaw angle: %.2f", corner_yaw_angle)
+
+        current_yaw_angle = 0
+
+        #handle first corner without gyroreset.
+        current_yaw_angle = self.handle_corner_round1(current_yaw_angle,False)
+
+        while self.intelligence.get_round_number() == 1:
+
+            generic_location = self.intelligence.get_generic_location()
+
+            if generic_location == MATGENERICLOCATION.CORNER:
+                current_yaw_angle =self.handle_corner_round1(current_yaw_angle)
+            else:
+                current_yaw_angle = self.handle_side(gyroreset=False,def_yaw=corner_yaw_angle)
+
+        self.movementcontroller.stop_walking()
+
+
+    def start_walk(self):
+        """Start the walk based on the current direction which is unknown and number of laps."""
+        logger.info("Starting to walk...")
+
+        self._full_round1_walk()
+
         while self.intelligence.get_round_number()<= self._nooflaps:
             logger.info("Starting walk for location: %s , round: %d",
                          self.intelligence.get_location(), self.intelligence.get_round_number())
-            if self.intelligence.get_round_number() == 1:
-
-                if self.intelligence.get_generic_location() == MATGENERICLOCATION.CORNER:
-                    # Handle corner.
-                    self.handle_corner_round1(gyrodefault)
-                else:
-                    #handle SIDE
-                    gyrodefault = self.handle_side()
-            else:
-                self.full_gyro_walk()
-                self.movementcontroller.stop_walking()
-                return
+            self.full_gyro_walk()
+            self.movementcontroller.stop_walking()
+            return
 
     def full_gyro_walk(self):
         """Walk the full path using gyro."""

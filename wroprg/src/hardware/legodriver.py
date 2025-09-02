@@ -110,9 +110,9 @@ class BuildHatDriveBase(ShutdownInterface):
 
         # Get current position and sanitize
         current_position = self.front_motor.get_position()
-        # logger.info("Turning steering by %s degrees at speed %s, retry %s," \
-        #                                 " current position: %s", degrees,
-        #                                 steering_speed, retry, current_position)
+        logger.info("Turning steering by %s degrees at speed %s, retry %s," \
+                                         " current position: %s", degrees,
+                                         steering_speed, retry, current_position)
         # If the position is out of expected bounds, reset to zero
         if abs(current_position) > 180:
             # logger.warning("Front motor position out of bounds: %s. Resetting to 0.",

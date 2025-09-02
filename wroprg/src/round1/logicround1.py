@@ -36,8 +36,8 @@ class Walker:
     YAW_CORRECTION = 0.75
     DISTANCE_CORRECTION = 4.0
 
-    CORNER_YAW_ANGLE = 85.0
-    RECOMENDED_CORNER_STEERING = 17.0
+    CORNER_YAW_ANGLE = 88.0
+    RECOMENDED_CORNER_STEERING = 18.0
 
     # New constants for corner handling
     CORNER_RIGHT_DIST_THRESHOLD = 40.0
@@ -618,8 +618,6 @@ class Walker:
                                                 def_turn_angle=def_turn_angle,
                                                 min_left=min_left,
                                                 min_right=min_right,
-                                                kgyro=-4.0,
-                                                kp=-3.0,
                                                 max_left_distance=constants.LEFT_DISTANCE_MAX,
                                                 max_right_distance=constants.RIGHT_DISTANCE_MAX
                                             )
@@ -688,7 +686,7 @@ class Walker:
         lidar_right = self.output_inf.get_right_lidar_distance()
 
         logger.info("Front Lidar L:%.2f,R:%.2f", lidar_left, lidar_right)
-        if lidar_left + lidar_right < 150:
+        if state.left + state.right < 150:
             logger.info("Both sides are present , we have not reached the corner, walk...")
 
             #Lets walk start some more time

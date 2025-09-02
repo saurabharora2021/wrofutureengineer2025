@@ -64,7 +64,7 @@ class EquiWalkerHelper(ABC):
     def __init__(self, def_distance_left: float, def_distance_right: float,
                  max_left_distance: float= constants.LEFT_DISTANCE_MAX,
                  max_right_distance: float= constants.RIGHT_DISTANCE_MAX,
-                 kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
+                 kp: float = -4.0, ki: float = 0.0, kd: float = -0.06,
                  kgyro: float = 5.5, def_turn_angle: float = 0.0,
                  fused_distance_weight: float = 0.5, fused_gyro_weight: float = 0.5,
                  min_left: float = 10.00, min_right: float = 10.00) -> None:
@@ -88,6 +88,8 @@ class EquiWalkerHelper(ABC):
         logger.info("EquiWalkerHelper parameters: kgyro=%.2f, def_turn_angle=%.2f,"\
                     +"fused_distance_weight=%.2f, fused_gyro_weight=%.2f",
                     kgyro, def_turn_angle, fused_distance_weight, fused_gyro_weight)
+        logger.info("EquiWalkerHelper min distances: left=%.2f, right=%.2f",
+                    min_left, min_right)
         self._messages:List[str] = []
 
     def get_log_data(self)->List[str]:

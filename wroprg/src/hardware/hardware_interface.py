@@ -275,9 +275,6 @@ class HardwareInterface(ShutdownInterface):
 
         self._measurements_manager.start_reading()
 
-        #ensures reset gyro works.
-        time.sleep(1)
-
     def add_comment(self, comment: str) -> None:
         """Add a comment to the measurements log."""
         if self._measurements_manager is not None:

@@ -54,7 +54,7 @@ class BotPositioner:
 
         delta_yaw = 0.0
         # If we are very close to either wall turn.
-        if right <= 20 or left <= 20:
+        if right <= 25 or left <= 25:
             correction = self.DISTANCE_CORRECTION #10 if front > 130 else 5
             if left < right:
                 logger.info("Adjusting left distance, moving to right")

@@ -48,7 +48,9 @@ class HelperFunctions:
 
         if use_button:
             self._hardware_interface.force_flush_messages()
+            self._hardware_interface.led1_green()
             self._hardware_interface.wait_for_action()
+            self._hardware_interface.led1_off()
             self._hardware_interface.buzzer_beep()
             self._logger.info("Button pressed.")
             self._hardware_interface.force_flush_messages()
@@ -79,12 +81,14 @@ class HelperFunctions:
         run_thread = threading.Thread(target=runner)
         run_thread.start()
         # wait for button to settle down.
-        time.sleep(2)
+        time.sleep(1)
 
         self._hardware_interface.register_button_press(on_button_pressed)
 
         while self._is_running:
-            self._stop_event.wait()
+            if self._stop_event.is_set():
+                break
+            self._stop_event.wait(0.1)  # Add a timeout to allow periodic checking
 
         end_time = time.time()
         self._logger.info("==========Bot Stopped=============")

@@ -42,7 +42,7 @@ class Walker:
     CORNER_RIGHT_DIST_THRESHOLD = 40.0
     CORNER_LEFT_DIST_THRESHOLD = 40.0
     CORNER_FRONT_DIST_THRESHOLD = 70.0
-    CORNER_EXTRA_TURN_ANGLE = 5.0
+    CORNER_EXTRA_TURN_ANGLE = 3.0
 
     output_inf: HardwareInterface
 
@@ -184,6 +184,16 @@ class Walker:
         """
         logger.info("handle side, Gyro Reset: %s, Default Yaw: %.2f", gyroreset, def_yaw)
 
+        current_state = self.read_state_side()
+
+        # Get the steering if it more than +-5, reduce it .
+        steering = self.output_inf.get_steering_angle()
+        if abs(steering) > 5:
+            steering = 5 if steering > 0 else -5
+            if current_state.yaw > 85 and current_state.yaw < 95:
+                steering = 0
+            self.output_inf.turn_steering(steering)
+
         # we are planning to straight the robot and then do a gyro walk.
         if gyroreset:
             #lets start with zero heading.
@@ -192,20 +202,15 @@ class Walker:
 
         (min_front,left_def,right_def) = self.intelligence.get_learned_distances()
 
-        # Get the steering if it more than +-5, reduce it .
-        steering = self.output_inf.get_steering_angle()
-
-        if abs(steering) > 5:
-            steering = 5 if steering > 0 else -5
-            self.output_inf.turn_steering(steering)
-
         current_state = self.read_state_side()
 
         #check if we are too close to wall,
         if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION:
-            self.walk_back(current_state,minfront=20,minleft=10,minright=20)
+            self.walk_back(current_state,minfront=20,minleft=1,minright=20)
         else:
-            self.walk_back(current_state,minfront=20,minleft=20,minright=10)
+            self.walk_back(current_state,minfront=20,minleft=20,minright=1)
+
+        current_state = self.read_state_side()
 
         if gyroreset:
             def_yaw = current_state.yaw
@@ -304,7 +309,6 @@ class Walker:
         self.intelligence.location_complete()
 
         return current_yaw
-        
 
     def update_side_path(self, current_state: RobotState, learned_left: float, \
                         learned_right: float,yaw_delta: float, def_yaw: float, \
@@ -361,11 +365,13 @@ class Walker:
             logger.info("Handling walk back")
 
             self.movementcontroller.stop_walking()
+            startdistance = self.movementcontroller.get_distance()
+            currentdistance = startdistance
             #set steering to zero.
             self.output_inf.reset_steering()
             state = self.read_state_side()
 
-            while self.walkbackcond(state,minfront,minleft,minright):
+            while self.walkbackcond(state,minfront,minleft,minright) and (startdistance - currentdistance  < 15):
                 self.movementcontroller.start_backward(self.MIN_SPEED+10)
                 time.sleep(0.001)
                 state = self.read_state_side()
@@ -376,6 +382,9 @@ class Walker:
     def handle_corner_round1(self,gyrodefault:float,gyroreset:bool=True):
         """Handle corner walk"""
 
+        logger.info("handler corner round1: gyrodefault:%.2f, gyroreset: %s",
+                    gyrodefault, gyroreset)
+
         self.walk_to_corner(gyrodefault)
         state = self.read_state_side()
 
@@ -383,29 +392,39 @@ class Walker:
         current_angle = state.yaw
         logger.info("handle_corner current yaw %.2f",current_angle)
 
+        #we are doing -2 since we want to turn slightly less than actual.
+        corner_yaw_angle = self.CORNER_YAW_ANGLE -2
+
         if gyroreset:
             self.output_inf.reset_gyro()
+            #this should be 90 degrees, state.yaw. if this is higher, we need to adjust          
+            corner_yaw_angle = self.CORNER_YAW_ANGLE - (abs(state.yaw) - 90)
 
-        if self._direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
-            # lets assume this is AntiClockwise and side1 is complete,
-            # we have reached corner1
-            if state.right > self.CORNER_RIGHT_DIST_THRESHOLD:
-                def_turn_angle = min(-self.CORNER_YAW_ANGLE - self.CORNER_EXTRA_TURN_ANGLE,\
-                                            self.CORNER_YAW_ANGLE - current_angle)
+            if self._direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
+                # lets assume this is AntiClockwise and side1 is complete,
+                # we have reached corner1
+                if state.right > self.CORNER_RIGHT_DIST_THRESHOLD:
+                    def_turn_angle = min(-corner_yaw_angle - self.CORNER_EXTRA_TURN_ANGLE,\
+                                                corner_yaw_angle - current_angle)
+                else:
+                    def_turn_angle = min(-corner_yaw_angle, -corner_yaw_angle - current_angle)
+                if state.front < self.CORNER_FRONT_DIST_THRESHOLD:
+                    #too close to front wall,add another 5 to turn
+                    def_turn_angle -= self.CORNER_EXTRA_TURN_ANGLE
             else:
-                def_turn_angle = max(-self.CORNER_YAW_ANGLE, -self.CORNER_YAW_ANGLE - current_angle)
-            if state.front < self.CORNER_FRONT_DIST_THRESHOLD:
-                #too close to front wall,add another 5 to turn
-                def_turn_angle -= self.CORNER_EXTRA_TURN_ANGLE
+                if state.left < self.CORNER_LEFT_DIST_THRESHOLD:
+                    def_turn_angle = max(corner_yaw_angle + self.CORNER_EXTRA_TURN_ANGLE,\
+                                                                corner_yaw_angle - current_angle)
+                else:
+                    def_turn_angle = max(corner_yaw_angle, corner_yaw_angle - current_angle)
+                if state.front < self.CORNER_FRONT_DIST_THRESHOLD:
+                    #too close to front wall,add another 5 to turn
+                    def_turn_angle += self.CORNER_EXTRA_TURN_ANGLE
         else:
-            if state.left < self.CORNER_LEFT_DIST_THRESHOLD:
-                def_turn_angle = min(self.CORNER_YAW_ANGLE + self.CORNER_EXTRA_TURN_ANGLE,\
-                                                             self.CORNER_YAW_ANGLE - current_angle)
-            else:
-                def_turn_angle = max(self.CORNER_YAW_ANGLE, self.CORNER_YAW_ANGLE - current_angle)
-            if state.front < self.CORNER_FRONT_DIST_THRESHOLD:
-                #too close to front wall,add another 5 to turn
-                def_turn_angle += self.CORNER_EXTRA_TURN_ANGLE
+            #no gyro reset walk to 90.
+
+            def_turn_angle = def_turn_angle if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION \
+                                            else -def_turn_angle
 
         # lets handle the corner walk for round 1.
         # we are going to use the gyro corner walk.
@@ -418,7 +437,7 @@ class Walker:
                                           fixed_turn_angle=self.RECOMENDED_CORNER_STEERING)
             self.intelligence.location_complete(state)
             self.intelligence.unregister_callback()
-            return angle
+            return def_turn_angle
         finally:
             # logger.info("completed corner")
             # self.output_inf.camera_restart()

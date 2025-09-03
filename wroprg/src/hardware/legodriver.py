@@ -136,7 +136,7 @@ class BuildHatDriveBase(ShutdownInterface):
         # Calculate how much to move from current position
         move_degrees = target_position - current_position
 
-        if abs(move_degrees) < 1:
+        if abs(move_degrees) < 2:
             # logger.info("Front motor is already at target position, ignoring small delta.")
             return
         # logger.info("Turning front motor to %s (move %s degrees)", target_position, move_degrees)

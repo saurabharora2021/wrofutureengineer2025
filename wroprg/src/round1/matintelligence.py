@@ -484,7 +484,8 @@ class MatIntelligence(ShutdownInterface):
                 if self._callback is not None:
                     logger.warning("reset distance left: %.2f, right: %.2f",
                                    left_distance, right_distance)
-                    self._callback(left_distance,right_distance)
+                    if self._callback is not None:
+                        self._callback(left_distance,right_distance)
 
 
     def register_callback(self, callback: Callable[[float,float],None]) -> None:

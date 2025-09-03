@@ -236,13 +236,17 @@ class CameraDistanceMeasurements(ShutdownInterface):
 
         if color_percentage < 50.0:
             return -1.0
-        elif color_percentage > 90.0:
+        elif color_percentage > 98.0:
+            return 1.0
+        elif color_percentage > 95.0:
             return 5.0
-        elif color_percentage > 80.0:
+        elif color_percentage > 90.0:
             return 10.0
-        elif color_percentage > 70.0:
+        elif color_percentage > 85.0:
+            return 15
+        elif color_percentage > 75.0:
             return 20.0
-        elif color_percentage > 50.0:
+        elif color_percentage > 60.0:
             return 30.0
         return -1.0
 

@@ -54,16 +54,24 @@ class WalkerN(Walker):
         current_yaw_angle = 0
 
         #handle first corner without gyroreset.
-        current_yaw_angle = self.handle_corner_round1(current_yaw_angle,False)
+        try:
+            self.output_inf.camera_pause()
+            current_yaw_angle =self.handle_corner_round1(current_yaw_angle,False)   
+        finally:
+            self.output_inf.camera_restart()
 
         while self.intelligence.get_round_number() == 1:
 
             generic_location = self.intelligence.get_generic_location()
 
             if generic_location == MATGENERICLOCATION.CORNER:
-                current_yaw_angle =self.handle_corner_round1(current_yaw_angle)
+                try:
+                    self.output_inf.camera_pause()
+                    current_yaw_angle =self.handle_corner_round1(current_yaw_angle)
+                finally:
+                    self.output_inf.camera_restart()
             else:
-                current_yaw_angle = self.handle_side(gyroreset=False,def_yaw=corner_yaw_angle)
+                current_yaw_angle = self.handle_side(gyroreset=False,def_yaw=current_yaw_angle)
 
         self.movementcontroller.stop_walking()
 

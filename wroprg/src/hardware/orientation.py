@@ -36,7 +36,7 @@ class OrientationEstimator(ShutdownInterface):
         self._zero_on_first_valid = True
 
         # start update thread around 100Hz (10 ms interval)
-        self._thread = ConstantUpdateThread(self.update, interval_ms=4)
+        self._thread = ConstantUpdateThread(self.update, interval_ms=2)
 
         # BNO sanitizer for spike rejection / smoothing
         # Simplified: sanitizer no longer attempts device reinitialization.

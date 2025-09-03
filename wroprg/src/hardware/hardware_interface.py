@@ -510,7 +510,7 @@ class HardwareInterface(ShutdownInterface):
             raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
         self._lego_drive_base.run_front(-speed)
 
-    def turn_steering(self, degrees: float, steering_speed: float = 60) -> None:
+    def turn_steering(self, degrees: float, steering_speed: float = 100) -> None:
         """
         Turn the steering by the specified degrees.
         Positive degrees turn right, negative turn left.

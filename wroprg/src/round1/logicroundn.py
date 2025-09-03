@@ -142,9 +142,9 @@ class WalkerN(Walker):
         state: RobotState = self.output_inf.read_state()
 
         if self._direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
-            recommended_angle = min(-15.5,-self.RECOMENDED_CORNER_STEERING - state.yaw)
+            recommended_angle = min(-15.5,-self.RECOMMENDED_CORNER_STEERING - state.yaw)
         else:
-            recommended_angle = max(15.5,self.RECOMENDED_CORNER_STEERING - state.yaw)
+            recommended_angle = max(15.5,self.RECOMMENDED_CORNER_STEERING - state.yaw)
 
         logger.info("Starting gyro corner walk to angle: %.2f, final yaw: %.2f at speed: %.2f",
                     recommended_angle, final_yaw, current_speed)
@@ -215,7 +215,7 @@ class WalkerN(Walker):
 
         if abs(steering) > 5:
             steering = 5 if steering > 0 else -5
-            self.output_inf.turn_steering(steering)
+            self.output_inf.turn_steering(steering,async_turn=True)
 
         (min_front,left_def,right_def) = self.intelligence.get_learned_distances()
 

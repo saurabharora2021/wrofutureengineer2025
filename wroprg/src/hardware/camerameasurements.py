@@ -8,6 +8,7 @@ from typing import Callable, Tuple
 from typing import Any, Dict
 import cv2
 import numpy as np
+from numpy.typing import NDArray
 from base.shutdown_handling import ShutdownInterface
 from hardware.camera import MyCamera
 
@@ -25,8 +26,8 @@ class CameraDistanceMeasurements(ShutdownInterface):
     SAVE_CAMERA_IMAGE_ON_CORRECTION:bool = False
     CAMERA_OUTPUT_DIR:str= "output"
     SHOW_IMAGE:bool = False
-    MIN_FPS: int = 10
-    MAX_FPS: int = 20
+    MIN_FPS: int = 15
+    MAX_FPS: int = 25
     ORIENTATION_DEG: int = 180        # 0 or 180; swap L/R logically when 180
     SHOW_DEBUG=False
     # New: use 2/3 of the image height (tunable)
@@ -56,7 +57,8 @@ class CameraDistanceMeasurements(ShutdownInterface):
         self._tmp_bool: np.ndarray | None = None
         self._section_w: int = 0
 
-
+        # pause support
+        self._paused_event = threading.Event()
 
     def start(self):
         """Start the camera."""
@@ -67,15 +69,36 @@ class CameraDistanceMeasurements(ShutdownInterface):
 
         self.camera.start()
         self.camera_thread.start()
+        logger.info("Camera Distance Measurements started")
+
+    def pause_readings(self) -> None:
+        """Pause camera processing. Optionally stop the camera device."""
+        logger.info("Pausing camera readings")
+        self._paused_event.set()
+
+    def resume_readings(self) -> None:
+        """Resume camera processing. Optionally start the camera device."""
+        logger.info("Resume camera readings")
+        self._paused_event.clear()
+
+    def is_paused(self) -> bool:
+        return self._paused_event.is_set()
 
     def shutdown(self):
         return self.camera_thread.shutdown()
 
     def process_camera(self)-> int:
         """Process the camera frame and extract distance measurements."""
+        # Short-circuit when paused to save CPU; keep low FPS
+        if self._paused_event.is_set():
+            self.camera_front = self.camera_left = self.camera_right = -1
+            # keep metrics but mark paused
+            self.metrics['paused'] = True
+            return 5  # very low FPS when paused
 
-        frame = self.camera.capture()
-        counter = time.time()
+        self.metrics['paused'] = False
+        frame:NDArray[np.uint8] = self.camera.capture()
+        counter:float = time.time()
 
 
         (center_p,left_p,right_p,self.camera_front,self.camera_left,self.camera_right) = \
@@ -117,7 +140,7 @@ class CameraDistanceMeasurements(ShutdownInterface):
                 logger.info("Saved: %s",filename)
 
 
-    def _measure_border(self, image,counter) -> Tuple[float, float, float, float, float, float]:
+    def _measure_border(self, image:NDArray[np.uint8],counter:float) -> Tuple[float, float, float, float, float, float]:
         # ROI selection without rotation
         H, W = image.shape[:2]
         roi_h = max(1, int(H * self.ROI_HEIGHT_FRAC))
@@ -213,13 +236,17 @@ class CameraDistanceMeasurements(ShutdownInterface):
 
         if color_percentage < 50.0:
             return -1.0
-        elif color_percentage > 90.0:
+        elif color_percentage > 98.0:
+            return 1.0
+        elif color_percentage > 95.0:
             return 5.0
-        elif color_percentage > 80.0:
+        elif color_percentage > 90.0:
             return 10.0
-        elif color_percentage > 70.0:
+        elif color_percentage > 85.0:
+            return 15
+        elif color_percentage > 75.0:
             return 20.0
-        elif color_percentage > 50.0:
+        elif color_percentage > 60.0:
             return 30.0
         return -1.0
 

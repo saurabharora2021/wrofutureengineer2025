@@ -7,11 +7,10 @@ from round1.utilityfunctions import clamp_angle
 from utils import constants
 
 logger = logging.getLogger(__name__)
-
-
-MAX_ANGLE = 30
+MAX_ANGLE = 30.0
 MIN_GYRO_DELTA = 0.05 # Minimum gyro delta angle in degrees
 DELTA_DISTANCE_CM = 0.5
+MIN_DISTANCE_TURN = 5
 class PIDController:
     """Simple PID controller."""
 
@@ -19,8 +18,8 @@ class PIDController:
         self.kp = kp
         self.ki = ki
         self.kd = kd
-        self._prev_error = 0
-        self._integral = 0
+        self._prev_error = 0.0
+        self._integral = 0.0
         self._prev_time = time.perf_counter()
 
     def reset(self):
@@ -40,14 +39,14 @@ class PIDController:
         p_term = self.kp * error
 
         # Integral term with anti-windup
-        i_term = 0
+        i_term: float = 0.0
         if self.ki != 0:
             self._integral += error * dt
-            self._integral = clamp_angle(self._integral, MAX_ANGLE/self.ki)
+            self._integral = clamp_angle(self._integral, MAX_ANGLE / self.ki)
             i_term = self.ki * self._integral
 
         # Derivative term
-        d_term = 0
+        d_term: float = 0.0
         if self.kd != 0:
             d_term = self.kd * (error - self._prev_error) / dt
 
@@ -66,8 +65,8 @@ class EquiWalkerHelper(ABC):
     def __init__(self, def_distance_left: float, def_distance_right: float,
                  max_left_distance: float= constants.LEFT_DISTANCE_MAX,
                  max_right_distance: float= constants.RIGHT_DISTANCE_MAX,
-                 kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
-                 kgyro: float = 4.0, def_turn_angle: float = 0.0,
+                 kp: float = -4.0, ki: float = 0.0, kd: float = -0.06,
+                 kgyro: float = 5.5, def_turn_angle: float = 0.0,
                  fused_distance_weight: float = 0.5, fused_gyro_weight: float = 0.5,
                  min_left: float = 10.00, min_right: float = 10.00) -> None:
 # Default before tuning
@@ -90,7 +89,11 @@ class EquiWalkerHelper(ABC):
         logger.info("EquiWalkerHelper parameters: kgyro=%.2f, def_turn_angle=%.2f,"\
                     +"fused_distance_weight=%.2f, fused_gyro_weight=%.2f",
                     kgyro, def_turn_angle, fused_distance_weight, fused_gyro_weight)
+        logger.info("EquiWalkerHelper min distances: left=%.2f, right=%.2f",
+                    min_left, min_right)
         self._messages:List[str] = []
+        self.closeleft=False
+        self.closeright=False
 
     def get_log_data(self)->List[str]:
         """Get the log data."""
@@ -117,13 +120,22 @@ class EquiWalkerHelper(ABC):
                             + (self.fused_distance_weight * distance_error)
 
         # Deadband to avoid small corrections
-        if abs(fused_error) < 0.1:
+        if abs(fused_error) < 0.1 and not self.closeleft and not self.closeright:
             return None
 
         # Use shared PID logic
         turn = self.pid.calculate(fused_error)
         self.log_walk_data(distance_error, gyro_error=gyro_correction,
                            fused_error=fused_error, turn=turn)
+    
+        if self.closeleft and self.closeright:
+            return None
+        elif self.closeleft:
+            # turn right
+            turn = max(MIN_DISTANCE_TURN,turn)
+        elif self.closeright:
+            turn = min(-MIN_DISTANCE_TURN,turn)
+
         return turn
 
     def walk_func(self, left_distance: float, right_distance: float,
@@ -132,6 +144,9 @@ class EquiWalkerHelper(ABC):
         # Gyro correction
         delta_angle = current_angle - self.def_turn_angle
         gyro_correction = self.kgyro * delta_angle
+
+        self.closeleft = False
+        self.closeright = False
 
         # Distance error calculation
         left_delta = left_distance - self.def_distance_left
@@ -154,13 +169,16 @@ class EquiWalkerHelper(ABC):
         if left_distance <= self.min_left and left_distance > 0:
             #close to wall, make delta negative
             distance_error -=5
+            self.closeleft = True
         elif right_distance <= self.min_right and right_distance > 0:
             #close to right wall, make delta more postive
             distance_error += 5
+            self.closeright = True
 
         # Deadband to avoid small corrections
         if abs(distance_error) < DELTA_DISTANCE_CM and \
-                                abs(delta_angle) < MIN_GYRO_DELTA:
+                                abs(delta_angle) < MIN_GYRO_DELTA \
+                    and not self.closeleft and not self.closeright:
             self.pid.reset()
             return None
 
@@ -173,7 +191,7 @@ class GyroWalkerwithMinDistanceHelper(EquiWalkerHelper):
                  max_left_distance: float = constants.LEFT_DISTANCE_MAX
                  , max_right_distance: float = constants.RIGHT_DISTANCE_MAX,
                  kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
-                 kgyro: float = 5.35,
+                 kgyro: float = 5.5,
                  def_turn_angle: float = 0.0, min_left: float = -1, min_right: float = -1,
                  fused_distance_weight: float = 0.6, fused_gyro_weight: float = 0.4,
                  ) -> None:
@@ -201,6 +219,10 @@ class GyroWalkerwithMinDistanceHelper(EquiWalkerHelper):
     def walk_func(self, left_distance: float, right_distance: float,
                                current_angle: float) -> Optional[float]:
         """Calculate the steering angle using sensor fusion PID control."""
+
+        self.closeleft = False
+        self.closeright = False
+
         # Gyro correction
         delta_angle = current_angle - self.def_turn_angle
 
@@ -210,12 +232,15 @@ class GyroWalkerwithMinDistanceHelper(EquiWalkerHelper):
         distance_error = 0.0
         if self.min_left != -1 and left_distance < self.min_left:
             distance_error += self.min_left - left_distance
+            self.closeleft = True
         if self.min_right != -1 and right_distance < self.min_right:
             distance_error += self.min_right - right_distance
+            self.closeright = True
 
         # Deadband to avoid small corrections
         if abs(distance_error) < DELTA_DISTANCE_CM and \
-                                abs(delta_angle) < MIN_GYRO_DELTA:
+                                abs(delta_angle) < MIN_GYRO_DELTA and \
+                not self.closeright and not self.closeleft:
             self.pid.reset()
             return None
 
@@ -253,20 +278,27 @@ class FixedTurnWalker(GyroWalkerwithMinDistanceHelper):
     def walk_func(self, left_distance: float, right_distance: float,
                                current_angle: float) -> Optional[float]:
         """Calculate the steering angle using sensor fusion PID control."""
+
+        self.closeleft = False
+        self.closeright = False
+
         # Distance correction
         distance_error = 0.0
         if self.min_left != -1 and left_distance < self.min_left:
             distance_error += self.min_left - left_distance
+            self.closeleft = True
         if self.min_right != -1 and right_distance < self.min_right:
             distance_error += self.min_right - right_distance
+            self.closeright = True
 
         # Gyro correction
         delta_angle = current_angle - self.def_turn_angle
 
         #small error we continue to turn as per plan
-        if abs(distance_error) < DELTA_DISTANCE_CM:
+        if abs(distance_error) < DELTA_DISTANCE_CM and not self.closeright\
+                and not self.closeleft:
             self.pid.reset()
-            if abs(delta_angle) < 10:
+            if abs(delta_angle) < 20:
                 #lets reduce the steering angle
                 return self.fixed_turn_angle/2
             return self.fixed_turn_angle
@@ -275,7 +307,8 @@ class FixedTurnWalker(GyroWalkerwithMinDistanceHelper):
 
 
         # Deadband to avoid small corrections
-        if abs(delta_angle) < MIN_GYRO_DELTA:
+        if abs(delta_angle) < MIN_GYRO_DELTA and not self.closeright \
+                    and not self.closeleft:
             self.pid.reset()
             return None
 
@@ -314,3 +347,119 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+class WalkParameters:
+    """Parameters for robot walking behavior.
+
+    Groups related parameters to improve readability and maintainability.
+    """
+
+    def __init__(self,
+                 # Required distance parameters
+                 min_front: float,
+                 def_left: float,
+                 def_right: float,
+
+                 # Required control parameter
+                 gyro_default: float,
+
+                 # Optional parameters with sensible defaults
+                 speed: float = 50,
+                 speed_check: bool = True,
+                 min_left: float = 15,
+                 min_right: float = 15,
+                 force_change: bool = False,
+                 weak_gyro: bool = False,
+                 is_unknown_direction: bool = False,
+                 base_helper: Optional[EquiWalkerHelper] = None):
+        """Initialize walk parameters.
+
+        Args:
+            min_front: Minimum front distance before stopping
+            def_left: Default/target left distance
+            def_right: Default/target right distance
+            gyro_default: Default gyro/yaw angle to maintain
+            speed: Default walking speed
+            speed_check: Whether to check and adjust speed during turns
+            min_left: Minimum safe left distance
+            min_right: Minimum safe right distance
+            force_change: Whether to force parameter changes
+            weak_gyro: Whether to use reduced gyro influence
+            is_unknown_direction: Whether direction is unknown
+            base_helper: Optional helper for walk calculations
+        """
+        # Distance parameters
+        self.min_front = min_front
+        self.def_left = def_left
+        self.def_right = def_right
+        self.min_left = min_left
+        self.min_right = min_right
+
+        # Control parameters
+        self.gyro_default = gyro_default
+        self.speed = speed
+        self.speed_check = speed_check
+
+        # Behavior parameters
+        self.force_change = force_change
+        self.weak_gyro = weak_gyro
+        self.is_unknown_direction = is_unknown_direction
+
+        # Helper parameter
+        self.base_helper = base_helper
+
+    def is_close_wall(self) -> bool:
+        """Check if the robot is close to a wall."""
+        if self.min_left < 5 or self.min_right < 5:
+            logger.warning("Minimum distances too small, may cause collisions")
+            return True
+        return False
+
+    def make_equi_helper(self, base_helper: Optional[EquiWalkerHelper]=None) \
+                            -> EquiWalkerHelper:
+
+        """Factory for EquiWalkerHelper with consistent tuning."""
+        if base_helper is not None:
+            return base_helper
+
+        if self.force_change is False:
+            if self.weak_gyro is False:
+
+                helper:EquiWalkerHelper = EquiWalkerHelper(
+                    def_distance_left=self.def_left,
+                    def_distance_right=self.def_right,
+                    max_left_distance=constants.LEFT_DISTANCE_MAX,
+                    max_right_distance=constants.RIGHT_DISTANCE_MAX,
+                    def_turn_angle=self.gyro_default,
+                    min_left=self.min_left,
+                    min_right=self.min_right
+                )
+            else:
+                #weak Gyro is true. use less of gyro weight
+                helper = EquiWalkerHelper(
+                    def_distance_left=self.def_left,
+                    def_distance_right=self.def_right,
+                    max_left_distance=constants.LEFT_DISTANCE_MAX,
+                    max_right_distance=constants.RIGHT_DISTANCE_MAX,
+                    def_turn_angle=self.gyro_default,
+                    fused_gyro_weight=0.4,
+                    kgyro=-4.0,
+                    fused_distance_weight=0.5,
+                    min_left=self.min_left,
+                    min_right=self.min_right
+                    )
+        else:
+            helper = EquiWalkerHelper(
+                def_distance_left=self.def_left,
+                def_distance_right=self.def_right,
+                max_left_distance=constants.LEFT_DISTANCE_MAX,
+                max_right_distance=constants.RIGHT_DISTANCE_MAX,
+                def_turn_angle=self.gyro_default,
+                kp=-3,
+                fused_distance_weight=0.4,
+                min_left=self.min_left,
+                min_right=self.min_right
+            )
+
+        return helper

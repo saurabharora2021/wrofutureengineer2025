@@ -1,13 +1,12 @@
 """This class implemenents the mathematical intelligence for the Mat used. """
 import logging
-from collections import Counter, deque
-from typing import Callable, Optional
+from collections import Counter
+import queue
+from typing import Callable, Optional, Tuple
 import threading
-import time
+from base.shutdown_handling import ShutdownInterface
 from utils.mat import MATDIRECTION, MATLOCATION, MATGENERICLOCATION
 from utils.mat import location_to_genericlocation
-
-from base.shutdown_handling import ShutdownInterface
 from hardware.hardware_interface import HardwareInterface
 from hardware.robotstate import RobotState
 
@@ -28,7 +27,8 @@ class MatIntelligence(ShutdownInterface):
     def __init__(self,roundcount:int = 1, hardware_interface: Optional[HardwareInterface]=None
                                                     ) -> None:
         """Initialize the MatIntelligence class."""
-        self._deque = deque()
+    # Use a thread-safe queue for producer/consumer communication
+        self._queue: "queue.Queue[tuple[float,float,float] | None]" = queue.Queue()
         self._direction = MATDIRECTION.UNKNOWN_DIRECTION
         self._location = MATLOCATION.SIDE_1
         self._roundno = 1
@@ -39,7 +39,7 @@ class MatIntelligence(ShutdownInterface):
         # logger.setLevel(logging.WARNING)
 
         # Reading for the start location, for starting position
-        self._mem_initial_start = (0,0,0)
+        self._mem_initial_start = (0.0,0.0,0.0)
 
         self._locationssequence = [
             MATLOCATION.SIDE_1,
@@ -52,44 +52,57 @@ class MatIntelligence(ShutdownInterface):
             MATLOCATION.CORNER_4,
         ]
 
-        # Default distances for anticlockwise equidistance walking
-        # No values for corners.
-        self._default_distances_anticlockwise = {
-            MATLOCATION.SIDE_1: (self.FRONTDISTANCE_FOR_COLOR_CHECK,-1,-1),
-            MATLOCATION.CORNER_1: (self.WALLFRONTDISTANCE,self.WALLSIDEDISTANCE,-1),
-            MATLOCATION.SIDE_2: (100,20,15),
-            MATLOCATION.CORNER_2: (self.WALLFRONTDISTANCE,self.WALLSIDEDISTANCE,-1),
-            MATLOCATION.SIDE_3: (100,20,15),
-            MATLOCATION.CORNER_3: (self.WALLFRONTDISTANCE,self.WALLSIDEDISTANCE,-1),
-            MATLOCATION.SIDE_4: (100,20,15),
-            MATLOCATION.CORNER_4: (self.WALLFRONTDISTANCE,self.WALLSIDEDISTANCE,-1),
+        # A single, consolidated dictionary for default distances.
+        self._default_distances = {
+            MATLOCATION.SIDE_1: {
+                MATDIRECTION.UNKNOWN_DIRECTION: (self.FRONTDISTANCE_FOR_COLOR_CHECK, -1, -1),
+            },
+            MATLOCATION.CORNER_1: {
+                MATDIRECTION.ANTICLOCKWISE_DIRECTION:
+                                        (self.WALLFRONTDISTANCE, self.WALLSIDEDISTANCE, -1),
+                MATDIRECTION.CLOCKWISE_DIRECTION:
+                                        (self.WALLFRONTDISTANCE, -1, self.WALLSIDEDISTANCE),
+            },
+            MATLOCATION.SIDE_2: {
+                MATDIRECTION.ANTICLOCKWISE_DIRECTION: (100, 20, 15),
+                MATDIRECTION.CLOCKWISE_DIRECTION: (100, 15, 20),
+            },
+            MATLOCATION.CORNER_2: {
+                MATDIRECTION.ANTICLOCKWISE_DIRECTION:
+                                        (self.WALLFRONTDISTANCE, self.WALLSIDEDISTANCE, -1),
+                MATDIRECTION.CLOCKWISE_DIRECTION: (
+                                        self.WALLFRONTDISTANCE, -1, self.WALLSIDEDISTANCE),
+            },
+            MATLOCATION.SIDE_3: {
+                MATDIRECTION.ANTICLOCKWISE_DIRECTION: (100, 20, 15),
+                MATDIRECTION.CLOCKWISE_DIRECTION: (100, 15, 20),
+            },
+            MATLOCATION.CORNER_3: {
+                MATDIRECTION.ANTICLOCKWISE_DIRECTION:
+                                            (self.WALLFRONTDISTANCE, self.WALLSIDEDISTANCE, -1),
+                MATDIRECTION.CLOCKWISE_DIRECTION:
+                                            (self.WALLFRONTDISTANCE, -1, self.WALLSIDEDISTANCE),
+            },
+            MATLOCATION.SIDE_4: {
+                MATDIRECTION.ANTICLOCKWISE_DIRECTION: (100, 20, 15),
+                MATDIRECTION.CLOCKWISE_DIRECTION: (100, 15, 20),
+            },
+            MATLOCATION.CORNER_4: {
+                MATDIRECTION.ANTICLOCKWISE_DIRECTION:
+                                                (self.WALLFRONTDISTANCE, self.WALLSIDEDISTANCE, -1),
+                MATDIRECTION.CLOCKWISE_DIRECTION:
+                                                (self.WALLFRONTDISTANCE, -1, self.WALLSIDEDISTANCE),
+            },
         }
 
-        self._default_distances_unknown = {
-            MATLOCATION.SIDE_1: (self.FRONTDISTANCE_FOR_COLOR_CHECK,-1,-1),
-        }
-
-        # Default distances for clockwise equidistance walking
-        # No values for corners.
-        self._default_distances_clockwise = {
-            # left, right are not known at this point.
-            MATLOCATION.SIDE_1: (self.FRONTDISTANCE_FOR_COLOR_CHECK,-1,-1),
-            MATLOCATION.CORNER_1: (self.WALLFRONTDISTANCE,-1,self.WALLSIDEDISTANCE),
-            MATLOCATION.SIDE_2: (100,15,20),
-            MATLOCATION.CORNER_2: (self.WALLFRONTDISTANCE,-1,self.WALLSIDEDISTANCE),
-            MATLOCATION.SIDE_3: (100,15,20),
-            MATLOCATION.CORNER_3: (self.WALLFRONTDISTANCE,-1,self.WALLSIDEDISTANCE),
-            MATLOCATION.SIDE_4: (100,15,20),
-            MATLOCATION.CORNER_4: (self.WALLFRONTDISTANCE,-1,self.WALLSIDEDISTANCE),
-        }
-
-        self._learned_distances = {}
+        self._learned_distances:dict[MATLOCATION,Tuple[float,float,float]] = {}
         self._current_min_distances = self.DEFAULT_DISTANCE  # (left, right)
 
         self._callback: Callable[[float,float],None] | None = None
 
         self._reading_thread: threading.Thread | None = None
-        self._stop_event = threading.Event()
+        # optional: bound queue to apply backpressure (tune maxsize if desired)
+        # self._queue = queue.Queue(maxsize=500)
         self._start_reading_thread()
         logger.info("MatIntelligence initialized")
 
@@ -97,31 +110,51 @@ class MatIntelligence(ShutdownInterface):
                             right_distance: float) -> None:
         """Add readings to the deque."""
         if self._roundno == 1:
-            self._deque.append((front_distance, left_distance, right_distance))
+            # Put the reading into the queue for the background thread to process
+            # Use put() which is thread-safe and may block if a maxsize is set later
+            self._queue.put((front_distance, left_distance, right_distance))
 
     def _start_reading_thread(self):
         """Start the background thread to process readings from the deque."""
         if self._reading_thread is None or not self._reading_thread.is_alive():
-            self._stop_event.clear()
             self._reading_thread = threading.Thread(target=self._process_readings, daemon=True)
             self._reading_thread.start()
             logger.info("Started reading thread.")
 
     def _stop_reading_thread(self):
         """Stop the background reading thread."""
-        self._stop_event.set()
+        # Signal worker to exit by enqueuing sentinel. Worker always calls task_done().
+        try:
+            self._queue.put_nowait(None)
+        except Exception:
+            try:
+                self._queue.put(None, timeout=0.1)
+            except Exception:
+                pass
         if self._reading_thread is not None:
             self._reading_thread.join()
             logger.info("Stopped reading thread.")
 
     def _process_readings(self):
         """Thread target: process readings from the deque."""
-        while not self._stop_event.is_set():
-            if len(self._deque) > 0:
-                front_distance, left_distance, right_distance = self._deque.popleft()
-                self._process_each_readings(front_distance, left_distance, right_distance)
-            else:
-                time.sleep(0.01)  # Avoid busy waiting
+        # Block on get(); sentinel (None) stops the worker.
+        while True:
+            item = self._queue.get()  # blocks until an item available
+            try:
+                if item is None:
+                    # sentinel: request shutdown
+                    return
+                front_distance, left_distance, right_distance = item
+                try:
+                    self._process_each_readings(front_distance, left_distance, right_distance)
+                except Exception:
+                    logger.exception("Error processing reading")
+            finally:
+                # ensure join() can complete
+                try:
+                    self._queue.task_done()
+                except Exception:
+                    pass
 
     def print_mat_intelligence(self):
         """Print the current state of MatIntelligence."""
@@ -169,9 +202,20 @@ class MatIntelligence(ShutdownInterface):
 
     def _wait_for_readings(self, timeout: float = 2.0) -> None:
         """Wait for readings to be processed."""
-        start_time = time.time()
-        while len(self._deque) > 0 and (time.time() - start_time) < timeout:
-            time.sleep(0.01)
+        # Block up to `timeout` seconds until all queued items (at call time) are processed.
+        if self._queue.empty():
+            return
+        finished = threading.Event()
+
+        def _joiner():
+            try:
+                self._queue.join()
+            finally:
+                finished.set()
+
+        t = threading.Thread(target=_joiner, daemon=True)
+        t.start()
+        finished.wait(timeout=timeout)
 
     def reset_current_distance(self,left:float = 0, right:float = 0):
         """Reset the current distance readings."""
@@ -195,13 +239,12 @@ class MatIntelligence(ShutdownInterface):
                 logger.info("Reached the last round, returning to initial position.")
                 learned_distance = self._mem_initial_start
             else:
-
-                if self._direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
-                    learned_distance = self._default_distances_anticlockwise[location]
-                elif self._direction == MATDIRECTION.CLOCKWISE_DIRECTION:
-                    learned_distance = self._default_distances_clockwise[location]
-                else:
-                    learned_distance = self._default_distances_unknown[location]
+                # Simplified lookup using the consolidated dictionary
+                location_defaults = self._default_distances.get(location, {})
+                learned_distance = location_defaults.get(self._direction)
+                # Fallback to UNKNOWN if the specific direction isn't defined
+                if learned_distance is None:
+                    learned_distance = location_defaults.get(MATDIRECTION.UNKNOWN_DIRECTION)
 
         logger.info("Learned distances for location %s: %s", location, learned_distance)
         if learned_distance is not None:
@@ -209,7 +252,7 @@ class MatIntelligence(ShutdownInterface):
         else:
             return (-1,-1,-1)
 
-    def _mid_distance(self,state:RobotState=None) -> float|None:
+    def _mid_distance(self,state:Optional[RobotState]=None) -> float|None:
         """Get the mid distance for the current location."""
         if self._current_min_distances is not None:
             mid= (self._current_min_distances[0] + self._current_min_distances[1]) / 2
@@ -237,7 +280,7 @@ class MatIntelligence(ShutdownInterface):
                 logger.info("Not learning distances for location: %s", location)
 
 
-    def location_complete(self,state:RobotState = None) -> MATLOCATION:
+    def location_complete(self,state:Optional[RobotState] = None) -> MATLOCATION:
         """Change the current location of the Mat Walker."""
         logger.info("Location complete: %s, current dis:%s",self._location,
                             self._current_min_distances)
@@ -296,71 +339,75 @@ class MatIntelligence(ShutdownInterface):
         logger.info("Round number set to: %d", self._roundno)
 
     def reprocess_map(self):
-        """Reprocess the map based on the current readings."""
+        """Reprocess the map based on the current readings by adjusting distances."""
         logger.info("Reprocessing map...")
-        ### This method can be used to reprocess the map based on the current readings.
         for location in self._locationssequence:
             generic_loc = location_to_genericlocation(location)
-            learned_distance = self.get_learned_distances(location)
             if generic_loc == MATGENERICLOCATION.SIDE:
-
-                # If the location is a side, we can learn the distances.
-                if learned_distance is not None:
-                    logger.info("Learned distances for location %s: %s", location,
-                                learned_distance)
-                    #next corner
-                    next_corner = self.next_location(location)
-                    #next side
-                    next_side = self.next_location(next_corner)
-
-                    next_distance = self.get_learned_distances(next_side)
-                    if next_distance is not None:
-                        logger.info("Learned distances for next side %s: %s", next_side,
-                                    next_distance)
-                        #lets find the size of next size.
-                        total = next_distance[1] + next_distance[2]
-                        if total > 50 and total < 130:
-                            # we have a longer side, lets walk less
-                            learned_distance = (110,next_distance[1],next_distance[2])
-                        elif total < 65 and total > 35:
-                            #we have a shorter side , lets walk more
-                            learned_distance = (80,next_distance[1],next_distance[2])
-
-                        self._learned_distances[location] = learned_distance
-                        logger.info("Changed Learned distances for size %s: %s", location,
-                                learned_distance)
+                self._reprocess_side_distance(location)
             elif generic_loc == MATGENERICLOCATION.CORNER:
-                # If the location is a corner, we can learn the distances.
-                if learned_distance is not None:
-                    logger.info("Learned distances for location %s: %s", location,
-                                learned_distance)
-                    #next side
-                    next_side = self.next_location(location)
+                self._reprocess_corner_distance(location)
 
-                    next_distance = self.get_learned_distances(next_side)
-                    if next_distance is not None:
-                        logger.info("Learned distances for next corner %s: %s", next_side,
-                                    next_distance)
-                        #lets find the size of next size,
-                        total = next_distance[1] + next_distance[2]
-                        if total > 50 and total < 130:
-                            # we have a longer side.
-                            if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION:
+    def _reprocess_side_distance(self, location: MATLOCATION):
+        """Reprocess the learned distance for a single side location."""
+        learned_distance = self.get_learned_distances(location)
+        if learned_distance is None:
+            return
 
-                                learned_distance = (self.WALLFRONTDISTANCE, 35, 30)
-                            else:
-                                learned_distance = (self.WALLFRONTDISTANCE, 30, 35)
-                        elif total < 65 and total > 35:
-                            #we are on the shorter side
-                            if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION:
+        logger.info("Reprocessing SIDE %s with distance %s", location, learned_distance)
+        next_corner = self.next_location(location)
+        next_side = self.next_location(next_corner)
+        next_side_distance = self.get_learned_distances(next_side)
 
-                                learned_distance = (self.WALLFRONTDISTANCE, 25, 20)
-                            else:
-                                learned_distance = (self.WALLFRONTDISTANCE, 20, 25)
+        if next_side_distance is None:
+            return
 
-                        self._learned_distances[location] = learned_distance
-                        logger.info("Changed Learned distances for size %s: %s", location,
-                                    learned_distance)
+        logger.info("Next side %s has distance %s", next_side, next_side_distance)
+        total_width = next_side_distance[1] + next_side_distance[2]
+
+        new_learned_distance = learned_distance
+        if 50 < total_width < 130:  # Long side ahead
+            new_learned_distance = (110, next_side_distance[1], next_side_distance[2])
+        elif 35 < total_width < 65:  # Short side ahead
+            new_learned_distance = (80, next_side_distance[1], next_side_distance[2])
+
+        if new_learned_distance != learned_distance:
+            self._learned_distances[location] = new_learned_distance
+            logger.info("Changed learned distance for side %s to %s", location,\
+                                                         new_learned_distance)
+
+    def _reprocess_corner_distance(self, location: MATLOCATION):
+        """Reprocess the learned distance for a single corner location."""
+        learned_distance = self.get_learned_distances(location)
+        if learned_distance is None:
+            return
+
+        logger.info("Reprocessing CORNER %s with distance %s", location, learned_distance)
+        next_side = self.next_location(location)
+        next_side_distance = self.get_learned_distances(next_side)
+
+        if next_side_distance is None:
+            return
+
+        logger.info("Next side %s has distance %s", next_side, next_side_distance)
+        total_width = next_side_distance[1] + next_side_distance[2]
+
+        new_learned_distance = learned_distance
+        if 50 < total_width < 130:  # Approaching a long side
+            if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION:
+                new_learned_distance = (self.WALLFRONTDISTANCE, 35, 30)
+            else:
+                new_learned_distance = (self.WALLFRONTDISTANCE, 30, 35)
+        elif 35 < total_width < 65:  # Approaching a short side
+            if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION:
+                new_learned_distance = (self.WALLFRONTDISTANCE, 25, 20)
+            else:
+                new_learned_distance = (self.WALLFRONTDISTANCE, 20, 25)
+
+        if new_learned_distance != learned_distance:
+            self._learned_distances[location] = new_learned_distance
+            logger.info("Changed learned distance for corner %s to %s", location,\
+                                                         new_learned_distance)
 
     def set_default_distances(self, default_distances: dict[MATLOCATION,
                                                              tuple[float, float, float]]) -> None:
@@ -376,31 +423,20 @@ class MatIntelligence(ShutdownInterface):
 
     def next_location(self,location:MATLOCATION) -> MATLOCATION:
         """Get the next location in the sequence."""
-
-        if location == MATLOCATION.SIDE_1:
-            return MATLOCATION.CORNER_1
-        elif location == MATLOCATION.CORNER_1:
-            return MATLOCATION.SIDE_2
-        elif location == MATLOCATION.SIDE_2:
-            return MATLOCATION.CORNER_2
-        elif location == MATLOCATION.CORNER_2:
-            return MATLOCATION.SIDE_3
-        elif location == MATLOCATION.SIDE_3:
-            return MATLOCATION.CORNER_3
-        elif location == MATLOCATION.CORNER_3:
-            return MATLOCATION.SIDE_4
-        elif location == MATLOCATION.SIDE_4:
-            return MATLOCATION.CORNER_4
-        elif location == MATLOCATION.CORNER_4:
-            return MATLOCATION.SIDE_1
-        else:
+        try:
+            idx = self._locationssequence.index(location)
+        except ValueError:
             raise ValueError(f"Unknown current location: {location}")
+        return self._locationssequence[(idx + 1) % len(self._locationssequence)]
 
     def shutdown(self) -> None:
         """Shutdown the MatIntelligence."""
         logger.info("Shutting down MatIntelligence.")
-        self._deque.clear()
+        # Stop the reading thread gracefully.
+        # The sentinel 'None' will be enqueued, and the thread will process
+        # any remaining items before exiting.
         self._stop_reading_thread()
+
         self._direction = MATDIRECTION.UNKNOWN_DIRECTION
         self._location = MATLOCATION.SIDE_1
         logger.info("MatIntelligence shutdown complete.")
@@ -448,7 +484,8 @@ class MatIntelligence(ShutdownInterface):
                 if self._callback is not None:
                     logger.warning("reset distance left: %.2f, right: %.2f",
                                    left_distance, right_distance)
-                    self._callback(left_distance,right_distance)
+                    if self._callback is not None:
+                        self._callback(left_distance,right_distance)
 
 
     def register_callback(self, callback: Callable[[float,float],None]) -> None:

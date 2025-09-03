@@ -82,7 +82,7 @@ class BuildHatDriveBase(ShutdownInterface):
             logger.info("BuildHat Front Motor is not at zero position, resetting it.")
             self.check_set_steering(0)
 
-        logger.warning("After TurnPosition front wheel:%s", self.front_motor.get_position())
+        logger.info("After TurnPosition front wheel:%s", self.front_motor.get_position())
 
     def camera_on(self) -> None:
         """Turn on the camera."""
@@ -101,6 +101,9 @@ class BuildHatDriveBase(ShutdownInterface):
         Turn the steering by the specified degrees.
         Handles outlier motor position readings.
         """
+        if steering_speed > 100:
+            steering_speed = 100
+
         # Helper to wrap angle to [-180, 180]
         def wrap_angle(angle):
             return ((angle + 180) % 360) - 180
@@ -108,12 +111,12 @@ class BuildHatDriveBase(ShutdownInterface):
         # Get current position and sanitize
         current_position = self.front_motor.get_position()
         logger.info("Turning steering by %s degrees at speed %s, retry %s," \
-                                        " current position: %s", degrees,
-                                        steering_speed, retry, current_position)
+                                         " current position: %s", degrees,
+                                         steering_speed, retry, current_position)
         # If the position is out of expected bounds, reset to zero
         if abs(current_position) > 180:
-            logger.warning("Front motor position out of bounds: %s. Resetting to 0.",
-                           current_position)
+            # logger.warning("Front motor position out of bounds: %s. Resetting to 0.",
+            #                current_position)
             if current_position > 0:
                 self.front_motor.run_to_position(0, speed=steering_speed, blocking=True,
                                                  direction="anticlockwise")
@@ -133,21 +136,21 @@ class BuildHatDriveBase(ShutdownInterface):
         # Calculate how much to move from current position
         move_degrees = target_position - current_position
 
-        if abs(move_degrees) < 1:
-            logger.info("Front motor is already at target position, ignoring small delta.")
+        if abs(move_degrees) < 2:
+            # logger.info("Front motor is already at target position, ignoring small delta.")
             return
-        logger.info("Turning front motor to %s (move %s degrees)", target_position, move_degrees)
+        # logger.info("Turning front motor to %s (move %s degrees)", target_position, move_degrees)
         self.front_motor.run_for_degrees(move_degrees, speed=steering_speed, blocking=True)
 
         final_position = self.front_motor.get_position()
         if abs(final_position - target_position) >= self.DELTA_ANGLE:
-            logger.warning("Front not correct after turn: %s, expected: %s",
-                           final_position, target_position)
+            # logger.warning("Front not correct after turn: %s, expected: %s",
+            #                final_position, target_position)
             if retry > 0:
                 self.turn_steering(degrees, steering_speed=steering_speed+15, retry=retry - 1)
 
     def check_set_steering(self, expected_position: float = 0,min_error:float = 2,
-                           retrycount:int = 3,steering_speed:float=10) -> None:
+                           retrycount:int = 3,steering_speed:float=50) -> None:
         """
         Check if the steering is at the specified degrees.
         If not, set it to the specified degrees.
@@ -158,15 +161,15 @@ class BuildHatDriveBase(ShutdownInterface):
         counter = 0
         while abs(current_position - expected_position) > min_error and counter < retrycount:
             # If the front motor is not at the expected position, reset it.
-            logger.warning("Front Motor is not at expected position, resetting it. %s",
-                                current_position)
+            # logger.info("Front Motor is not at expected position, resetting it. %s",
+            #                     current_position)
             difference =  expected_position - current_position
             self.front_motor.run_for_degrees(difference, speed=steering_speed,
                                                       blocking=True)
             counter += 1
             current_position = self.front_motor.get_position()
         if abs(current_position - expected_position) > min_error:
-            logger.warning("Front Motor is still not at expected position," \
+            logger.info("Front Motor is still not at expected position," \
             " current position: %s, expected: %s",
                                 current_position, expected_position )
         else:

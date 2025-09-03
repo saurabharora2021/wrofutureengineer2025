@@ -7,6 +7,8 @@ all hardware access (LEGO + Raspberry Pi peripherals) is exposed here.
 import logging
 import time
 import math
+import threading
+from typing import Callable
 from typing import List, Optional
 from board import SCL, SDA
 import busio
@@ -83,11 +85,11 @@ class HardwareInterface(ShutdownInterface):
         tca = adafruit_tca9548a.TCA9548A(i2c)
 
         for channel in range(8):
-            if tca[channel].try_lock():
+            if tca[channel].try_lock(): # pyright: ignore[reportArgumentType]
                 logger.info("Channel %s:", channel)
-                addresses = tca[channel].scan()
+                addresses = tca[channel].scan() # pyright: ignore[reportArgumentType]
                 logger.info([hex(address) for address in addresses if address != 0x70])
-                tca[channel].unlock()
+                tca[channel].unlock() # pyright: ignore[reportArgumentType]
 
         device_channel = tca[self.DEVICE_I2C_CHANNEL]
 
@@ -97,8 +99,8 @@ class HardwareInterface(ShutdownInterface):
         self._orientation_estimator = OrientationEstimator(device_channel)
 
         # OLED display
-        self.oled = adafruit_ssd1306.SSD1306_I2C(self.SCREEN_WIDTH, self.SCREEN_HEIGHT,\
-                                                         device_channel)
+        self.oled = adafruit_ssd1306.SSD1306_I2C(self.SCREEN_WIDTH,self.SCREEN_HEIGHT,\
+                                device_channel) # pyright: ignore[reportArgumentType]
         self.oled.fill(0)
         self.oled.show()
 
@@ -134,6 +136,10 @@ class HardwareInterface(ShutdownInterface):
 
         # Actuators and buttons
         self.buzzer = Buzzer(self.BUZZER_PIN)
+
+        # Async buzzer support
+        self._buzzer_timer: Optional[threading.Timer] = None
+        self._buzzer_lock = threading.Lock()
         self.led1 = RGBLED(
             red=self.LED1_RED_PIN,
             green=self.LED1_GREEN_PIN,
@@ -179,7 +185,6 @@ class HardwareInterface(ShutdownInterface):
 
         if stabilize:
             logger.warning("Stabilize Distance Sensors...")
-            time.sleep(0.5)
             counter = 0
             valid_distance = False
             while counter < self.MAX_STABILIZATION_CHECKS and not valid_distance:
@@ -199,7 +204,8 @@ class HardwareInterface(ShutdownInterface):
                         laser_right >= constants.RIGHT_DISTANCE_MAX):
                     logger.info("Right Laser distance sensor is not stable, %.2f cm", \
                                                         laser_right)
-                    valid_distance = False
+                    #laser is usually not stable
+                    #valid_distance = False
                 if (ultrasonic_left < 0.1 or
                         ultrasonic_left >= constants.LEFT_DISTANCE_MAX):
                     logger.info("Left Ultrasonic distance sensor is not stable, %.2f cm", \
@@ -209,16 +215,25 @@ class HardwareInterface(ShutdownInterface):
                         laser_left >= constants.LEFT_DISTANCE_MAX):
                     logger.info("Left Laser distance sensor is not stable, %.2f cm", \
                                                         laser_left)
-                    valid_distance = False
+                    # laser is usually not stable
+                    #valid_distance = False
                 if not valid_distance:
                     logger.warning("Waiting for distance sensors to stabilize...")
-                    time.sleep(1)
+                    time.sleep(0.25)
                 counter += 1
 
         # Measurements
-        self._measurements_manager: Optional[MeasurementFileLog] = MeasurementFileLog(self)
+        self._measurements_manager: MeasurementFileLog = MeasurementFileLog(self)
 
         self.camera_measurements = CameraDistanceMeasurements(self.camera)
+
+    def camera_pause(self):
+        """Camera Pause"""
+        self.camera_measurements.pause_readings()
+
+    def camera_restart(self):
+        "Camera Restart readings"
+        self.camera_measurements.resume_readings()
 
     def _full_initialization(self) -> None:
         """Initialize all hardware components."""
@@ -249,15 +264,16 @@ class HardwareInterface(ShutdownInterface):
         return self.left_laser.range / 10.0
 
     # --- Measurements and orientation management ---
-    def start_measurement_recording(self) -> None:
+    def start_measurement(self) -> None:
         """Start the measurements manager thread."""
         if self._measurements_manager is None:
             raise RuntimeError("Measurements manager not initialized. Call" \
                                                             " full_initialization() first.")
-
         self._orientation_estimator.start_readings()
-        self._measurements_manager.start_reading()
+
         self.camera_measurements.start()
+
+        self._measurements_manager.start_reading()
 
     def add_comment(self, comment: str) -> None:
         """Add a comment to the measurements log."""
@@ -277,11 +293,45 @@ class HardwareInterface(ShutdownInterface):
         """Get the current yaw in degrees."""
         return self._orientation_estimator.get_yaw()
 
-    def buzzer_beep(self, timer: float = 0.5) -> None:
-        """Turn on the buzzer."""
+    def _buzzer_off_cb(self) -> None:
+        with self._buzzer_lock:
+            try:
+                self.buzzer.off()
+                self.led1_off()
+            finally:
+                self._buzzer_timer = None
+
+    def buzzer_beep_async(self, timer: float = 0.5) -> None:
+        """Beep without blocking the caller using a background timer."""
+        with self._buzzer_lock:
+            # Cancel any pending off so we can extend the beep
+            if self._buzzer_timer is not None:
+                try:
+                    self._buzzer_timer.cancel()
+                except Exception:
+                    pass
+                self._buzzer_timer = None
+            # Turn on immediately, schedule off
+            self.led1_blue()
+            self.buzzer.on()
+            t = max(0.0, float(timer))
+            self._buzzer_timer = threading.Timer(t, self._buzzer_off_cb)
+            self._buzzer_timer.daemon = True
+            self._buzzer_timer.start()
+
+    def buzzer_beep(self, timer: float = 0.5, non_blocking: bool = True) -> None:
+        """Beep the buzzer. By default, blocks for 'timer' seconds.
+        Set non_blocking=True to return immediately.
+        """
+        if non_blocking:
+            self.buzzer_beep_async(timer)
+            return
+        self.led1_blue()
         self.buzzer.on()
         time.sleep(timer)
         self.buzzer.off()
+        self.led1_off()
+
 
     def led1_green(self) -> None:
         """Turn on the LED1 green."""
@@ -308,6 +358,10 @@ class HardwareInterface(ShutdownInterface):
         logger.warning("Waiting for action button press...")
         self.action_button.wait_for_active()
         logger.info("Action button pressed!")
+
+    def register_button_press(self, callfunc: Callable[[], None]) -> None:
+        """Register a callback for the action button press."""
+        self.action_button.when_pressed = callfunc
 
     # --- Distance helpers ---
     def _get_right_distance(self) -> float:
@@ -357,7 +411,8 @@ class HardwareInterface(ShutdownInterface):
     def shutdown(self) -> None:
         """Shutdown the hardware interface."""
 
-        self._lego_drive_base.shutdown()
+        if self._lego_drive_base is not None:
+            self._lego_drive_base.shutdown()
         self.camera_measurements.shutdown()
 
         # Shutdown Raspberry Pi peripherals
@@ -369,6 +424,14 @@ class HardwareInterface(ShutdownInterface):
         self.camera.close()
 
         try:
+            # Ensure any async buzzer timers are cancelled and buzzer is off
+            with self._buzzer_lock:
+                if self._buzzer_timer is not None:
+                    try:
+                        self._buzzer_timer.cancel()
+                    except Exception:
+                        pass
+                    self._buzzer_timer = None
             self.buzzer.off()
         except Exception as e:  # pylint: disable=broad-except
             logger.error("Error turning off buzzer during shutdown: %s", e)
@@ -447,7 +510,7 @@ class HardwareInterface(ShutdownInterface):
             raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
         self._lego_drive_base.run_front(-speed)
 
-    def turn_steering(self, degrees: float, steering_speed: float = 40) -> None:
+    def turn_steering(self, degrees: float, steering_speed: float = 100) -> None:
         """
         Turn the steering by the specified degrees.
         Positive degrees turn right, negative turn left.
@@ -528,7 +591,7 @@ class HardwareInterface(ShutdownInterface):
         ultrasonic_weight: float = 0.5,
         max_diff: float = 10,
     ) -> float:
-        
+
         if lidar_val > 0 and ultrasonic_val > 0:
             if abs(lidar_val - ultrasonic_val) > max_diff:
                 # we trust in order of value, if any this is more that 15

@@ -6,8 +6,12 @@ from base.shutdown_handling import ShutdownInterface
 class LoggerSetup(ShutdownInterface):
     """Class defines the logger and Handlers"""
 
-    def setup(self, log_file: str, log_level: int = logging.INFO,
-              max_bytes: int = 1048576, backup_count: int = 3) -> None:
+    MAX_BYTES = 1048576
+    BACKUP_COUNT = 3
+    LOG_LEVEL = logging.INFO
+    LOG_FILE = "application.log"
+
+    def setup(self) -> None:
         """ Intializes the log interfaces """
         # Remove all handlers associated with the root logger object (to avoid duplicate logs)
         for handler in logging.root.handlers[:]:
@@ -18,8 +22,8 @@ class LoggerSetup(ShutdownInterface):
 
         # Rotating file handler for log_level and above
 
-        file_handler = RotatingFileHandler(log_file, mode="a", maxBytes=max_bytes,
-                           backupCount=backup_count)
+        file_handler = RotatingFileHandler(self.LOG_FILE, mode="a", maxBytes=self.MAX_BYTES,
+                           backupCount=self.BACKUP_COUNT)
         # Force rollover if previous log exists and is not empty
         try:
             if file_handler.stream and file_handler.stream.tell() > 0:
@@ -39,7 +43,8 @@ class LoggerSetup(ShutdownInterface):
         logger.addHandler(console_handler)
 
 
-        logger.info("Logger setup complete with file: %s, level: %s", log_file, log_level)
+        logger.info("Logger setup complete with file: %s, level: %s", self.LOG_FILE, \
+                                                            self.LOG_LEVEL)
 
     def shutdown(self) -> None:
         # Flush and close all handlers

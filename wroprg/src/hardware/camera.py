@@ -3,6 +3,8 @@ import logging
 
 from picamera2 import Picamera2  # type: ignore
 from libcamera import controls
+import numpy as np
+from numpy.typing import NDArray
 
 logger: logging.Logger = logging.getLogger(__name__)
 class MyCamera:
@@ -47,9 +49,9 @@ class MyCamera:
         except Exception as e:
             logger.warning("Warning: could not enforce 30 FPS after start: %s", e)
 
-    def capture(self):
+    def capture(self) -> NDArray[np.uint8]:
         """capture frame"""
-        frame_bgr = self._pi_capture.capture_array("main")
+        frame_bgr:NDArray[np.uint8] = self._pi_capture.capture_array("main")
         return frame_bgr
 
     def close(self):

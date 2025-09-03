@@ -15,7 +15,7 @@ class ScreenLogger:
     START_X = 11
 
     def __init__(self,width:int,height:int) -> None:
-        
+
         self.width = width
         self.height = height
         self.image: Image.Image = Image.new("1", (self.width, self.height))
@@ -73,7 +73,7 @@ class ScreenLogger:
 
     def add_message(self, messages: List[str]) -> None:
         """Add messages to the screen logger."""
-        # logger.info("Screen logger messages: %s", messages)
+        logger.info("Screen logger messages: %s", messages)
         self.messages.extend(messages)
         if len(self.messages) > self.MAX_MESSAGES:
             self.messages = self.messages[-self.MAX_MESSAGES:]  # Keep only the last MAX_MESSAGES

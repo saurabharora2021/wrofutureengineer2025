@@ -10,6 +10,7 @@ adafruit-circuitpython-mpu6050
 circuitpython-qmc5883l
 adafruit-circuitpython-tca9548a
 adafruit-circuitpython-vl53l0x
+adafruit-circuitpython-bno055
 pytest
 # On Raspberry Pi, install these via apt:
 # sudo apt install python3-picamera2 libcap-dev python3-libcamera python3-opencv

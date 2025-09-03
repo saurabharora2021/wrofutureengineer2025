@@ -4,8 +4,10 @@ from hardware.hardware_interface import HardwareInterface
 from hardware.robotstate import RobotState
 from round1.walker_helpers import FixedTurnWalker
 from round1.logicround1 import Walker
+from round1.walker_helpers import WalkParameters
+from round1.movement_controller import MAX_STEERING_ANGLE
 from utils import constants
-from utils.mat import MATDIRECTION, MATGENERICLOCATION
+from utils.mat import MATDIRECTION, MATGENERICLOCATION ,MATLOCATION
 
 logger = logging.getLogger(__name__)
 class WalkerN(Walker):
@@ -29,9 +31,7 @@ class WalkerN(Walker):
 
         self._walking:bool = False
 
-    def start_walk(self):
-        """Start the walk based on the current direction which is unknown and number of laps."""
-        logger.info("Starting to walk...")
+    def _full_round1_walk(self):
 
         #this should set the direction
         self.handle_unknowndirection_walk()
@@ -39,30 +39,55 @@ class WalkerN(Walker):
         self.output_inf.camera_off()
 
         #we cannot determine direction, beep and stop.
-        if self.intelligence.get_direction() == MATDIRECTION.UNKNOWN_DIRECTION:
+        if self._direction == MATDIRECTION.UNKNOWN_DIRECTION:
             logger.error("Direction is unknown, stopping the walk.")
             self.output_inf.buzzer_beep()
             self.output_inf.led1_red()
             self.output_inf.force_flush_messages()
             return
 
-        #We have detected the directions, and now time to walk knowing the directions.
-        gyrodefault = 0
+        corner_yaw_angle = self.CORNER_YAW_ANGLE if self._direction == \
+                                                    MATDIRECTION.CLOCKWISE_DIRECTION \
+                                                        else -self.CORNER_YAW_ANGLE
+        logger.info("Corner yaw angle: %.2f", corner_yaw_angle)
+
+        current_yaw_angle = 0
+
+        #handle first corner without gyroreset.
+        try:
+            self.output_inf.camera_pause()
+            current_yaw_angle =self.handle_corner_round1(current_yaw_angle,False)   
+        finally:
+            self.output_inf.camera_restart()
+
+        while self.intelligence.get_round_number() == 1:
+
+            generic_location = self.intelligence.get_generic_location()
+
+            if generic_location == MATGENERICLOCATION.CORNER:
+                try:
+                    self.output_inf.camera_pause()
+                    current_yaw_angle =self.handle_corner_round1(current_yaw_angle)
+                finally:
+                    self.output_inf.camera_restart()
+            else:
+                current_yaw_angle = self.handle_side(gyroreset=False,def_yaw=current_yaw_angle)
+
+        self.movementcontroller.stop_walking()
+
+
+    def start_walk(self):
+        """Start the walk based on the current direction which is unknown and number of laps."""
+        logger.info("Starting to walk...")
+
+        self._full_round1_walk()
+
         while self.intelligence.get_round_number()<= self._nooflaps:
             logger.info("Starting walk for location: %s , round: %d",
                          self.intelligence.get_location(), self.intelligence.get_round_number())
-            if self.intelligence.get_round_number() == 1:
-
-                if self.intelligence.get_generic_location() == MATGENERICLOCATION.CORNER:
-                    # Handle corner.
-                    self.handle_corner(gyrodefault)
-                else:
-                    #handle SIDE
-                    gyrodefault = self.handle_side()
-            else:
-                self.full_gyro_walk()
-                self.stop_walking()
-                return
+            self.full_gyro_walk()
+            self.movementcontroller.stop_walking()
+            return
 
     def full_gyro_walk(self):
         """Walk the full path using gyro."""
@@ -77,7 +102,7 @@ class WalkerN(Walker):
                              speed=self.DEFAULT_FIRST_WALK_SPEED,
                              def_yaw=0)
 
-        corner_yaw_angle = self.CORNER_YAW_ANGLE if self.intelligence.get_direction() == \
+        corner_yaw_angle = self.CORNER_YAW_ANGLE if self._direction == \
                                                     MATDIRECTION.ANTICLOCKWISE_DIRECTION \
                                                         else -self.CORNER_YAW_ANGLE
         logger.info("Corner yaw angle: %.2f", corner_yaw_angle)
@@ -87,7 +112,7 @@ class WalkerN(Walker):
         current_yaw_angle = 0
 
 
-        for i in range(1, 3):
+        for i in range(3): # Loop 3 times for the first 3 corners and sides
             #lets walk the corner at 90 degrees corner1
             current_yaw_angle += corner_yaw_angle
             self.handle_gyro_corner(
@@ -98,8 +123,6 @@ class WalkerN(Walker):
             #go to side 2-3-4
             self.handle_side_walk_n(gyroreset=False,def_yaw=current_yaw_angle,
                                     speed=self.DEFAULT_GYRO_SPEED)
-            self.stop_walking()
-            return
 
         #go to corner 4
         current_yaw_angle += corner_yaw_angle
@@ -108,16 +131,17 @@ class WalkerN(Walker):
                 current_speed=self.CORNER_GYRO_SPEED
             )
 
+        self.movementcontroller.stop_walking()
+
     def handle_gyro_corner(self,final_yaw:float,current_speed:float):
         """Handle the gyro cornering logic."""
 
         (def_front, min_left, min_right) = self.intelligence.get_learned_distances()
 
         #lets make sure steering is within limits
-        current_direction = self.intelligence.get_direction()
         state: RobotState = self.output_inf.read_state()
 
-        if current_direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
+        if self._direction == MATDIRECTION.ANTICLOCKWISE_DIRECTION:
             recommended_angle = min(-15.5,-self.RECOMENDED_CORNER_STEERING - state.yaw)
         else:
             recommended_angle = max(15.5,self.RECOMENDED_CORNER_STEERING - state.yaw)
@@ -140,21 +164,22 @@ class WalkerN(Walker):
                 current_angle=state.yaw
             )
 
-        self.turn_steering_with_logging(turn_angle,current_speed=current_speed,delta_angle=20,
-                                        max_turn_angle=self.MAX_STEERING_ANGLE)
+        self.movementcontroller.turn_steering_with_logging(turn_angle,current_speed=current_speed,
+                                        delta_angle=20,
+                                        max_turn_angle=MAX_STEERING_ANGLE)
 
         state = self.output_inf.read_state()
-        self.distance_calculator.reset()
+        self.movementcontroller.reset_distance()
 
-        self.start_walking(current_speed)
+        self.movementcontroller.start_walking(current_speed)
 
         logger.info("Start corner with def_f %.2f, F: %.2f, final_yaw:%.2f,"+\
                     "current_yaw:%.2f,D:%.2f",
                     def_front, state.front, final_yaw, state.yaw,
-                    self.distance_calculator.get_distance())
+                    self.movementcontroller.get_distance())
 
         while state.front > def_front and abs(state.yaw) - abs(final_yaw) < 0 \
-                    and self.distance_calculator.get_distance() < 200:
+                    and self.movementcontroller.get_distance() < 200:
 
             turn_angle = fixedturnwalker.walk_func(
                 left_distance=state.left,
@@ -162,9 +187,10 @@ class WalkerN(Walker):
                 current_angle=state.yaw,
             )
 
-            self.turn_steering_with_logging(turn_angle,current_speed=current_speed,
+            self.movementcontroller.turn_steering_with_logging(turn_angle,
+                                current_speed=current_speed,
                                 delta_angle=15,
-                                max_turn_angle=self.MAX_STEERING_ANGLE,
+                                max_turn_angle=MAX_STEERING_ANGLE,
                                 )
             state = self.read_state_side()
 
@@ -181,7 +207,7 @@ class WalkerN(Walker):
         """
         if gyroreset:
             #lets start with zero heading.
-            self.stop_walking()
+            self.movementcontroller.stop_walking()
             self.output_inf.reset_gyro()
 
         # Get the steering if it more than +-5, reduce it .
@@ -193,12 +219,12 @@ class WalkerN(Walker):
 
         (min_front,left_def,right_def) = self.intelligence.get_learned_distances()
 
-        current_state = self.read_state_side(camera_read=True)
+        current_state = self.read_state_side()
 
         if gyroreset:
             def_yaw = current_state.yaw
 
-        (is_correction, yaw_delta, left_def, right_def) = self.side_bot_centering(
+        (is_correction, yaw_delta, left_def, right_def) = self._positioner.side_bot_centering(
             current_state.front,
             left_def, right_def, current_state.left, current_state.right,0)
         logger.info("handle_side_walk_n: correction: %s, Y: %.2f, L def: %.2f, R def: %.2f",
@@ -217,16 +243,19 @@ class WalkerN(Walker):
             return True
 
         logger.info("Starting round handle side...")
-        self.handle_straight_walk_to_distance(min_front=min_front,min_left=left_def,
-                                                min_right=right_def,
-                                            gyrodefault=current_yaw,
-                                            defaultspeed=speed,
-                                            weak_gyro=False,
-                                            speedcheck=True,
-                                            keep_walking=condition_met,
-                                            camera_read=True)
 
-        current_state = self.read_state_side(camera_read=True)
+        walk_params = WalkParameters(
+                    min_front=min_front,
+                    def_left=left_def,
+                    def_right=right_def,
+                    gyro_default=current_yaw,
+                    speed=speed,
+                    weak_gyro=False,
+                    speed_check=True)
+
+        self.handle_straight_walk(params=walk_params, keep_walking=condition_met)
+
+        current_state = self.read_state_side()
 
         self.intelligence.location_complete()
         return current_state.yaw

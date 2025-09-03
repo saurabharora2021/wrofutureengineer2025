@@ -5,7 +5,6 @@ import os
 import json
 from typing import Any, Dict, Optional
 import threading
-from collections import deque
 from base.shutdown_handling import ShutdownInterface
 from hardware.robotstate import RobotState
 
@@ -129,8 +128,10 @@ class MeasurementsLogger:
 class MeasurementFileLog(ShutdownInterface):
     """Class to read and store measurements from hardware sensors in a separate thread."""
 
+    ENABLE_MEASURE_LOG = False
+
     def __init__(self, hardware_interface: "HardwareInterface"):
-        self.measurements: deque[Measurement] = deque(maxlen=5)  # Store last 5 measurements
+
         self._reading_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
         self._hardware_interface = hardware_interface
@@ -138,19 +139,12 @@ class MeasurementFileLog(ShutdownInterface):
 
     def add_measurement(self, measurement: Measurement) -> None:
         """Add a new measurement to the list."""
-        self.measurements.append(measurement)
         self._mlogger.write_measurement(measurement)
         logger.debug("Added measurement: %s", measurement)
 
     def add_comment(self, comment: str) -> None:
         """Add a comment to the measurements log."""
         self._mlogger.write_comment(comment)
-
-    def get_latest_measurement(self) -> Measurement | None:
-        """Get the latest measurement."""
-        if self.measurements:
-            return self.measurements[-1]
-        return None
 
     def _read_hardware_loop(self) -> None:
         """Thread target: read hardware every 0.5 seconds."""
@@ -171,13 +165,16 @@ class MeasurementFileLog(ShutdownInterface):
                             steering_angle,
                             yaw, counter, extra_metrics=metrics)
 
-                self.add_measurement(measurement)
+
+                if  self.ENABLE_MEASURE_LOG:
+                    self.add_measurement(measurement)
+
                 self._hardware_interface.log_message(front=state.front, left=state.left,
                                                      right=state.right, current_yaw=yaw,
                                                      current_steering=steering_angle)
 
 
-            time.sleep(0.25)
+            time.sleep(1)
 
     def start_reading(self) -> None:
         """Start the background thread for reading hardware."""
@@ -198,6 +195,5 @@ class MeasurementFileLog(ShutdownInterface):
     def shutdown(self) -> None:
         """Shutdown the reader and stop the reading thread."""
         self.stop_reading()
-        self.measurements.clear()
         self._mlogger.close_file()
         logger.info("MeasurementsReader shutdown complete.")

@@ -75,12 +75,11 @@ Key features:
 | Raspberry Pi Camera Module        | Vision input, Front distance confirmation                            | Front-mounted, wide-angle lens       |
 | Raspberry Pi BUILD HAT   | Control unit for all LEGO Education Spike Prime components                 | Handles motors & colour sensor input |
 | Spike Prime Colour sensor        | Detecting direction through line colour on mat           |  Controlled via Raspberry Pi BUILD HAT|
-| MPU6050           | IMU for orientation feedback            | I2C connected to Raspberry Pi               |
+| BNO055           | Gyroscope and magnetometer for orientation feedback             | I2C connected to Raspberry Pi               |
 | Ultrasonic Sensor (×3) | Distance measurement                | Mounted front, left & right for wall following and front wall detection |
 | Li-ion Battery (x4)      |  18650 3.6V 3500mAh                            | Powers motors, electronics, BUILD HAT & Raspberry Pi|
 | OLED display          | For error and info display           | I2C connected to Raspberry Pi             |
 | Small LiDAR Sensors (x2)          | For side distance confirmation           | I2C connected to Raspberry Pi             |
-| Magnetometer          | Gyro measurements           | For  gyro confirmation             |
 | Misc.             | Smaller components for errors and info, connectors, wiring  |                                        |
 
 

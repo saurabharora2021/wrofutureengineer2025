@@ -32,7 +32,7 @@ Key features:
 - **Front-wheel steering** and **rear-wheel drive** design for realistic vehicle dynamics.  
 - **Raspberry Pi 4B** for vision-based navigation and sensor control and **Raspberry Pi BUILD HAT** for direct motor and sensor control.  
 - Three ultrasonic sensors and two LiDAR for accurate wall following.  
-- IMU-based orientation stabilization.  
+- Gyroscope, magnetometer and accelerometer-based orientation stabilization.  
 - Modular software for quick adaptation to custom strategies.  
 ---
 
@@ -76,7 +76,7 @@ Key features:
 | Raspberry Pi Camera Module        | Vision input, Front distance confirmation                            | Front-mounted, wide-angle lens       |
 | Raspberry Pi BUILD HAT   | Control unit for all LEGO Education Spike Prime components                 | Handles motors & colour sensor input |
 | Spike Prime Colour sensor        | Detecting direction through line colour on mat           |  Controlled via Raspberry Pi BUILD HAT|
-| BNO055           | Gyroscope and magnetometer for orientation feedback             | I2C connected to Raspberry Pi               |
+| BNO055           | Gyroscope, accelerometer and magnetometer module for orientation feedback             | I2C connected to Raspberry Pi               |
 | Ultrasonic Sensor (×3) | Distance measurement                | Mounted front, left & right for wall following and front wall detection |
 | Li-ion Battery (x4)      |  18650 3.6V 3500mAh                            | Powers motors, electronics, BUILD HAT & Raspberry Pi|
 | OLED display          | For error and info display           | I2C connected to Raspberry Pi             |
@@ -99,11 +99,10 @@ Key features:
   - 4x 18650 3.6V 3500mAh Li-ion Batteries connected in parallel for powering Raspberry Pi, Motors and all Sensors and Electronics through Raspberry Pi BUILD HAT. 
 - **Sensors:**  
   - **Ultrasonic (Front, Right, Left):** Wall distance, corner detection and wall following
-  - **MPU6050 IMU:** Orientation correction during navigation using Yaw. 
+  - **BNO055:** Fuses data from an accelerometer, gyroscope, and magnetometer to give accurate yaw readings. 
   - **Raspberry Pi Camera Module:** Vision-based navigation and challenge detection.  
   - **Spike Prime Colour sensor:** Direction Detection from mat line colour.
   - **Small LiDAR:** Wall distance and wall following.
-  - **Magnetometer:** Gyro confirmation.
   
 
 ---
@@ -138,16 +137,16 @@ Key features:
   - Detecting track Obstacles.
 - **Sensor Integration:**
   - Ultrasonic sensors for precise wall-following.
-  - IMU for orientation drift correction.
+  - BNO055 for orientation drift correction.
   - Colour sensor pointing towards ground to detect direction.
 
 ### Driving Strategies & Challenge Logic
 
 - **Wall Following:** PD-controlled steering using right and left ultrasonic distance and Small LiDAR sensors.
 - **Corner Detection:** Front ultrasonic + camera-based detection to initiate turns.
-- **Lap Completion:** IMU + distance tracking to ensure accurate lap counts.
+- **Lap Completion:** BNO055 + distance tracking to ensure accurate lap counts.
 - **Recovery Logic:** If bot drifts, slow down and re-center before resuming speed.
-- **Straight Walk:** Distance sensor and IMU + Magnetometer fusion for smooth path control.
+- **Straight Walk:** Distance sensor and BNO055(gyroscope, magnetometer and accelerometer module) fusion for smooth path control.
 
 ---
 

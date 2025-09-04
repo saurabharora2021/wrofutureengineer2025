@@ -65,7 +65,7 @@ Key features:
 ---
 
 ## Hardware
-s
+
 ### Components
 
 | Component         | Description                             | Notes                                 |
@@ -129,7 +129,7 @@ s
      wrofutureengineer2025/pi-install/src/install_service.sh
      ```
 ### Simplified code implementation of Mobility system.
-
+<pre markdown="1"> 
 [Initialization]
       |
       v
@@ -148,6 +148,7 @@ s
       |
       v
 [Lap Complete] --(final edge counted)--> [Stopped]
+ </pre>
 
 
 

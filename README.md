@@ -155,9 +155,9 @@ s
 ### Object Detection & Navigation
 
 - **Vision Processing (OpenCV on RPi):**
-  - Convert frames from BGR to HSV.
   - Detecting front wall.
   - Detecting track Obstacles.
+  - Approximate distance calculation(not accurate) in extreme cases to avoid running into walls.
 - **Sensor Integration:**
   - Ultrasonic sensors for precise wall-following.
   - LiDAR sensors for close range detection.
@@ -181,7 +181,8 @@ s
 2. **Steering Mechanism:**  
    - Mount LEGO Education Spike Prime Small Motor.
    - Make Gear mechanism for steering (Gear ratio is 3:5).
-3. **Electronics Install:**  
+3. **Electronics Install:**
+   - Mount the custom circuit based on the uplaoded circuit schematics.
    - Mount RPi on vibration-dampened standoffs.  
    - Mount LEGO Education Spike Prime Large Motor.
    - Mount LEGO Education Spike Prime Colour sensor.

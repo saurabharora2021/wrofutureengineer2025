@@ -474,8 +474,6 @@ class Walker:
             self.intelligence.unregister_callback()
             return def_turn_angle
         finally:
-            # logger.info("completed corner")
-            # self.output_inf.camera_restart()
             pass
 
         return

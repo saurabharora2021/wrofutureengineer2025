@@ -45,12 +45,13 @@ Key features:
 | `vehicle_photos`     | Images of the completed robot builds           |
 | `wroprg`         | Source code in Python                    |
 | `README.md`      | Project documentation (this file)        |
+| `schematic.jpg`      | Circuit schematic diagram       |
 
 ---
 
 ## Team Members
 <p align="center">
-  <img src="team_photo.png" alt="Team Photo" width="500">
+  <img src="team_photos/team_photo.png" alt="Team Photo" width="500">
 </p>
 
 - **Kanak Arora** – Lead Programming and Electronics and Basic build development – [yolabteachers2@gmail.com](mailto:yolabteachers2@gmail.com)

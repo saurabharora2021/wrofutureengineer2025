@@ -65,8 +65,8 @@ class EquiWalkerHelper(ABC):
     def __init__(self, def_distance_left: float, def_distance_right: float,
                  max_left_distance: float= constants.LEFT_DISTANCE_MAX,
                  max_right_distance: float= constants.RIGHT_DISTANCE_MAX,
-                 kp: float = -4.0, ki: float = 0.0, kd: float = -0.06,
-                 kgyro: float = 5.5, def_turn_angle: float = 0.0,
+                 kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
+                 kgyro: float = 4.0, def_turn_angle: float = 0.0,
                  fused_distance_weight: float = 0.5, fused_gyro_weight: float = 0.5,
                  min_left: float = 10.00, min_right: float = 10.00) -> None:
 # Default before tuning
@@ -191,7 +191,7 @@ class GyroWalkerwithMinDistanceHelper(EquiWalkerHelper):
                  max_left_distance: float = constants.LEFT_DISTANCE_MAX
                  , max_right_distance: float = constants.RIGHT_DISTANCE_MAX,
                  kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
-                 kgyro: float = 5.5,
+                 kgyro: float = 4.0,
                  def_turn_angle: float = 0.0, min_left: float = -1, min_right: float = -1,
                  fused_distance_weight: float = 0.6, fused_gyro_weight: float = 0.4,
                  ) -> None:
@@ -252,7 +252,7 @@ class FixedTurnWalker(GyroWalkerwithMinDistanceHelper):
                  max_left_distance: float, max_right_distance: float,
                  fixed_turn_angle: float,
                  kp: float = -4.0, ki: float = 0.0, kd: float = -0.05,
-                 kgyro: float = -6.0,
+                 kgyro: float = 4.0,
                  def_turn_angle: float = 0.0, min_left: float = -1, min_right: float = -1,
                  fused_distance_weight: float = 0.6, fused_gyro_weight: float = 0.4,
                  ) -> None:

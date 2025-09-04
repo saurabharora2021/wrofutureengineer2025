@@ -2,6 +2,8 @@
 import logging
 import time
 from typing import Optional
+import queue
+import threading
 
 from hardware.hardware_interface import HardwareInterface
 from round1.utilityfunctions import clamp_angle
@@ -41,6 +43,36 @@ class MovementController:
         self.start_time = 0.0
         self.distance = 0.0
 
+        # Thread-safe queue for turn requests with a buffer of 1
+        self._turn_queue = queue.Queue(maxsize=1)
+        # Start the worker thread to process turn commands
+        self._turn_worker_thread = threading.Thread(target=self._turn_worker, daemon=True)
+        self._turn_worker_thread.start()
+
+    def _turn_worker(self):
+        """Worker thread that processes turn commands from the queue."""
+        while True:
+            # Wait for a turn angle to be available in the queue
+            turn_angle = self._turn_queue.get()
+            # A None value is a signal to terminate the thread
+            if turn_angle is None:
+                self._turn_queue.task_done()
+                break
+
+            try:
+                # Execute the blocking turn command
+                self.output_inf.turn_steering(turn_angle)
+            finally:
+                # Signal that the task is complete
+                self._turn_queue.task_done()
+
+    def shutdown(self):
+        """Gracefully shuts down the turn worker thread."""
+        logger.info("Shutting down movement controller...")
+        self._turn_queue.put(None) # Signal the worker to exit
+        self._turn_worker_thread.join() # Wait for the thread to finish
+        logger.info("Movement controller shut down.")
+
     # Distance helpers
     def reset_distance(self) -> None:
         """
@@ -60,6 +92,9 @@ class MovementController:
     # Motion primitives
     def start_walking(self, speed: float) -> None:
         """Start driving forward at a given speed. Handles speed changes."""
+        # Block until any pending turn operation is complete
+        self._turn_queue.join()
+
         if not self._walking:
             # Transition from stopped to moving
             self._walking = True
@@ -77,6 +112,9 @@ class MovementController:
 
     def start_backward(self,speed:float)->None:
         """Start driving backward at a given speed."""
+        # Block until any pending turn operation is complete
+        self._turn_queue.join()
+
         if not self._walking:
             # Transition from stopped to moving
             self._walking = True
@@ -118,9 +156,10 @@ class MovementController:
         turn_angle: Optional[float],
         *,
         current_speed: float,
-        delta_angle: float = 0.0,
+        delta_angle: float = MAX_DELTA_ANGLE,
         speedcheck: bool = False,
         max_turn_angle: Optional[float] = None,
+        async_turn:bool = False
     ) -> None:
         """Adjust steering, clamped and rate-limited; optionally adjust speed.
 
@@ -134,7 +173,7 @@ class MovementController:
             return
 
         current_steering_angle = self.output_inf.get_steering_angle()
-        max_delta_angle = MAX_DELTA_ANGLE if delta_angle == 0 else delta_angle
+        max_delta_angle = delta_angle
 
         delta = float(turn_angle) - current_steering_angle
         if abs(delta) > max_delta_angle:
@@ -168,7 +207,17 @@ class MovementController:
             )
 
         # Slow down for large corrections if requested
-        if speedcheck and abs(delta) >= MAX_DELTA_ANGLE:
+        if speedcheck and abs(delta) >= MAX_DELTA_ANGLE and self._walking:
             self.start_walking(self.min_speed)
 
-        self.output_inf.turn_steering(turn_angle)
+        if async_turn:
+            # Put the turn command in the queue instead of calling it directly.
+            # This will block if the queue is full (i.e., another turn is in progress).
+            try:
+                self._turn_queue.put(turn_angle, block=True)
+            except Exception as e:
+                logger.error("Failed to queue turn command: %s", e)
+        else:
+            #if someone is asking for ansync turn, lets clear queue first.
+            self._turn_queue.join()
+            self.output_inf.turn_steering(turn_angle)

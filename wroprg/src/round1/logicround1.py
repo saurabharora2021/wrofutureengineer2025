@@ -36,13 +36,13 @@ class Walker:
     DISTANCE_CORRECTION = 4.0
 
     CORNER_YAW_ANGLE = 90.0
-    RECOMENDED_CORNER_STEERING = 18.0
+    RECOMMENDED_CORNER_STEERING = 18.0
 
     # New constants for corner handling
     CORNER_RIGHT_DIST_THRESHOLD = 40.0
     CORNER_LEFT_DIST_THRESHOLD = 40.0
     CORNER_FRONT_DIST_THRESHOLD = 70.0
-    CORNER_EXTRA_TURN_ANGLE = 3.0
+    CORNER_EXTRA_TURN_ANGLE = 4.0
 
     output_inf: HardwareInterface
 
@@ -65,18 +65,21 @@ class Walker:
         self.movementcontroller = MovementController(output_inf,min_speed = self.MIN_SPEED)
 
 
-    def read_state(self, location_type: MATGENERICLOCATION) -> RobotState:
+    def read_state(self, location_type: MATGENERICLOCATION,camera:bool) -> RobotState:
         """Read the current state of the robot, optionally using camera data."""
         state: RobotState = self.output_inf.read_state()
         self.intelligence.add_readings(state.front, state.left, state.right)
 
-        # if not camera_read:
-        #     logger.info("F:%.2f, L:%.2f, R:%.2f, Y:%.2f", \
-        #                                 state.front, state.left, state.right, state.yaw)
-        #     return state
+        
+        use_camera = False
+
+        if camera is False:
+            logger.info("State (Cam:%s): F:%.2f, L:%.2f, R:%.2f, Y:%.2f, CF:%.2f, CL:%.2f, CR:%.2f",
+                   use_camera,state.front, state.left, state.right, state.yaw,
+                   state.camera_front,state.camera_left,state.camera_right)
+            return state
 
         front, left, right = state.front, state.left, state.right
-        use_camera = False
 
         if location_type == MATGENERICLOCATION.SIDE:
             if state.camera_left > 0 and state.camera_left < left:
@@ -120,11 +123,14 @@ class Walker:
 
     def read_state_side(self) -> RobotState:
         """Read the current state of the robot for a side location."""
-        return self.read_state(MATGENERICLOCATION.SIDE)
+        # Interesting we would use camera if we have travelled atleast 50cm on a side
+        use_camera = True if self.movementcontroller.get_distance() > 50 else False
 
-    def read_state_corner(self) -> RobotState:
+        return self.read_state(MATGENERICLOCATION.SIDE,use_camera)
+
+    def read_state_corner(self,camera:bool=False) -> RobotState:
         """Read the current state of the robot for a corner location."""
-        return self.read_state(MATGENERICLOCATION.CORNER)
+        return self.read_state(MATGENERICLOCATION.CORNER,camera)
 
     def handle_unknowndirection_walk(self):
         """Handle walking when the direction is unknown."""
@@ -142,7 +148,7 @@ class Walker:
 
         (maxfront,_,__) = self.intelligence.get_learned_distances()
 
-        gyrodefault = start_state.yaw + yaw_delta
+        gyrodefault = yaw_delta
 
         # Create parameter object for unknown direction walk
         walk_params = WalkParameters(
@@ -184,6 +190,9 @@ class Walker:
         """
         logger.info("handle side, Gyro Reset: %s, Default Yaw: %.2f", gyroreset, def_yaw)
 
+        # see read_state_slide, it would use camera if we have travelled atleast 50 cm
+        self.movementcontroller.reset_distance()
+
         current_state = self.read_state_side()
 
         # Get the steering if it more than +-5, reduce it .
@@ -192,7 +201,7 @@ class Walker:
             steering = 5 if steering > 0 else -5
             if current_state.yaw > 85 and current_state.yaw < 95:
                 steering = 0
-            self.output_inf.turn_steering(steering)
+            self.movementcontroller.turn_steering_with_logging(steering,async_turn=True,current_speed=0)
 
         # we are planning to straight the robot and then do a gyro walk.
         if gyroreset:
@@ -232,8 +241,11 @@ class Walker:
         prev_distance = current_state.left + current_state.right
         last_stop: float = 0.0
 
+        prev_measure_distance = self.movementcontroller.get_distance()
+
         def condition_met(state:RobotState) -> bool:
             nonlocal last_stop
+            nonlocal prev_measure_distance
             if state.left <= 15 or state.right <= 15:
                 if (time.time() - last_stop) > 0.5:
                     self.movementcontroller.stop_walking()
@@ -243,6 +255,14 @@ class Walker:
                     return False
                 else:
                     logger.info("Close to wall but wait for 500ms")
+
+            if abs(state.yaw - def_yaw) > 10 and self.movementcontroller.get_distance() - prev_measure_distance > 20:
+                #we have a 10 degree error, lets stop and correct.
+                prev_measure_distance = self.movementcontroller.get_distance()
+                logger.info("Condition met: very high yaw close to wall stopping Y: %.2f, Def Y: %.2f",\
+                             state.yaw, def_yaw)
+                return False
+
 
             # Define the condition for stopping the walk
             # Either you have found the new minimum point or
@@ -264,47 +284,55 @@ class Walker:
 
         self.intelligence.register_callback(report_distances_side)
 
-        current_state = self.read_state_side()
-        while current_state.front > min_front:
-            logger.info("Starting side walk iteration...")
+        counter = 1
+
+        # this outer loop is to ensuer that we walkback and retry till we have 
+        # travelled some distance.
+        while self.movementcontroller.get_distance() < 100 and counter <= 3:
+
+            counter+=1
+
+            current_state = self.read_state_side()
+            while current_state.front > min_front:
+                logger.info("Starting side walk iteration...")
 
 
-            # Create a walk parameters object
-            walk_params = WalkParameters(
-                min_front=min_front,
-                def_left=left_def,
-                def_right=right_def,
-                gyro_default=current_yaw,
-                speed=self.DEFAULT_SPEED,
-                weak_gyro=False,
-                min_left=20,
-                min_right=20,
-            )
+                # Create a walk parameters object
+                walk_params = WalkParameters(
+                    min_front=min_front,
+                    def_left=left_def,
+                    def_right=right_def,
+                    gyro_default=current_yaw,
+                    speed=self.DEFAULT_SPEED,
+                    weak_gyro=False,
+                    min_left=20,
+                    min_right=20,
+                )
 
-            # Use the new method with parameter object
-            current_state = self.handle_straight_walk(
-                params=walk_params,
-                keep_walking=condition_met
-            )
+                # Use the new method with parameter object
+                current_state = self.handle_straight_walk(
+                    params=walk_params,
+                    keep_walking=condition_met
+                )
 
-            if current_state.front > min_front:
-                is_path_updated, current_yaw, left_def, right_def, prev_distance = \
-                    self.update_side_path(current_state, left_def, right_def, yaw_delta,
-                                           def_yaw, prev_distance)
-                if is_path_updated:
-                    logger.info("Path updated - L: %.2f, R: %.2f, Yaw: %.2f", left_def,
-                                right_def, current_yaw)
+                if current_state.front > min_front:
+                    is_path_updated, current_yaw, left_def, right_def, prev_distance = \
+                        self.update_side_path(current_state, left_def, right_def, yaw_delta,
+                                            def_yaw, prev_distance)
+                    if is_path_updated:
+                        logger.info("Path updated - L: %.2f, R: %.2f, Yaw: %.2f", left_def,
+                                    right_def, current_yaw)
+                else:
+                    logger.info("Completed round handle side...")
+
+            self.movementcontroller.stop_walking()
+            self.intelligence.unregister_callback()
+
+            if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION:
+                #end more distance on right , since right turn
+                self.walk_back(state=current_state,minfront=20,minleft=10,minright=30)
             else:
-                logger.info("Completed round handle side...")
-
-        self.movementcontroller.stop_walking()
-        self.intelligence.unregister_callback()
-
-        if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION:
-            #end more distance on right , since right turn
-            self.walk_back(state=current_state,minfront=20,minleft=10,minright=30)
-        else:
-            self.walk_back(state=current_state,minfront=20,minleft=30,minright=10)
+                self.walk_back(state=current_state,minfront=20,minleft=30,minright=10)
 
         self.intelligence.location_complete()
 
@@ -394,6 +422,8 @@ class Walker:
 
         #we are doing -2 since we want to turn slightly less than actual.
         corner_yaw_angle = self.CORNER_YAW_ANGLE -2
+        recommended_turn_angle = self.RECOMMENDED_CORNER_STEERING if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION \
+                                            else -self.RECOMMENDED_CORNER_STEERING
 
         if gyroreset:
             self.output_inf.reset_gyro()
@@ -418,23 +448,26 @@ class Walker:
                 else:
                     def_turn_angle = max(corner_yaw_angle, corner_yaw_angle - current_angle)
                 if state.front < self.CORNER_FRONT_DIST_THRESHOLD:
-                    #too close to front wall,add another 5 to turn
-                    def_turn_angle += self.CORNER_EXTRA_TURN_ANGLE
+                    #too close to front wall, increase corner turn angle
+                    recommended_turn_angle += self.CORNER_EXTRA_TURN_ANGLE
         else:
             #no gyro reset walk to 90.
 
-            def_turn_angle = def_turn_angle if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION \
-                                            else -def_turn_angle
+            def_turn_angle = corner_yaw_angle if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION \
+                                            else -corner_yaw_angle
+            if state.front < self.CORNER_FRONT_DIST_THRESHOLD:
+                    # too close to front wall, increase corner turn angle
+                recommended_turn_angle += self.CORNER_EXTRA_TURN_ANGLE if self._direction == \
+                        MATDIRECTION.CLOCKWISE_DIRECTION else -self.CORNER_EXTRA_TURN_ANGLE
 
         # lets handle the corner walk for round 1.
         # we are going to use the gyro corner walk.
         logger.info("Handling corner walk for round 1 with turn angle: %.2f", def_turn_angle)
         try:
-            # self.output_inf.camera_pause()
             min_left, min_right = (30, 20) if self._direction \
                                 == MATDIRECTION.CLOCKWISE_DIRECTION else (20, 30)
             angle = self._gyro_corner_walk(def_turn_angle, min_left, min_right,\
-                                          fixed_turn_angle=self.RECOMENDED_CORNER_STEERING)
+                                          fixed_turn_angle=recommended_turn_angle)
             self.intelligence.location_complete(state)
             self.intelligence.unregister_callback()
             return def_turn_angle
@@ -477,7 +510,8 @@ class Walker:
         self.log_data(gyrohelper)
         self.movementcontroller.turn_steering_with_logging(turn_angle,delta_angle=35,
                                         max_turn_angle=MAX_STEERING_ANGLE,
-                                             current_speed=self.MIN_SPEED)
+                                             current_speed=self.MIN_SPEED,
+                                            async_turn=True)
 
         turned = False
 
@@ -567,11 +601,13 @@ class Walker:
             #very close to wall , turn more, walk slow
             turn_angle = self._inner_turn(state, left_def, right_def,
                                          params.speed_check, self.CORRECTION_SPEED,
-                                         params.is_unknown_direction, helper,lenient=False)
+                                         params.is_unknown_direction, helper,lenient=False,
+                                            async_turn=True)
         else:
             turn_angle = self._inner_turn(state, left_def, right_def,
                                           params.speed_check, params.speed,
-                                          params.is_unknown_direction, helper,lenient=True)
+                                          params.is_unknown_direction, helper,lenient=True,
+                                            async_turn=True)
 
         #we would walk slow if the turn angle exist.
         if turn_angle is None:
@@ -603,7 +639,8 @@ class Walker:
 
     def _inner_turn(self,state:RobotState, left_def:float, right_def:float,
                     speedcheck:bool, defaultspeed:float,is_unknown_direction:bool,
-                    helper: EquiWalkerHelper,lenient:bool=False):
+                    helper: EquiWalkerHelper,lenient:bool=False,async_turn:bool = False):
+
         current_left = state.left
         current_right = state.right
 
@@ -622,7 +659,7 @@ class Walker:
             turn_angle = turn_angle * 0.5
 
         self.movementcontroller.turn_steering_with_logging(turn_angle,speedcheck=speedcheck,
-                                        current_speed=defaultspeed)
+                                        current_speed=defaultspeed,async_turn=async_turn)
         return turn_angle
 
     def walk_read_mat_color(self, start_distance: float, def_turn_angle: float) -> \
@@ -650,6 +687,7 @@ class Walker:
                                                 def_turn_angle=def_turn_angle,
                                                 min_left=min_left,
                                                 min_right=min_right,
+                                                kgyro = 3, # Dont turn too much on gyro.
                                                 max_left_distance=constants.LEFT_DISTANCE_MAX,
                                                 max_right_distance=constants.RIGHT_DISTANCE_MAX
                                             )
@@ -667,6 +705,15 @@ class Walker:
                 callback_func=set_line_color,
                 interval_ms=20
             )
+
+            state = self.read_state_side()
+
+            turn_angle = gyrohelper.walk_func(left_distance=state.left,
+                                                  right_distance=state.right,
+                                                  current_angle=state.yaw)
+
+            self.movementcontroller.\
+                            turn_steering_with_logging(turn_angle,current_speed=self.MIN_SPEED,async_turn=True)
 
 
             colorchecker.start()

@@ -45,6 +45,7 @@ Key features:
 | `vehicle_photos`     | Images of the completed robot builds           |
 | `wroprg`         | Source code in Python                    |
 | `README.md`      | Project documentation (this file)        |
+| `schematic.jpg`      | Circuit schematic diagram       |
 
 ---
 

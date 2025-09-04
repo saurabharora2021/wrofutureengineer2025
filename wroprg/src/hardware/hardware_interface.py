@@ -474,10 +474,10 @@ class HardwareInterface(ShutdownInterface):
             raise RuntimeError("LEGO Drive Base not initialized. Call full_initialization() first.")
         self._lego_drive_base.reset_front_motor()
 
-    def reset_gyro(self) -> None:
+    def reset_gyro(self) -> float:
         """Reset the yaw angle to zero."""
         if self._orientation_estimator is not None:
-            self._orientation_estimator.reset_yaw()
+            return self._orientation_estimator.reset_yaw()
         else:
             raise RuntimeError("Orientation estimator not initialized.")
 

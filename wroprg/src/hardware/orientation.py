@@ -47,7 +47,7 @@ class OrientationEstimator(ShutdownInterface):
         self._rate_last_time = time.monotonic()
 
 
-    def reset_yaw(self):
+    def reset_yaw(self)-> float:
         """Reset Yaw"""
         # Use the current fused reading as the zero reference. If no reading
         # is available, mark to zero on first valid update.
@@ -60,10 +60,11 @@ class OrientationEstimator(ShutdownInterface):
 
         if euler is None or euler[0] is None:
             self._zero_on_first_valid = True
-            return
+            return 0.0
 
         # store current heading as offset (degrees)
         self._yaw_zero_offset_deg = (euler[0] or 0.0)
+        return self._yaw_zero_offset_deg
 
     def get_yaw(self) -> float:
         """Returns the current yaw"""

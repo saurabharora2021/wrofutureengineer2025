@@ -32,6 +32,8 @@ class WalkerN(Walker):
         self._nooflaps = nooflaps
 
         self._walking:bool = False
+        self._global_yaw = 0.0
+        self._cummulative_yaw = 0.0
 
     def _full_round1_walk(self):
 
@@ -112,7 +114,7 @@ class WalkerN(Walker):
             #lets walk the corner at 90 degrees corner1
             try:
                 self.output_inf.camera_pause()
-                current_yaw_angle =self.handle_gyro_corner(current_yaw_angle)
+                current_yaw_angle =self.handle_gyro_corner_round_n(current_yaw_angle)
             finally:
                 self.output_inf.camera_restart()
 
@@ -121,7 +123,7 @@ class WalkerN(Walker):
         #go to corner 4
         try:
                 self.output_inf.camera_pause()
-                current_yaw_angle =self.handle_gyro_corner(current_yaw_angle)
+                current_yaw_angle =self.handle_gyro_corner_round_n(current_yaw_angle)
         finally:
                 self.output_inf.camera_restart()
 

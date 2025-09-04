@@ -430,6 +430,7 @@ class Walker:
 
         self._global_yaw += 90 if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION else -90
 
+        prev_yaw = state.yaw
         if gyroreset:
             prev_yaw = self.output_inf.reset_gyro()
             self._cummulative_yaw += prev_yaw
@@ -480,7 +481,7 @@ class Walker:
 
     def _gyro_corner_walk(self, def_turn_angle: float, min_left: float, min_right: float,
                           fixed_turn_angle:float,
-                            ) -> None:
+                            ) -> float:
         """Handle the gyro corner walking logic."""
 
         logger.info("Gyro corner walk round n initiated with turn angle: %.2f", def_turn_angle)

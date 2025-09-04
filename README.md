@@ -15,7 +15,7 @@
   - [Power & Sensors](#power--sensors)
 - [Software](#software)
   - [Setup & Initialization](#setup--initialization)
-  - [Simplified code implementation of Mobility system.](#simplified-code-implementation-of-Mobility-system.)
+  - [Simplified code implementation of Mobility system.](#simplified-code-implementation-of-mobility-system)
   - [Object Detection & Navigation](#object-detection--navigation)
   - [Driving Strategies & Challenge Logic](#driving-strategies--challenge-logic)
 - [Assembly Instructions](#assembly-instructions)

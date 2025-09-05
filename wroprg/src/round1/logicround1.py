@@ -605,6 +605,11 @@ class Walker:
 
             keep_walking = noopcond
 
+        if state.front <= params.min_front:
+            logger.warning("Front distance %.2f is less than minimum required %.2f, "
+                           "not starting walk.", state.front, params.min_front)
+            return state
+
         if state.left <= params.min_left or state.right <= params.min_right:
             #very close to wall , turn more, walk slow
             turn_angle = self._inner_turn(state, left_def, right_def,

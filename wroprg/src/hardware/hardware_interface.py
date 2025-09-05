@@ -179,7 +179,7 @@ class HardwareInterface(ShutdownInterface):
         self.jumper_pin = Button(self.JUMPER_PIN, hold_time=1)
 
         # Camera
-        # self.camera = MyCamera()
+        self.camera = MyCamera()
 
         logger.info("Raspberry Pi peripherals initialized successfully.")
 
@@ -225,15 +225,15 @@ class HardwareInterface(ShutdownInterface):
         # Measurements
         self._measurements_manager: MeasurementFileLog = MeasurementFileLog(self)
 
-        # self.camera_measurements = CameraDistanceMeasurements(self.camera)
+        self.camera_measurements = CameraDistanceMeasurements(self.camera)
 
     def camera_pause(self):
         """Camera Pause"""
-        # self.camera_measurements.pause_readings()
+        self.camera_measurements.pause_readings()
 
     def camera_restart(self):
         "Camera Restart readings"
-        # self.camera_measurements.resume_readings()
+        self.camera_measurements.resume_readings()
 
     def _full_initialization(self) -> None:
         """Initialize all hardware components."""
@@ -271,7 +271,7 @@ class HardwareInterface(ShutdownInterface):
                                                             " full_initialization() first.")
         self._orientation_estimator.start_readings()
 
-        # self.camera_measurements.start()
+        self.camera_measurements.start()
 
         self._measurements_manager.start_reading()
 
@@ -413,7 +413,7 @@ class HardwareInterface(ShutdownInterface):
 
         if self._lego_drive_base is not None:
             self._lego_drive_base.shutdown()
-        # self.camera_measurements.shutdown()
+        self.camera_measurements.shutdown()
 
         # Shutdown Raspberry Pi peripherals
         try:
@@ -421,7 +421,7 @@ class HardwareInterface(ShutdownInterface):
         except Exception as e:  # pylint: disable=broad-except
             logger.error("Error flushing OLED messages during shutdown: %s", e)
 
-        # self.camera.close()
+        self.camera.close()
 
         try:
             # Ensure any async buzzer timers are cancelled and buzzer is off
@@ -552,16 +552,16 @@ class HardwareInterface(ShutdownInterface):
         right = self._get_right_distance()
         yaw = self.get_yaw()
 
-        # (camera_front, camera_left, camera_right, _) = self.camera_measurements.get_distance()
-        # return RobotState(
-        #     front=front,
-        #     left=left,
-        #     right=right,
-        #     yaw=yaw,
-        #     camera_front=camera_front,
-        #     camera_left=camera_left,
-        #     camera_right=camera_right,
-        # )
+        (camera_front, camera_left, camera_right, _) = self.camera_measurements.get_distance()
+        return RobotState(
+            front=front,
+            left=left,
+            right=right,
+            yaw=yaw,
+            camera_front=camera_front,
+            camera_left=camera_left,
+            camera_right=camera_right,
+        )
 
     def disable_logger(self) -> None:
         """Disable the logger."""

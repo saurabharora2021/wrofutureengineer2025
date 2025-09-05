@@ -106,7 +106,6 @@ class WalkerN(Walker):
         current_yaw_angle = state.yaw
 
         current_yaw_angle = self.handle_side_walk_n(gyroreset=False,
-                            speed=self.DEFAULT_FIRST_WALK_SPEED,
                             def_yaw=current_yaw_angle)
 
 

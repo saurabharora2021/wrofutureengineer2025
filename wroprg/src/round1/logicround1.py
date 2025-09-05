@@ -36,7 +36,7 @@ class Walker:
     DISTANCE_CORRECTION = 4.0
 
     CORNER_YAW_ANGLE = 90.0
-    RECOMMENDED_CORNER_STEERING = 18.0
+    RECOMMENDED_CORNER_STEERING = 20.0
 
     # New constants for corner handling
     CORNER_RIGHT_DIST_THRESHOLD = 40.0
@@ -206,7 +206,7 @@ class Walker:
             steering = 5 if steering > 0 else -5
             if current_state.yaw > 85 and current_state.yaw < 95:
                 steering = 0
-            self.movementcontroller.turn_steering_with_logging(steering,async_turn=True,current_speed=0)
+            self.movementcontroller.turn_steering_with_logging(steering,async_turn=False,current_speed=0)
 
         # we are planning to straight the robot and then do a gyro walk.
         if gyroreset:
@@ -264,6 +264,7 @@ class Walker:
 
             if direction_sign *(state.yaw - def_yaw) > 10 and self.movementcontroller.get_distance() - prev_measure_distance > 20:
                 #we have a 10 degree error, lets stop and correct.
+                self.movementcontroller.stop_walking()
                 prev_measure_distance = self.movementcontroller.get_distance()
                 logger.info("Condition met: very high yaw close to wall stopping Y: %.2f, Def Y: %.2f",\
                              state.yaw, def_yaw)
@@ -495,6 +496,11 @@ class Walker:
 
         if def_turn_angle > self.CORNER_YAW_ANGLE:
             fixed_turn_angle = MAX_STEERING_ANGLE
+
+
+        #since we overshoot lets a little less.
+        def_turn_angle += -2 if MATDIRECTION == MATDIRECTION.CLOCKWISE_DIRECTION else 2
+        logger.info("Adjusted turn angle: %.2f", def_turn_angle)
 
         gyrohelper: FixedTurnWalker = FixedTurnWalker(
             max_left_distance=constants.LEFT_DISTANCE_MAX,

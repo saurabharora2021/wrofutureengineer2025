@@ -8,7 +8,7 @@ class RobotState(NamedTuple):
     front: float =0
     left: float = 0
     right: float =0
-    camera_front:float = 0
-    camera_left:float = 0
-    camera_right:float = 0
+    camera_front:float = -1
+    camera_left:float = -1
+    camera_right:float = -1
     yaw: float = 0

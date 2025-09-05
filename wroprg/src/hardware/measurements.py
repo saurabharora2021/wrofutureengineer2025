@@ -159,11 +159,12 @@ class MeasurementFileLog(ShutdownInterface):
                 timestamp = time.time()
                 counter = int((timestamp - start_time)*1000)
 
-                (_,_,_, metrics) = self._hardware_interface.camera_measurements.get_distance()
+                # (_,_,_, metrics) = self._hardware_interface.camera_measurements.get_distance()
 
+                
                 measurement = Measurement(state.left, state.right, state.front,
                             steering_angle,
-                            yaw, counter, extra_metrics=metrics)
+                            yaw, counter, extra_metrics={})
 
 
                 if  self.ENABLE_MEASURE_LOG:
@@ -178,12 +179,13 @@ class MeasurementFileLog(ShutdownInterface):
 
     def start_reading(self) -> None:
         """Start the background thread for reading hardware."""
-        self._mlogger.writeheader()  # Write header to the measurements file
-        if self._reading_thread is None or not self._reading_thread.is_alive():
-            self._stop_event.clear()
-            self._reading_thread = threading.Thread(target=self._read_hardware_loop, daemon=True)
-            self._reading_thread.start()
-            self._hardware_interface.disable_logger()
+        pass
+        # self._mlogger.writeheader()  # Write header to the measurements file
+        # if self._reading_thread is None or not self._reading_thread.is_alive():
+        #     self._stop_event.clear()
+        #     self._reading_thread = threading.Thread(target=self._read_hardware_loop, daemon=True)
+        #     self._reading_thread.start()
+        #     self._hardware_interface.disable_logger()
 
     def stop_reading(self) -> None:
         """Stop the background thread for reading hardware."""

@@ -271,7 +271,7 @@ class HardwareInterface(ShutdownInterface):
                                                             " full_initialization() first.")
         self._orientation_estimator.start_readings()
 
-        self.camera_measurements.start()
+        # self.camera_measurements.start()
 
         self._measurements_manager.start_reading()
 
@@ -421,7 +421,7 @@ class HardwareInterface(ShutdownInterface):
         except Exception as e:  # pylint: disable=broad-except
             logger.error("Error flushing OLED messages during shutdown: %s", e)
 
-        self.camera.close()
+        # self.camera.close()
 
         try:
             # Ensure any async buzzer timers are cancelled and buzzer is off

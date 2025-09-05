@@ -197,6 +197,10 @@ Key features:
 
 ---
 
+## Video
+
+https://www.canva.com/design/DAGvCrfswH4/ZxBlaw6iaVyeVllbSk9Thw/edit?utm_content=DAGvCrfswH4&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
+
 ## Potential Improvements
 
 - Integrate stronger LiDAR for higher-precision mapping. 

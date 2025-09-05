@@ -37,7 +37,7 @@ def main():
     pi_inf.reset_steering()
     pi_inf.force_flush_messages()
 
-    walker = WalkerN(pi_inf,nooflaps=2)
+    walker = WalkerN(pi_inf,nooflaps=3)
 
     #action button.
     state = pi_inf.read_state()

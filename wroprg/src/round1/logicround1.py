@@ -247,10 +247,11 @@ class Walker:
         last_stop: float = 0.0
 
         prev_measure_distance = self.movementcontroller.get_distance()
-
+        direction_sign = 1 if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION else -1
         def condition_met(state:RobotState) -> bool:
             nonlocal last_stop
             nonlocal prev_measure_distance
+            nonlocal direction_sign
             if state.left <= 15 or state.right <= 15:
                 if (time.time() - last_stop) > 0.5:
                     self.movementcontroller.stop_walking()
@@ -261,7 +262,7 @@ class Walker:
                 else:
                     logger.info("Close to wall but wait for 500ms")
 
-            if abs(state.yaw - def_yaw) > 10 and self.movementcontroller.get_distance() - prev_measure_distance > 20:
+            if direction_sign *(state.yaw - def_yaw) > 10 and self.movementcontroller.get_distance() - prev_measure_distance > 20:
                 #we have a 10 degree error, lets stop and correct.
                 prev_measure_distance = self.movementcontroller.get_distance()
                 logger.info("Condition met: very high yaw close to wall stopping Y: %.2f, Def Y: %.2f",\

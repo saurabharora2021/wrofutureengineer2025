@@ -695,7 +695,7 @@ class Walker:
                                                 def_turn_angle=def_turn_angle,
                                                 min_left=min_left,
                                                 min_right=min_right,
-                                                kgyro = 3, # Dont turn too much on gyro.
+                                                kgyro = 3.5, # Dont turn too much on gyro.
                                                 max_left_distance=constants.LEFT_DISTANCE_MAX,
                                                 max_right_distance=constants.RIGHT_DISTANCE_MAX
                                             )

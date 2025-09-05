@@ -15,7 +15,7 @@
   - [Power & Sensors](#power--sensors)
 - [Software](#software)
   - [Setup & Initialization](#setup--initialization)
-  - [Simplified code implementation of Mobility system.](#simplified-code-implementation-of-Mobility-system.)
+  - [Simplified code implementation of Mobility system.](#simplified-code-implementation-of-mobility-system)
   - [Object Detection & Navigation](#object-detection--navigation)
   - [Driving Strategies & Challenge Logic](#driving-strategies--challenge-logic)
 - [Assembly Instructions](#assembly-instructions)
@@ -196,6 +196,10 @@ Key features:
    - Run calibration scripts before full run.
 
 ---
+
+## Video
+
+https://www.canva.com/design/DAGvCrfswH4/ZxBlaw6iaVyeVllbSk9Thw/edit?utm_content=DAGvCrfswH4&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
 
 ## Potential Improvements
 

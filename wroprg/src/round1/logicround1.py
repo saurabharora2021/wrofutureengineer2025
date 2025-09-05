@@ -680,12 +680,12 @@ class Walker:
         #lets reduce the gyro correction
         def_turn_angle = def_turn_angle * 0.5
 
-        min_left = 40
-        min_right = 40
+        min_left = 20
+        min_right = 20
 
         if start_distance < 70:
-            min_left = 20
-            min_right = 20
+            min_left = 15
+            min_right = 15
 
         color = check_bottom_color(self.output_inf, list(self.KNOWN_COLORS))
 

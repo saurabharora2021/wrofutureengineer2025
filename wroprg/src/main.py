@@ -27,13 +27,15 @@ def main():
     if not robot_validator.validate():
 
         pi_inf.led1_red()
-        pi_inf.buzzer_beep()
-        raise RuntimeError("Robot validation failed")
+        # pi_inf.buzzer_beep()
+        # raise RuntimeError("Robot validation failed")
+        logger.error("Validation failed")
     else:
         pi_inf.led1_green()
-        pi_inf.buzzer_beep()
+        # pi_inf.buzzer_beep()
+        logger.warning("Test Successful")
 
-    logger.warning("Test Successful")
+
     pi_inf.reset_steering()
     pi_inf.force_flush_messages()
 

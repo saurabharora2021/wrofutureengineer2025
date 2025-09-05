@@ -49,6 +49,10 @@ class MovementController:
         self._turn_worker_thread = threading.Thread(target=self._turn_worker, daemon=True)
         self._turn_worker_thread.start()
 
+    def is_walking(self) -> bool:
+        """Returns whether the robot is currently walking."""
+        return self._walking
+
     def _turn_worker(self):
         """Worker thread that processes turn commands from the queue."""
         while True:

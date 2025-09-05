@@ -623,7 +623,11 @@ class Walker:
                                             async_turn=True)
 
         #we would walk slow if the turn angle exist.
-        if turn_angle is None:
+        if state.front < params.min_front + 10:
+            # logger.info("Front distance %.2f is less than minimum required + 10cm %.2f, "
+            #             "walking slow.", state.front, params.min_front + 10)
+            self.movementcontroller.start_walking(self.MIN_SPEED)
+        elif turn_angle is None:
             logger.info("No turn angle detected, walking straight faster")
             self.movementcontroller.start_walking(params.speed)
         else:
@@ -645,6 +649,12 @@ class Walker:
                 prev_turn_angle = turn_angle
 
             state = self.read_state_side()
+            
+            if state.front < params.min_front + 10:
+            # logger.info("Front distance %.2f is less than minimum required + 10cm %.2f, "
+            #             "walking slow.", state.front, params.min_front + 10)
+             if self.movementcontroller.is_walking():
+                self.movementcontroller.start_walking(self.MIN_SPEED)
 
         self.log_data(helper)
         return state

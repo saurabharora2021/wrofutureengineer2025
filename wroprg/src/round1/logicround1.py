@@ -330,6 +330,26 @@ class Walker:
                     if is_path_updated:
                         logger.info("Path updated - L: %.2f, R: %.2f, Yaw: %.2f", left_def,
                                     right_def, current_yaw)
+                elif direction_sign *(current_state.yaw - def_yaw) > 10:
+                    # Too much yaw, force correct. 
+                    steering = self.output_inf.get_steering_angle()
+                    #current steering should be opposite of yaw.
+                    steering_dir = steering/abs(steering)
+                    if direction_sign == steering_dir:
+                        # steering should be opposite.
+                        self.movementcontroller.turn_steering_with_logging(-10*direction_sign)
+                    else:
+                        # Assuming same side at least 10 degrees. 
+                        if abs(steering) < 10:
+                            self.movementcontroller.turn_steering_with_logging(-10*direction_sign)
+                    self.movementcontroller.start_walking(self.CORRECTION_SPEED)
+                elif current_state.left <= 10 or current_state.right <= 10:
+                    # too less left and right
+                    if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION:
+                        #end more distance on right , since right turn
+                        self.walk_back(state=current_state,minfront=20,minleft=10,minright=30)
+                    else:
+                        self.walk_back(state=current_state,minfront=20,minleft=30,minright=10)
                 else:
                     logger.info("Completed round handle side...")
 

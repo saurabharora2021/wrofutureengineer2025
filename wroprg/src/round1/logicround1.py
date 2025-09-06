@@ -36,7 +36,7 @@ class Walker:
     DISTANCE_CORRECTION = 4.0
 
     CORNER_YAW_ANGLE = 90.0
-    RECOMMENDED_CORNER_STEERING = 20.0
+    RECOMMENDED_CORNER_STEERING = 22.0
 
     # New constants for corner handling
     CORNER_RIGHT_DIST_THRESHOLD = 40.0

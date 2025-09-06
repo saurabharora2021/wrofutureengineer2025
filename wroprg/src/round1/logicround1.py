@@ -489,6 +489,14 @@ class Walker:
 
         logger.info("Gyro corner walk round n initiated with turn angle: %.2f", def_turn_angle)
 
+        (def_front, _, _) = self.intelligence.get_learned_distances()
+        state = self.read_state_corner()
+        if state.front <= def_front:
+            #walk back a little.
+            self.walk_back(state,minfront=def_front+5,minleft=10,minright=10)
+
+
+
         def report_distances_corner(left: float, right: float):
             logger.info("corner Report. Left: %.2f, Right: %.2f", left, right)
             self._current_distance = (left, right)
@@ -509,7 +517,6 @@ class Walker:
             fixed_turn_angle=fixed_turn_angle,
             def_turn_angle=def_turn_angle, min_left=min_left, min_right=min_right)
 
-        (def_front, _, _) = self.intelligence.get_learned_distances()
         state = self.read_state_corner()
 
         #we are going to start turning before walking

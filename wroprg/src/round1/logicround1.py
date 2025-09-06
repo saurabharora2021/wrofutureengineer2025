@@ -435,11 +435,16 @@ class Walker:
 
             logger.info("Completed walk back")
 
-    def handle_corner_round1(self,gyrodefault:float,gyroreset:bool=True):
+    def handle_corner_round1(self,gyrodefault:float,gyroreset:bool=True,retry:int=0):
         """Handle corner walk"""
 
         logger.info("handler corner round1: gyrodefault:%.2f, gyroreset: %s",
                     gyrodefault, gyroreset)
+        
+        nowalkback= False
+        if retry > 2:
+            #no walk back
+            nowalkback = True
 
         self.walk_to_corner(gyrodefault)
         state = self.read_state_side()
@@ -476,6 +481,10 @@ class Walker:
             if state.front < self.CORNER_FRONT_DIST_THRESHOLD:
                 #too close to front wall,add another 5 to turn
                 recommended_turn_angle -= self.CORNER_EXTRA_TURN_ANGLE
+                # walk back
+                if not nowalkback:
+                    self.walk_back(state,minfront=self.CORNER_FRONT_DIST_THRESHOLD,minleft=20,minright=10)
+                    return self.handle_corner_round1(gyrodefault=gyrodefault,gyroreset=gyroreset,retry=retry+1)
         else:
             def_turn_angle = corner_yaw_angle
             if state.left < self.CORNER_LEFT_DIST_THRESHOLD:
@@ -484,7 +493,11 @@ class Walker:
             if state.front < self.CORNER_FRONT_DIST_THRESHOLD:
                 #too close to front wall, increase corner turn angle
                 recommended_turn_angle += self.CORNER_EXTRA_TURN_ANGLE
-        
+                # walk back
+                if not nowalkback:
+                    self.walk_back(state,minfront=self.CORNER_FRONT_DIST_THRESHOLD,minleft=10,minright=20)
+                    return self.handle_corner_round1(gyrodefault=gyrodefault,gyroreset=gyroreset,retry=retry+1)
+
 
         # lets handle the corner walk for round 1.
         # we are going to use the gyro corner walk.

@@ -59,6 +59,14 @@ class WalkerN(Walker):
 
         #handle first corner without gyroreset.
         try:
+            current_state = self.read_state_side()
+
+            if self._direction == MATDIRECTION.CLOCKWISE_DIRECTION:
+                #end more distance on right , since right turn
+                self.walk_back(state=current_state,minfront=20,minleft=10,minright=30)
+            else:
+                self.walk_back(state=current_state,minfront=20,minleft=30,minright=10)
+
             self.output_inf.camera_pause()
             current_yaw_angle =self.handle_corner_round1(current_yaw_angle,False)   
         finally:

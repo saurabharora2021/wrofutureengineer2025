@@ -491,9 +491,10 @@ class Walker:
 
         (def_front, _, _) = self.intelligence.get_learned_distances()
         state = self.read_state_corner()
-        if state.front <= def_front:
+        #def_front is 15, we want to be 30 cm away from wall.
+        if state.front <= def_front*2:
             #walk back a little.
-            self.walk_back(state,minfront=def_front+5,minleft=10,minright=10)
+            self.walk_back(state,minfront=def_front*2,minleft=10,minright=10)
 
 
 

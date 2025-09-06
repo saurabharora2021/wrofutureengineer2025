@@ -172,7 +172,8 @@ class Walker:
         (color,color2) = self.walk_read_mat_color(start_distance=totalstartdistance,
                                                   def_turn_angle=gyrodefault)
 
-        #ensure we have reached corner.
+        #ensure we have reached corner, but we dampening the angle otherwise too much 
+        #movement
         self.walk_to_corner(def_turn_angle=gyrodefault)
 
         state = self.read_state_side()
@@ -822,11 +823,12 @@ class Walker:
                 )
                 state = self.handle_straight_walk(params=walk_params, keep_walking=cond1)
             else:
+                #we want to do gyro walk, but about too much turning
                 walk_params = WalkParameters(
                     min_front=self.WALLFRONTFORWALL,
                     def_left=state.left,
                     def_right=state.right,
-                    gyro_default=def_turn_angle,
+                    gyro_default=state.yaw/2,
                     speed=self.WALK_TO_CORNER_SPEED,
                     min_right=15,
                     min_left=15
